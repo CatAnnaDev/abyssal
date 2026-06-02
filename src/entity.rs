@@ -67,6 +67,9 @@ pub enum HeroClass {
     Mage,
     Paladin,
     Necromancer,
+    Ranger,
+    Berserker,
+    Elementalist,
 }
 
 impl HeroClass {
@@ -77,16 +80,22 @@ impl HeroClass {
             HeroClass::Mage => "Mage",
             HeroClass::Paladin => "Paladin",
             HeroClass::Necromancer => "Necromancien",
+            HeroClass::Ranger => "Rodeur",
+            HeroClass::Berserker => "Berserker",
+            HeroClass::Elementalist => "Elementaliste",
         }
     }
 
     pub fn pick(rng: &mut Rng) -> HeroClass {
-        match rng.below(5) {
+        match rng.below(8) {
             0 => HeroClass::Warrior,
             1 => HeroClass::Rogue,
             2 => HeroClass::Mage,
             3 => HeroClass::Paladin,
-            _ => HeroClass::Necromancer,
+            4 => HeroClass::Necromancer,
+            5 => HeroClass::Ranger,
+            6 => HeroClass::Berserker,
+            _ => HeroClass::Elementalist,
         }
     }
 
@@ -97,6 +106,9 @@ impl HeroClass {
             HeroClass::Mage => 0.14,
             HeroClass::Paladin => 0.12,
             HeroClass::Necromancer => 0.13,
+            HeroClass::Ranger => 0.20,
+            HeroClass::Berserker => 0.18,
+            HeroClass::Elementalist => 0.15,
         }
     }
 
@@ -104,6 +116,7 @@ impl HeroClass {
         match self {
             HeroClass::Warrior => 2,
             HeroClass::Paladin => 3,
+            HeroClass::Berserker => 2,
             _ => 999,
         }
     }
@@ -112,14 +125,15 @@ impl HeroClass {
         match self {
             HeroClass::Mage => 1,
             HeroClass::Necromancer => 1,
+            HeroClass::Ranger => 1,
+            HeroClass::Elementalist => 1,
             HeroClass::Rogue => 6,
-            HeroClass::Warrior => 999,
-            HeroClass::Paladin => 999,
+            _ => 999,
         }
     }
 
     pub fn bleeds(self) -> bool {
-        matches!(self, HeroClass::Rogue)
+        matches!(self, HeroClass::Rogue | HeroClass::Berserker)
     }
 
     pub fn raises_dead(self) -> bool {
@@ -133,6 +147,9 @@ impl HeroClass {
             HeroClass::Mage => WeaponClass::Staff,
             HeroClass::Paladin => WeaponClass::Heavy,
             HeroClass::Necromancer => WeaponClass::Staff,
+            HeroClass::Ranger => WeaponClass::Light,
+            HeroClass::Berserker => WeaponClass::Heavy,
+            HeroClass::Elementalist => WeaponClass::Staff,
         }
     }
 
@@ -143,6 +160,9 @@ impl HeroClass {
             HeroClass::Mage => ArmorClass::Cloth,
             HeroClass::Paladin => ArmorClass::Plate,
             HeroClass::Necromancer => ArmorClass::Cloth,
+            HeroClass::Ranger => ArmorClass::Leather,
+            HeroClass::Berserker => ArmorClass::Leather,
+            HeroClass::Elementalist => ArmorClass::Cloth,
         }
     }
 
@@ -167,6 +187,17 @@ impl HeroClass {
             HeroClass::Necromancer => {
                 h.might += 3;
                 h.max_hp += 8;
+            }
+            HeroClass::Ranger => {
+                h.might += 3;
+                h.max_hp += 4;
+            }
+            HeroClass::Berserker => {
+                h.might += 5;
+                h.max_hp += 8;
+            }
+            HeroClass::Elementalist => {
+                h.might += 5;
             }
         }
         h.weapon = weapons_for(self.weapon_class())[0].0.into();
@@ -690,6 +721,24 @@ const BESTIARY: &[MonsterKind] = &[
     MonsterKind { glyph: 'T', color: (90, 200, 120),  name: "troll",   hp: 42, atk: 14, def: 4, xp: 34, gold: 40, min_floor: 6,  ranged: false, element: Element::Poison },
     MonsterKind { glyph: 'D', color: (230, 80, 60),   name: "demon",   hp: 55, atk: 18, def: 5, xp: 55, gold: 70, min_floor: 8,  ranged: false, element: Element::Fire },
     MonsterKind { glyph: 'Y', color: (240, 160, 40),  name: "dragon",  hp: 90, atk: 24, def: 7, xp: 90, gold: 140, min_floor: 10, ranged: false, element: Element::Fire },
+    MonsterKind { glyph: 'b', color: (140, 130, 160), name: "chauve-souris", hp: 5,  atk: 3,  def: 0, xp: 3,  gold: 0,  min_floor: 1,  ranged: false, element: Element::Physical },
+    MonsterKind { glyph: 'v', color: (120, 190, 80),  name: "vipere",  hp: 6,  atk: 5,  def: 0, xp: 5,  gold: 4,  min_floor: 2,  ranged: false, element: Element::Poison },
+    MonsterKind { glyph: 'j', color: (150, 210, 150), name: "gelee",   hp: 16, atk: 4,  def: 2, xp: 7,  gold: 4,  min_floor: 2,  ranged: false, element: Element::Poison },
+    MonsterKind { glyph: 'f', color: (200, 200, 120), name: "farfadet", hp: 7,  atk: 6,  def: 1, xp: 7,  gold: 9,  min_floor: 2,  ranged: true,  element: Element::Lightning },
+    MonsterKind { glyph: 'W', color: (150, 140, 120), name: "worg",    hp: 16, atk: 9,  def: 1, xp: 12, gold: 10, min_floor: 3,  ranged: false, element: Element::Physical },
+    MonsterKind { glyph: 'c', color: (180, 90, 160),  name: "cultiste", hp: 14, atk: 7,  def: 1, xp: 12, gold: 16, min_floor: 4,  ranged: true,  element: Element::Poison },
+    MonsterKind { glyph: 'G', color: (140, 170, 120), name: "goule",   hp: 22, atk: 10, def: 2, xp: 15, gold: 14, min_floor: 4,  ranged: false, element: Element::Poison },
+    MonsterKind { glyph: 'i', color: (230, 120, 90),  name: "diablotin", hp: 13, atk: 8, def: 1, xp: 14, gold: 20, min_floor: 5,  ranged: true,  element: Element::Fire },
+    MonsterKind { glyph: 'm', color: (120, 200, 160), name: "mante",   hp: 18, atk: 12, def: 2, xp: 17, gold: 14, min_floor: 5,  ranged: false, element: Element::Ice },
+    MonsterKind { glyph: 'P', color: (150, 150, 160), name: "golem",   hp: 44, atk: 11, def: 6, xp: 26, gold: 26, min_floor: 6,  ranged: false, element: Element::Physical },
+    MonsterKind { glyph: 'N', color: (200, 120, 230), name: "necromant", hp: 26, atk: 12, def: 2, xp: 30, gold: 40, min_floor: 7, ranged: false, element: Element::Lightning },
+    MonsterKind { glyph: 'n', color: (90, 200, 180),  name: "naga",    hp: 32, atk: 13, def: 3, xp: 28, gold: 32, min_floor: 7,  ranged: true,  element: Element::Poison },
+    MonsterKind { glyph: 'e', color: (255, 170, 80),  name: "elementaire", hp: 38, atk: 16, def: 3, xp: 40, gold: 42, min_floor: 8, ranged: false, element: Element::Fire },
+    MonsterKind { glyph: 'M', color: (180, 220, 210), name: "meduse",  hp: 30, atk: 14, def: 3, xp: 36, gold: 38, min_floor: 8,  ranged: false, element: Element::Ice },
+    MonsterKind { glyph: 'A', color: (240, 230, 180), name: "ange dechu", hp: 50, atk: 18, def: 4, xp: 52, gold: 64, min_floor: 9, ranged: true, element: Element::Lightning },
+    MonsterKind { glyph: 'B', color: (110, 90, 80),   name: "behemoth", hp: 75, atk: 20, def: 6, xp: 66, gold: 84, min_floor: 11, ranged: false, element: Element::Physical },
+    MonsterKind { glyph: 'x', color: (170, 110, 200), name: "aberration", hp: 62, atk: 19, def: 4, xp: 62, gold: 72, min_floor: 12, ranged: false, element: Element::Lightning },
+    MonsterKind { glyph: 'Q', color: (210, 150, 90),  name: "chimere", hp: 88, atk: 23, def: 6, xp: 84, gold: 130, min_floor: 13, ranged: false, element: Element::Fire },
 ];
 
 pub fn bestiary() -> Vec<(char, Color, &'static str, &'static str, i32, &'static str)> {
@@ -736,8 +785,8 @@ impl Monster {
             cast_tx: 0,
             cast_ty: 0,
             cast_cd: 0,
-            flees: matches!(kind.glyph, 'r' | 'a'),
-            heals: kind.glyph == 'h',
+            flees: matches!(kind.glyph, 'r' | 'a' | 'b'),
+            heals: matches!(kind.glyph, 'h' | 'c'),
             bomber: kind.glyph == 'z',
             summoner: kind.glyph == 'S',
             enraged: false,

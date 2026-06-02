@@ -484,6 +484,10 @@ const SPR_DRAGON: [&str; 4] = ["*XX*", "XXXX", "XooX", "*XX*"];
 const SPR_MIMIC: [&str; 4] = ["XXXX", "XvvX", "XXXX", "X  X"];
 const SPR_FINAL: [&str; 4] = ["*vv*", "vXXv", "XooX", "vXXv"];
 const SPR_BOMB: [&str; 4] = [" *  ", "XXXX", "XXXX", " XX "];
+const SPR_BAT: [&str; 4] = ["*  *", "XvvX", " XX ", "    "];
+const SPR_BLOB: [&str; 4] = [" .. ", "XooX", "XXXX", " XX "];
+const SPR_FLAME: [&str; 4] = ["  * ", " ** ", " XX ", "XXXX"];
+const SPR_WINGED: [&str; 4] = ["*XX*", "vXXv", "XooX", " XX "];
 const SPR_COIN: [&str; 4] = [" XX ", "X*vX", "Xv*X", " XX "];
 const SPR_POTION: [&str; 4] = [" .. ", " XX ", "X*XX", "XXXX"];
 const SPR_BLADE: [&str; 4] = ["  .v", " .X ", ".X. ", "*.  "];
@@ -521,13 +525,17 @@ fn monster_sprite(m: &crate::entity::Monster) -> &'static [&'static str; 4] {
         return if m.glyph == '\u{2638}' { &SPR_FINAL } else { &SPR_BOSS };
     }
     match m.glyph {
-        'r' => &SPR_VERMIN,
+        'r' | 'v' => &SPR_VERMIN,
+        'b' => &SPR_BAT,
         'a' => &SPR_ARCHER,
-        'w' | 'S' => &SPR_CASTER,
-        'O' | 'T' => &SPR_BRUTE,
-        'D' => &SPR_DEMON,
-        'Y' => &SPR_DRAGON,
+        'w' | 'S' | 'c' | 'N' | 'f' => &SPR_CASTER,
+        'O' | 'T' | 'P' | 'B' => &SPR_BRUTE,
+        'D' | 'i' => &SPR_DEMON,
+        'Y' | 'A' | 'Q' => &SPR_DRAGON,
         'z' => &SPR_BOMB,
+        'j' => &SPR_BLOB,
+        'e' => &SPR_FLAME,
+        'M' | 'x' | 'n' | 'G' => &SPR_WINGED,
         '\u{25a4}' => &SPR_MIMIC,
         _ => &SPR_CREATURE,
     }

@@ -67,7 +67,8 @@ Progress autoloads on launch (`abyssal.save.json`).
 - Branching descents: at every stairway the AI weighs 2–3 paths by mindset (and heads for a Rest branch when wounded), each leading to a biome and a room type (treasure / challenge / warren / rest)
 - Five biomes (Caverns, Catacombs, Frostvault, Emberdepths, Abyss), each with its own palette, lighting tint, biased fauna, ambient hazard, a themed champion mini-boss, and musical key
 - Two render modes (toggle with `g`): the classic colored-glyph map, or a half-block pixel-art "sprite" view — a hero-centred camera with procedural per-archetype sprites, distinct item/feature icons, an idle bob, particles and floating damage, all drawn in any truecolor terminal with no asset files (zoom with `z`)
-- Five hero classes (Warrior / Rogue / Mage / Paladin / Necromancer) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown (Warrior charge, Rogue blink-strike, Mage ice nova, Paladin smite-heal, Necromancer raise-dead)
+- Eight hero classes (Warrior / Rogue / Mage / Paladin / Necromancer / Ranger / Berserker / Elementalist) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown (charge, blink-strike, ice nova, smite-heal, raise-dead, arrow volley, whirlwind fury, elemental nova)
+- A bestiary of ~30 monster kinds across the depth range, each with its glyph, element, behavior and a procedural sprite
 - Summoned allies: the Necromancer raises slain monsters as temporary undead that fight alongside the hero (a reusable allied-unit system)
 - Unique relics dropped by bosses and champions with special effects (lifesteal on kill, ghostly dodge, chain-lightning procs, burning hits, +max HP, raise-the-dead for any class)
 - Atmosphere: per-biome lore lines, boss intros, and ambient particles (embers, snow, fog) drifting through the lit area

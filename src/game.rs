@@ -91,11 +91,11 @@ impl Biome {
 
     pub fn fauna(self) -> &'static [char] {
         match self {
-            Biome::Caverns => &['r', 'g', 'k', 'o'],
-            Biome::Catacombs => &['k', 's', 'h', 'T'],
-            Biome::Frostvault => &['s', 'a', 'k', 'g'],
-            Biome::Emberdepths => &['w', 'D', 'o', 'a'],
-            Biome::Abyss => &['D', 'Y', 'T', 'w'],
+            Biome::Caverns => &['r', 'g', 'k', 'o', 'b', 'W'],
+            Biome::Catacombs => &['k', 's', 'h', 'T', 'G', 'N', 'j'],
+            Biome::Frostvault => &['s', 'a', 'k', 'g', 'm', 'M'],
+            Biome::Emberdepths => &['w', 'D', 'o', 'i', 'e', 'z'],
+            Biome::Abyss => &['D', 'Y', 'x', 'A', 'Q', 'B'],
         }
     }
 
@@ -1466,7 +1466,70 @@ impl Game {
             HeroClass::Mage => self.ability_nova(),
             HeroClass::Paladin => self.ability_smite(),
             HeroClass::Necromancer => self.ability_raise(),
+            HeroClass::Ranger => self.ability_volley(),
+            HeroClass::Berserker => self.ability_furie(),
+            HeroClass::Elementalist => self.ability_nova(),
         }
+    }
+
+    fn ability_volley(&mut self) -> bool {
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let mut targets: Vec<(i32, i32)> = self
+            .monsters
+            .iter()
+            .filter(|m| {
+                let d = (m.x - hx).abs().max((m.y - hy).abs());
+                d >= 1 && d <= 5 && self.map.is_visible(m.x, m.y) && self.map.line_of_sight(hx, hy, m.x, m.y)
+            })
+            .map(|m| (m.x, m.y))
+            .collect();
+        if targets.is_empty() {
+            return false;
+        }
+        targets.sort_by_key(|&(x, y)| (x - hx).abs() + (y - hy).abs());
+        targets.truncate(4);
+        self.fx.label(hx, hy, "VOLEE", (210, 200, 120));
+        self.sfx.push(Sound::Bolt);
+        let cc = self.hero_crit();
+        for (tx, ty) in targets {
+            if let Some(j) = self.monster_at(tx, ty) {
+                self.fx.projectile(hx, hy, tx, ty, '\u{2192}', (230, 220, 150));
+                let (dmg, crit) = resolve(self.hero.atk() - 1, self.monsters[j].def, &mut self.rng, cc);
+                self.hit_monster(j, dmg, crit, Element::Physical);
+            }
+        }
+        self.hero.ability_cd = 6;
+        self.last_action = "volee";
+        true
+    }
+
+    fn ability_furie(&mut self) -> bool {
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let adj: Vec<(i32, i32)> = self
+            .monsters
+            .iter()
+            .filter(|m| (m.x - hx).abs().max((m.y - hy).abs()) <= 1)
+            .map(|m| (m.x, m.y))
+            .collect();
+        if adj.is_empty() {
+            return false;
+        }
+        self.hero.rage = self.hero.rage.max(20);
+        self.fx.label(hx, hy, "FURIE", (235, 110, 80));
+        self.fx.add_shake(5);
+        self.fx.burst(&mut self.rng, hx, hy, (235, 110, 80), 18, '\u{2737}');
+        self.sfx.push(Sound::Crit);
+        let cc = self.hero_crit();
+        let el = self.hero.weapon_element();
+        for (cx, cy) in adj {
+            if let Some(j) = self.monster_at(cx, cy) {
+                let (dmg, crit) = resolve(self.hero.atk() + 2, self.monsters[j].def, &mut self.rng, cc);
+                self.hit_monster(j, dmg, crit, el);
+            }
+        }
+        self.hero.ability_cd = 7;
+        self.last_action = "furie";
+        true
     }
 
     fn ability_raise(&mut self) -> bool {
@@ -1744,8 +1807,11 @@ impl Game {
             self.fx.label(mx, my, "BRISE!", (160, 220, 255));
             self.fx.burst(&mut self.rng, mx, my, (180, 230, 255), 12, '\u{2744}');
         }
+        let spark = if element == Element::Physical { (235, 235, 245) } else { element.color() };
+        self.fx.burst(&mut self.rng, mx, my, spark, if crit { 10 } else { 3 }, '\u{00b7}');
         if crit {
             self.fx.add_shake(3);
+            self.fx.burst(&mut self.rng, mx, my, (255, 230, 120), 8, '\u{2736}');
         }
         self.sfx.push(if crit { Sound::Crit } else { Sound::Hit });
         if self.hero.has_affix(Affix::Lifesteal) || self.hero.has_talent(Talent::Sangsue) {
@@ -3426,4 +3492,3 @@ mod tests {
 fn super_panel() -> i32 {
     34
 }
-
