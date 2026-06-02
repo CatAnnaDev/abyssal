@@ -298,6 +298,8 @@ pub struct Hero {
     pub poison: i32,
     pub regen: i32,
     pub shield: i32,
+    #[serde(default)]
+    pub rage: i32,
     pub bolt_cd: i32,
     pub weapon_affix: Affix,
     pub armor_affix: Affix,
@@ -334,6 +336,7 @@ impl Hero {
             poison: 0,
             regen: 0,
             shield: 0,
+            rage: 0,
             bolt_cd: 0,
             weapon_affix: Affix::None,
             armor_affix: Affix::None,
@@ -382,7 +385,7 @@ impl Hero {
     }
 
     pub fn atk(&self) -> i32 {
-        self.might + self.weapon_bonus + self.ring_bonus + self.set_bonus()
+        self.might + self.weapon_bonus + self.ring_bonus + self.set_bonus() + if self.rage > 0 { 6 } else { 0 }
     }
 
     pub fn def(&self) -> i32 {
@@ -449,6 +452,12 @@ pub struct Monster {
     pub flees: bool,
     #[serde(default)]
     pub heals: bool,
+    #[serde(default)]
+    pub bomber: bool,
+    #[serde(default)]
+    pub summoner: bool,
+    #[serde(default)]
+    pub enraged: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -460,6 +469,25 @@ pub enum FeatureKind {
     Altar,
     Familiar,
     Forge,
+    Gamble,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PetKind {
+    #[default]
+    Striker,
+    Mender,
+    Guardian,
+}
+
+impl PetKind {
+    pub fn label(self) -> &'static str {
+        match self {
+            PetKind::Striker => "fauve",
+            PetKind::Mender => "esprit",
+            PetKind::Guardian => "golem",
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -470,18 +498,37 @@ pub struct Pet {
     pub max_hp: i32,
     pub atk: i32,
     pub name: String,
+    #[serde(default)]
+    pub kind: PetKind,
+    #[serde(default)]
+    pub level: i32,
+    #[serde(default)]
+    pub heal_cd: i32,
 }
 
 impl Pet {
-    pub fn new(floor: i32, x: i32, y: i32) -> Pet {
+    pub fn new(floor: i32, x: i32, y: i32, rng: &mut Rng) -> Pet {
         let depth = floor.max(1);
+        let kind = match rng.below(3) {
+            0 => PetKind::Striker,
+            1 => PetKind::Mender,
+            _ => PetKind::Guardian,
+        };
+        let (hp, atk) = match kind {
+            PetKind::Striker => (18 + depth * 3, 8 + depth),
+            PetKind::Mender => (18 + depth * 3, 4 + depth),
+            PetKind::Guardian => (32 + depth * 5, 6 + depth),
+        };
         Pet {
             x,
             y,
-            hp: 20 + depth * 4,
-            max_hp: 20 + depth * 4,
-            atk: 6 + depth,
-            name: "familier".to_string(),
+            hp,
+            max_hp: hp,
+            atk,
+            name: kind.label().to_string(),
+            kind,
+            level: 1,
+            heal_cd: 0,
         }
     }
 }
@@ -515,6 +562,8 @@ const BESTIARY: &[MonsterKind] = &[
     MonsterKind { glyph: 'o', color: (90, 160, 70),   name: "orc",     hp: 16, atk: 8,  def: 2, xp: 11, gold: 14, min_floor: 3,  ranged: false, element: Element::Physical },
     MonsterKind { glyph: 's', color: (190, 190, 210), name: "spectre", hp: 14, atk: 10, def: 1, xp: 13, gold: 10, min_floor: 4,  ranged: false, element: Element::Ice },
     MonsterKind { glyph: 'h', color: (120, 235, 180), name: "pretre",  hp: 12, atk: 5,  def: 1, xp: 14, gold: 18, min_floor: 4,  ranged: false, element: Element::Physical },
+    MonsterKind { glyph: 'z', color: (240, 150, 70),  name: "bombe",   hp: 7,  atk: 4,  def: 0, xp: 9,  gold: 6,  min_floor: 3,  ranged: false, element: Element::Fire },
+    MonsterKind { glyph: 'S', color: (200, 110, 230), name: "invocateur", hp: 18, atk: 6, def: 1, xp: 20, gold: 26, min_floor: 6, ranged: false, element: Element::Lightning },
     MonsterKind { glyph: 'w', color: (180, 120, 240), name: "sorcier", hp: 16, atk: 12, def: 1, xp: 16, gold: 22, min_floor: 4,  ranged: true,  element: Element::Fire },
     MonsterKind { glyph: 'O', color: (70, 130, 60),   name: "ogre",    hp: 30, atk: 12, def: 3, xp: 22, gold: 30, min_floor: 5,  ranged: false, element: Element::Poison },
     MonsterKind { glyph: 'T', color: (90, 200, 120),  name: "troll",   hp: 42, atk: 14, def: 4, xp: 34, gold: 40, min_floor: 6,  ranged: false, element: Element::Poison },
@@ -551,6 +600,9 @@ impl Monster {
             cast_cd: 0,
             flees: matches!(kind.glyph, 'r' | 'a'),
             heals: kind.glyph == 'h',
+            bomber: kind.glyph == 'z',
+            summoner: kind.glyph == 'S',
+            enraged: false,
         }
     }
 
@@ -628,6 +680,9 @@ impl Monster {
             cast_cd: 0,
             flees: false,
             heals: false,
+            bomber: false,
+            summoner: false,
+            enraged: false,
         }
     }
 
@@ -661,6 +716,9 @@ impl Monster {
             cast_cd: 0,
             flees: false,
             heals: false,
+            bomber: false,
+            summoner: false,
+            enraged: false,
         }
     }
 
@@ -692,6 +750,9 @@ impl Monster {
             cast_cd: 0,
             flees: false,
             heals: false,
+            bomber: false,
+            summoner: false,
+            enraged: false,
         }
     }
 }

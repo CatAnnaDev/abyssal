@@ -66,7 +66,9 @@ Progress autoloads on launch (`abyssal.save.json`).
 - A live panel showing the full loadout — weapon/armor with bonus & affix, ring, amulet, set bonus, potions, scrolls by type, and talents
 - Run mutators (Sanguinaire, Cupidite, Fragile, Pullulement, Champions) rolled per run that twist spawns, scaling and rewards
 - A persistent lifetime profile (runs, deaths, deepest floor, best score, total kills) shown on the pre-game menu
-- Monster behaviors beyond melee: ranged casters, healers that mend wounded allies, and skirmishers that flee when near death
+- Monster behaviors beyond melee: ranged casters, healers that mend wounded allies, skirmishers that flee when near death, summoners, exploding kamikazes, and bosses that enrage below half health
+- Temporary buffs (rage, ward, regen) with HUD icons, gamble shrines (risk/reward) and blessing fountains
+- Familiars come in three flavors — striker, mender (heals you) and guardian — and level up as the hero does
 - Level-up talents, persistent relics unlocked through achievements
 - Unique floor bosses and a final boss, each telegraphing charge / volley / summon attacks the hero can dodge
 - Ranged casters that wind up and can be sidestepped

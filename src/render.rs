@@ -335,6 +335,9 @@ fn status_line(game: &Game) -> String {
     if h.regen > 0 {
         s.push_str(&format!("\u{2726}{} ", h.regen));
     }
+    if h.rage > 0 {
+        s.push_str(&format!("\u{25b2}{} ", h.rage));
+    }
     if h.bolt_cd > 0 {
         s.push_str(&format!("\u{26a1}{} ", h.bolt_cd));
     }
@@ -423,6 +426,7 @@ fn feature_color(kind: FeatureKind) -> Color {
         FeatureKind::Familiar => (120, 230, 180),
         FeatureKind::Trap => (210, 95, 75),
         FeatureKind::Forge => (255, 170, 70),
+        FeatureKind::Gamble => (235, 200, 120),
     }
 }
 
@@ -439,6 +443,7 @@ const SPR_DEMON: [&str; 4] = ["*XX*", "XXXX", "XooX", "X  X"];
 const SPR_DRAGON: [&str; 4] = ["*XX*", "XXXX", "XooX", "*XX*"];
 const SPR_MIMIC: [&str; 4] = ["XXXX", "XvvX", "XXXX", "X  X"];
 const SPR_FINAL: [&str; 4] = ["*vv*", "vXXv", "XooX", "vXXv"];
+const SPR_BOMB: [&str; 4] = [" *  ", "XXXX", "XXXX", " XX "];
 const SPR_COIN: [&str; 4] = [" XX ", "X*vX", "Xv*X", " XX "];
 const SPR_POTION: [&str; 4] = [" .. ", " XX ", "X*XX", "XXXX"];
 const SPR_BLADE: [&str; 4] = ["  .v", " .X ", ".X. ", "*.  "];
@@ -478,10 +483,11 @@ fn monster_sprite(m: &crate::entity::Monster) -> &'static [&'static str; 4] {
     match m.glyph {
         'r' => &SPR_VERMIN,
         'a' => &SPR_ARCHER,
-        'w' => &SPR_CASTER,
+        'w' | 'S' => &SPR_CASTER,
         'O' | 'T' => &SPR_BRUTE,
         'D' => &SPR_DEMON,
         'Y' => &SPR_DRAGON,
+        'z' => &SPR_BOMB,
         '\u{25a4}' => &SPR_MIMIC,
         _ => &SPR_CREATURE,
     }
@@ -753,6 +759,7 @@ fn cell_render(game: &Game, x: i32, y: i32, tint: (f32, f32, f32)) -> (char, Col
             FeatureKind::Familiar => ('d', (120, 230, 180)),
             FeatureKind::Trap => ('^', (210, 95, 75)),
             FeatureKind::Forge => ('\u{2692}', (255, 170, 70)),
+            FeatureKind::Gamble => ('\u{2684}', (235, 200, 120)),
         };
         result = (ch, shade(col, light.max(0.8), (1.0, 1.0, 1.0)), bg_lit);
     }

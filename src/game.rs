@@ -1,6 +1,6 @@
 use crate::ai::{nearest_goal, step_toward};
 use crate::audio::Sound;
-use crate::entity::{Affix, Color, Element, Feature, FeatureKind, Hero, HeroClass, Item, ItemKind, Merchant, Monster, Pet, ScrollKind, Talent};
+use crate::entity::{Affix, Color, Element, Feature, FeatureKind, Hero, HeroClass, Item, ItemKind, Merchant, Monster, Pet, PetKind, ScrollKind, Talent};
 use crate::fx::Fx;
 use crate::map::{Map, Tile};
 use crate::rng::Rng;
@@ -652,6 +652,9 @@ impl Game {
         if self.floor >= 4 && self.rng.chance(0.08) {
             place_feature(&mut floor_tiles, &mut self.rng, FeatureKind::Forge, &mut self.features);
         }
+        if self.floor >= 2 && self.rng.chance(0.16) {
+            place_feature(&mut floor_tiles, &mut self.rng, FeatureKind::Gamble, &mut self.features);
+        }
         let chests = 1 + self.rng.below(2) + if self.event == FloorEvent::Treasure { 4 } else { 0 } + bonus_chests;
         for _ in 0..chests {
             place_feature(&mut floor_tiles, &mut self.rng, FeatureKind::Chest, &mut self.features);
@@ -850,21 +853,43 @@ impl Game {
     }
 
     fn pet_turn(&mut self) {
-        let (px, py, patk) = match &self.pet {
-            Some(p) => (p.x, p.y, p.atk),
+        let (px, py, patk, pkind, plevel) = match &self.pet {
+            Some(p) => (p.x, p.y, p.atk, p.kind, p.level),
             None => return,
         };
+        if let Some(p) = self.pet.as_mut() {
+            if p.heal_cd > 0 {
+                p.heal_cd -= 1;
+            }
+        }
+        if pkind == PetKind::Mender {
+            let near_hero = (px - self.hero.x).abs().max((py - self.hero.y).abs()) <= 4;
+            let hurt = self.hero.hp * 10 < self.hero.max_hp * 7;
+            if near_hero && hurt && self.pet.as_ref().is_some_and(|p| p.heal_cd == 0) {
+                let heal = 5 + plevel * 2;
+                self.hero.hp = (self.hero.hp + heal).min(self.hero.max_hp);
+                if let Some(p) = self.pet.as_mut() {
+                    p.heal_cd = 5;
+                }
+                self.fx.burst(&mut self.rng, self.hero.x, self.hero.y, (140, 235, 170), 8, '\u{2726}');
+                self.fx.label(self.hero.x, self.hero.y, "+", (140, 235, 170));
+                return;
+            }
+        }
         if let Some(j) = self.monsters.iter().position(|m| (m.x - px).abs() + (m.y - py).abs() == 1) {
             let (dmg, crit) = resolve(patk, self.monsters[j].def, &mut self.rng, 0.1);
             self.hit_monster(j, dmg, crit, Element::Physical);
             return;
         }
-        let target = self
-            .monsters
-            .iter()
-            .filter(|m| self.map.is_visible(m.x, m.y))
-            .min_by_key(|m| (m.x - px).abs() + (m.y - py).abs())
-            .map(|m| (m.x, m.y));
+        let target = if pkind == PetKind::Mender {
+            None
+        } else {
+            self.monsters
+                .iter()
+                .filter(|m| self.map.is_visible(m.x, m.y))
+                .min_by_key(|m| (m.x - px).abs() + (m.y - py).abs())
+                .map(|m| (m.x, m.y))
+        };
         let goal = target.unwrap_or((self.hero.x, self.hero.y));
         let occupied: Vec<(i32, i32)> = self
             .monsters
@@ -892,6 +917,9 @@ impl Game {
         }
         if self.hero.ability_cd > 0 {
             self.hero.ability_cd -= 1;
+        }
+        if self.hero.rage > 0 {
+            self.hero.rage -= 1;
         }
         if self.hero.regen > 0 {
             self.hero.regen -= 1;
@@ -1531,6 +1559,12 @@ impl Game {
                     WARN,
                 );
                 self.grant_talent();
+                if let Some(p) = self.pet.as_mut() {
+                    p.level += 1;
+                    p.max_hp += 5;
+                    p.hp = p.max_hp;
+                    p.atk += 2;
+                }
             }
         } else {
             self.push_log(format!("Vous touchez le {} ({} degats).", name, dmg), WHITE);
@@ -2004,6 +2038,10 @@ impl Game {
                         self.push_log("Sanctuaire : +12 PV max.".into(), (200, 170, 255));
                     }
                 }
+                if self.rng.chance(0.3) {
+                    self.hero.rage = self.hero.rage.max(16);
+                    self.push_log("Sanctuaire : ferveur (RAGE) !".into(), (235, 120, 90));
+                }
                 self.fx.burst(&mut self.rng, hx, hy, (200, 170, 255), 14, '\u{2727}');
                 self.fx.label(hx, hy, "BENEDICTION", (200, 170, 255));
             }
@@ -2083,10 +2121,12 @@ impl Game {
                     .map(|(dx, dy)| (hx + dx, hy + dy))
                     .find(|&(x, y)| self.map.is_walkable(x, y))
                     .unwrap_or((hx, hy));
-                self.pet = Some(Pet::new(self.floor, spot.0, spot.1));
+                let pet = Pet::new(self.floor, spot.0, spot.1, &mut self.rng);
+                let pname = pet.name.clone();
+                self.pet = Some(pet);
                 self.fx.burst(&mut self.rng, hx, hy, (120, 230, 180), 14, '\u{2726}');
                 self.fx.label(hx, hy, "FAMILIER", (120, 230, 180));
-                self.push_log("Un familier se joint a vous !".into(), (120, 230, 180));
+                self.push_log(format!("Un familier ({}) se joint a vous !", pname), (120, 230, 180));
             }
             FeatureKind::Trap => {
                 let dmg = 4 + self.floor * 2;
@@ -2098,6 +2138,57 @@ impl Game {
                 if self.hero.hp <= 0 {
                     self.hero.hp = 0;
                     self.die("un piege");
+                }
+            }
+            FeatureKind::Gamble => {
+                self.fx.burst(&mut self.rng, hx, hy, (235, 200, 120), 14, '\u{2737}');
+                self.fx.label(hx, hy, "PARI", (235, 210, 130));
+                if self.rng.chance(0.62) {
+                    match self.rng.below(5) {
+                        0 => {
+                            let g = 30 + self.floor * 6;
+                            self.hero.gold += g;
+                            self.push_log(format!("Pari gagne : +{} or !", g), GOLD);
+                        }
+                        1 => {
+                            self.hero.rage = self.hero.rage.max(20);
+                            self.push_log("Pari gagne : RAGE (+ATQ) !".into(), (235, 120, 90));
+                        }
+                        2 => {
+                            self.hero.shield = self.hero.shield.max(18);
+                            self.push_log("Pari gagne : bouclier !".into(), (150, 200, 240));
+                        }
+                        3 => {
+                            self.hero.regen = self.hero.regen.max(20);
+                            self.push_log("Pari gagne : regeneration !".into(), (140, 230, 150));
+                        }
+                        _ => {
+                            self.hero.hp = self.hero.max_hp;
+                            self.push_log("Pari gagne : soins complets !".into(), GOOD);
+                        }
+                    }
+                } else {
+                    match self.rng.below(3) {
+                        0 => {
+                            let d = 5 + self.floor;
+                            self.hero.hp -= d;
+                            self.fx.damage(hx, hy, d, true);
+                            self.push_log(format!("Pari perdu : {} degats !", d), BAD);
+                            if self.hero.hp <= 0 {
+                                self.hero.hp = 0;
+                                self.die("un pari foireux");
+                            }
+                        }
+                        1 => {
+                            self.hero.poison = self.hero.poison.max(6);
+                            self.push_log("Pari perdu : empoisonne !".into(), BAD);
+                        }
+                        _ => {
+                            let loss = (self.hero.gold / 3).min(120);
+                            self.hero.gold -= loss;
+                            self.push_log(format!("Pari perdu : -{} or.", loss), DIM);
+                        }
+                    }
                 }
             }
             FeatureKind::Forge => {
@@ -2255,6 +2346,16 @@ impl Game {
             if self.monsters[i].boss {
                 let dnow = (mx - self.hero.x).abs().max((my - self.hero.y).abs());
                 if dnow <= 9 {
+                    if !self.monsters[i].enraged && self.monsters[i].hp * 2 < self.monsters[i].max_hp {
+                        self.monsters[i].enraged = true;
+                        self.monsters[i].atk = self.monsters[i].atk * 3 / 2;
+                        self.monsters[i].summon_cd = 0;
+                        self.boss_wind = 0;
+                        self.danger.clear();
+                        self.fx.add_shake(8);
+                        self.fx.label(mx, my, "ENRAGE", (255, 80, 80));
+                        self.push_log("Le boss entre en RAGE !".into(), (255, 90, 90));
+                    }
                     if self.boss_wind > 0 {
                         self.boss_wind -= 1;
                         if self.boss_wind == 0 {
@@ -2345,7 +2446,11 @@ impl Game {
 
             if manhattan == 1 {
                 self.monsters[i].aggro = true;
-                self.monster_attacks(i);
+                if self.monsters[i].bomber {
+                    self.detonate(i);
+                } else {
+                    self.monster_attacks(i);
+                }
                 if matches!(self.phase, Phase::Dead(_)) {
                     return;
                 }
@@ -2361,6 +2466,15 @@ impl Game {
 
             let hx = self.hero.x;
             let hy = self.hero.y;
+
+            if self.monsters[i].summoner && self.monsters[i].summon_cd == 0 && self.monsters.len() < 34 {
+                self.summon_from(i);
+                self.monsters[i].summon_cd = 9;
+                continue;
+            }
+            if self.monsters[i].summon_cd > 0 {
+                self.monsters[i].summon_cd -= 1;
+            }
 
             if self.monsters[i].ranged
                 && self.monsters[i].cast_cd == 0
@@ -2443,6 +2557,47 @@ impl Game {
                     self.danger.push((hx + dx, hy + dy));
                 }
             }
+        }
+    }
+
+    fn detonate(&mut self, i: usize) {
+        let (mx, my) = (self.monsters[i].x, self.monsters[i].y);
+        let raw = 8 + self.floor * 2;
+        self.monsters.swap_remove(i);
+        self.fx.burst(&mut self.rng, mx, my, (255, 140, 50), 24, '\u{2737}');
+        self.fx.add_shake(6);
+        self.fx.label(self.hero.x, self.hero.y, "BOOM", (255, 140, 50));
+        let (dmg, _) = resolve(raw, self.hero.def(), &mut self.rng, 0.0);
+        self.hero.hp -= dmg;
+        self.hero_struck = true;
+        self.fx.damage(self.hero.x, self.hero.y, dmg, true);
+        self.push_log(format!("La bombe explose ! ({} degats)", dmg), BAD);
+        if self.hero.hp <= 0 {
+            self.hero.hp = 0;
+            self.die("une bombe vivante");
+        }
+    }
+
+    fn summon_from(&mut self, i: usize) {
+        let (bx, by) = (self.monsters[i].x, self.monsters[i].y);
+        let floor = (self.floor / 2).max(1);
+        let mut spawned = 0;
+        for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)] {
+            if spawned >= 2 {
+                break;
+            }
+            let (nx, ny) = (bx + dx, by + dy);
+            if self.map.is_walkable(nx, ny) && self.monster_at(nx, ny).is_none() && !(nx == self.hero.x && ny == self.hero.y) {
+                let mut m = Monster::roll(floor, nx, ny, &mut self.rng);
+                m.aggro = true;
+                self.monsters.push(m);
+                self.fx.burst(&mut self.rng, nx, ny, (200, 110, 230), 6, '\u{2736}');
+                spawned += 1;
+            }
+        }
+        if spawned > 0 {
+            self.fx.label(bx, by, "INVOCATION", (200, 110, 230));
+            self.push_log("L'invocateur appelle des sbires !".into(), (200, 120, 235));
         }
     }
 
