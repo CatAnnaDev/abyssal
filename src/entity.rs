@@ -65,6 +65,7 @@ pub enum HeroClass {
     Warrior,
     Rogue,
     Mage,
+    Paladin,
 }
 
 impl HeroClass {
@@ -73,14 +74,16 @@ impl HeroClass {
             HeroClass::Warrior => "Guerrier",
             HeroClass::Rogue => "Voleur",
             HeroClass::Mage => "Mage",
+            HeroClass::Paladin => "Paladin",
         }
     }
 
     pub fn pick(rng: &mut Rng) -> HeroClass {
-        match rng.below(3) {
+        match rng.below(4) {
             0 => HeroClass::Warrior,
             1 => HeroClass::Rogue,
-            _ => HeroClass::Mage,
+            2 => HeroClass::Mage,
+            _ => HeroClass::Paladin,
         }
     }
 
@@ -89,12 +92,14 @@ impl HeroClass {
             HeroClass::Warrior => 0.10,
             HeroClass::Rogue => 0.28,
             HeroClass::Mage => 0.14,
+            HeroClass::Paladin => 0.12,
         }
     }
 
     pub fn cleave_level(self) -> i32 {
         match self {
             HeroClass::Warrior => 2,
+            HeroClass::Paladin => 3,
             _ => 999,
         }
     }
@@ -104,6 +109,7 @@ impl HeroClass {
             HeroClass::Mage => 1,
             HeroClass::Rogue => 6,
             HeroClass::Warrior => 999,
+            HeroClass::Paladin => 999,
         }
     }
 
@@ -116,6 +122,7 @@ impl HeroClass {
             HeroClass::Warrior => WeaponClass::Heavy,
             HeroClass::Rogue => WeaponClass::Light,
             HeroClass::Mage => WeaponClass::Staff,
+            HeroClass::Paladin => WeaponClass::Heavy,
         }
     }
 
@@ -124,6 +131,7 @@ impl HeroClass {
             HeroClass::Warrior => ArmorClass::Plate,
             HeroClass::Rogue => ArmorClass::Leather,
             HeroClass::Mage => ArmorClass::Cloth,
+            HeroClass::Paladin => ArmorClass::Plate,
         }
     }
 
@@ -139,6 +147,11 @@ impl HeroClass {
             HeroClass::Mage => {
                 h.might += 4;
                 h.max_hp -= 6;
+            }
+            HeroClass::Paladin => {
+                h.max_hp += 20;
+                h.guard += 3;
+                h.might += 1;
             }
         }
         h.weapon = weapons_for(self.weapon_class())[0].0.into();
@@ -570,6 +583,23 @@ const BESTIARY: &[MonsterKind] = &[
     MonsterKind { glyph: 'D', color: (230, 80, 60),   name: "demon",   hp: 55, atk: 18, def: 5, xp: 55, gold: 70, min_floor: 8,  ranged: false, element: Element::Fire },
     MonsterKind { glyph: 'Y', color: (240, 160, 40),  name: "dragon",  hp: 90, atk: 24, def: 7, xp: 90, gold: 140, min_floor: 10, ranged: false, element: Element::Fire },
 ];
+
+pub fn bestiary() -> Vec<(char, Color, &'static str, &'static str, i32, &'static str)> {
+    BESTIARY
+        .iter()
+        .map(|k| {
+            let behavior = match k.glyph {
+                'z' => "kamikaze",
+                'S' => "invocateur",
+                'h' => "soigneur",
+                'r' => "fuyard",
+                _ if k.ranged => "distance",
+                _ => "melee",
+            };
+            (k.glyph, k.color, k.name, k.element.label(), k.min_floor, behavior)
+        })
+        .collect()
+}
 
 impl Monster {
     fn from_kind(kind: &MonsterKind, floor: i32, x: i32, y: i32) -> Monster {

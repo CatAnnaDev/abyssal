@@ -81,6 +81,9 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
     if let Phase::Dead(_) = game.phase {
         draw_death(game, mw, mh, &mut buf);
     }
+    if game.show_codex {
+        draw_codex(game, cols, rows, &mut buf);
+    }
 
     buf.push_str("\x1b[0m");
     let _ = out.write_all(buf.as_bytes());
@@ -141,7 +144,7 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
         buf.push('\u{2550}');
     }
     buf.push('\u{255d}');
-    let hint = " espace:pause  +/-:vitesse  m:mindset  a:son  g:sprite  z:zoom  b:marchand  s/l/n  q:quitter ";
+    let hint = " espace:pause  +/-:vitesse  m:mindset  a:son  g:sprite  z:zoom  k:bestiaire  b:marchand  s/l/n  q:quitter ";
     let h: String = hint.chars().take((cols - 4).max(0) as usize).collect();
     let _ = write!(buf, "\x1b[{};3H\x1b[38;2;130;130;150m{}", rows, h);
 
@@ -288,6 +291,33 @@ fn draw_panel(game: &Game, cols: i32, rows: i32, mw: i32, buf: &mut String) {
         for (k, (text, color)) in owned[start..].iter().enumerate() {
             put(buf, ix, jy + 1 + k as i32, *color, text);
         }
+    }
+}
+
+fn draw_codex(game: &Game, cols: i32, rows: i32, buf: &mut String) {
+    let entries = crate::entity::bestiary();
+    let bw = 48.min((cols - 4).max(20));
+    let bh = ((entries.len() as i32) + 4).min((rows - 2).max(8));
+    let ox = (cols - bw) / 2;
+    let oy = (rows - bh) / 2;
+    let blank: String = " ".repeat(bw as usize);
+    for y in oy..oy + bh {
+        put(buf, ox, y, (0, 0, 0), &blank);
+    }
+    draw_box(buf, ox, oy, bw, bh, "BESTIAIRE  (k: fermer)", (150, 150, 185));
+    let found_n = entries.iter().filter(|e| game.discovered.iter().any(|n| n == e.2)).count();
+    put(buf, ox + 2, oy + 1, (190, 190, 210), &fit(&format!("decouverts : {}/{}", found_n, entries.len()), bw - 4));
+    let mut r = oy + 2;
+    for (glyph, color, name, elem, minf, beh) in entries {
+        if r >= oy + bh - 1 {
+            break;
+        }
+        if game.discovered.iter().any(|n| n == name) {
+            put(buf, ox + 2, r, color, &fit(&format!("{} {:<11} {:<7} {:<10} e{}+", glyph, name, elem, beh, minf), bw - 4));
+        } else {
+            put(buf, ox + 2, r, (95, 95, 105), &fit(&format!("\u{2592} ??? (etage {}+)", minf), bw - 4));
+        }
+        r += 1;
     }
 }
 

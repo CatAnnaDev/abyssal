@@ -90,11 +90,12 @@ enum MenuResult {
     Quit,
 }
 
-const M_CLASSES: [(&str, Option<HeroClass>); 4] = [
+const M_CLASSES: [(&str, Option<HeroClass>); 5] = [
     ("Aleatoire", None),
     ("Guerrier", Some(HeroClass::Warrior)),
     ("Voleur", Some(HeroClass::Rogue)),
     ("Mage", Some(HeroClass::Mage)),
+    ("Paladin", Some(HeroClass::Paladin)),
 ];
 const M_MODES: [(&str, Playstyle); 3] = [
     ("Completionniste", Playstyle::Completionist),
@@ -305,6 +306,10 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     KeyCode::Char('a') => {
                         audio.toggle_mute();
                         game.push_log(if audio.muted { "Son coupe." } else { "Son active." }.into(), (130, 235, 240));
+                    }
+                    KeyCode::Char('k') => {
+                        game.show_codex = !game.show_codex;
+                        let _ = stdout.execute(Clear(ClearType::All));
                     }
                     KeyCode::Char('m') => game.cycle_style(),
                     KeyCode::Char('g') => {

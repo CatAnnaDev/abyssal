@@ -414,6 +414,10 @@ pub struct Game {
     #[serde(skip)]
     pub lunge: (i32, i32, i32),
     #[serde(skip)]
+    chaining: bool,
+    #[serde(skip)]
+    pub show_codex: bool,
+    #[serde(skip)]
     prev_tile: (i32, i32),
     #[serde(skip)]
     turn_start_tile: (i32, i32),
@@ -523,6 +527,8 @@ impl Game {
             low_hp_pulse: 0.0,
             anim_t: 0,
             lunge: (0, 0, 0),
+            chaining: false,
+            show_codex: false,
             prev_tile: (-1, -1),
             turn_start_tile: (-1, -1),
             pursue_merchant: false,
@@ -1367,7 +1373,38 @@ impl Game {
             HeroClass::Warrior => self.ability_charge(),
             HeroClass::Rogue => self.ability_blink(),
             HeroClass::Mage => self.ability_nova(),
+            HeroClass::Paladin => self.ability_smite(),
         }
+    }
+
+    fn ability_smite(&mut self) -> bool {
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let adj: Vec<(i32, i32)> = self
+            .monsters
+            .iter()
+            .filter(|m| (m.x - hx).abs().max((m.y - hy).abs()) <= 1)
+            .map(|m| (m.x, m.y))
+            .collect();
+        let hurt = self.hero.hp * 2 < self.hero.max_hp;
+        if adj.is_empty() && !hurt {
+            return false;
+        }
+        self.hero.hp = (self.hero.hp + self.hero.max_hp / 4).min(self.hero.max_hp);
+        self.hero.shield = self.hero.shield.max(14);
+        self.fx.burst(&mut self.rng, hx, hy, (255, 235, 150), 22, '\u{2737}');
+        self.fx.label(hx, hy, "CHATIMENT", (255, 235, 150));
+        self.fx.add_shake(4);
+        self.sfx.push(Sound::Crit);
+        let cc = self.hero_crit();
+        for (cx, cy) in adj {
+            if let Some(j) = self.monster_at(cx, cy) {
+                let (dmg, crit) = resolve(self.hero.atk(), self.monsters[j].def, &mut self.rng, cc);
+                self.hit_monster(j, dmg, crit, Element::Physical);
+            }
+        }
+        self.hero.ability_cd = 8;
+        self.last_action = "chatiment";
+        true
     }
 
     fn ability_charge(&mut self) -> bool {
@@ -1517,7 +1554,13 @@ impl Game {
         } else {
             1.0
         };
-        let dmg = ((base_dmg as f32 * mult).round() as i32).max(1);
+        let was_frozen = self.monsters[idx].stun > 0;
+        let shatter = was_frozen && element != Element::Ice;
+        let mut dmg = ((base_dmg as f32 * mult).round() as i32).max(1);
+        if shatter {
+            dmg = (dmg * 3 / 2).max(1);
+            self.monsters[idx].stun = 0;
+        }
         self.monsters[idx].hp -= dmg;
         let (mx, my) = (self.monsters[idx].x, self.monsters[idx].y);
         let color = self.monsters[idx].color;
@@ -1531,6 +1574,10 @@ impl Game {
         }
         if mult > 1.2 {
             self.fx.label(mx, my, "FAIBLE!", element.color());
+        }
+        if shatter {
+            self.fx.label(mx, my, "BRISE!", (160, 220, 255));
+            self.fx.burst(&mut self.rng, mx, my, (180, 230, 255), 12, '\u{2744}');
         }
         if crit {
             self.fx.add_shake(3);
@@ -1597,6 +1644,24 @@ impl Game {
             }
         } else {
             self.push_log(format!("Vous touchez le {} ({} degats).", name, dmg), WHITE);
+        }
+
+        if element == Element::Lightning && !self.chaining {
+            let target = self
+                .monsters
+                .iter()
+                .enumerate()
+                .filter(|(_, m)| !(m.x == mx && m.y == my) && (m.x - mx).abs().max((m.y - my).abs()) <= 3)
+                .min_by_key(|(_, m)| (m.x - mx).abs() + (m.y - my).abs())
+                .map(|(i, _)| i);
+            if let Some(j) = target {
+                let (jx, jy) = (self.monsters[j].x, self.monsters[j].y);
+                self.fx.projectile(mx, my, jx, jy, '\u{2741}', (245, 230, 90));
+                let chain_dmg = (base_dmg / 2).max(1);
+                self.chaining = true;
+                self.hit_monster(j, chain_dmg, false, Element::Lightning);
+                self.chaining = false;
+            }
         }
     }
 
@@ -2362,6 +2427,13 @@ impl Game {
                 if self.monsters[i].hp > 1 {
                     self.monsters[i].hp -= 2;
                     self.fx.damage(mx, my, 2, false);
+                }
+                if self.monsters[i].poison > 1 && self.rng.chance(0.2) {
+                    if let Some(j) = self.monsters.iter().position(|m| (m.x - mx).abs() + (m.y - my).abs() == 1 && m.poison == 0) {
+                        self.monsters[j].poison = 3;
+                        let (jx, jy) = (self.monsters[j].x, self.monsters[j].y);
+                        self.fx.burst(&mut self.rng, jx, jy, (150, 220, 90), 5, '\u{2735}');
+                    }
                 }
             }
             if self.monsters[i].stun > 0 {
