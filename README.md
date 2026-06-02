@@ -8,15 +8,15 @@ An AI hero descends alone into an endless procedurally generated abyss: it explo
 
 ## Screenshots
 
-Exploration — the hero reveals rooms and corridors with a torch-lit field of view, minimap and live journal on the right.
+Exploration — a torch-lit field of view across a biome (note the palette, the full equipment panel and the active run mutator in the top bar).
 
 ![Exploration](assets/01-explore.png)
 
-Combat — floating damage, elemental hits, kill combos. Here the hero springs a mimic (yes, even Frieren falls for them).
+Combat — floating damage, elemental hits and kill combos against biome-flavored fauna.
 
 ![Combat](assets/02-combat.png)
 
-Boss telegraph — floor bosses wind up their attacks over several turns, flashing the danger tiles in red so the hero can dodge the incoming charge.
+Boss movesets — bosses cycle telegraphed attacks (here a charge) and flash the danger tiles red; deeper moves leave lingering hazards the hero must avoid.
 
 ![Boss telegraph](assets/03-boss.png)
 
@@ -27,6 +27,14 @@ Merchant — a rare trader appears with rolled stock; viewers can vote on the pu
 Death — a cause-coherent death card with score, best scores, and a fittingly dramatic last word before a new soul descends.
 
 ![Death screen](assets/05-death.png)
+
+Sprite mode — toggle `g` for a half-block pixel-art camera with procedural sprites (zoom with `z`); everything is still drawn in the terminal, no asset files.
+
+![Sprite mode](assets/06-sprite.png)
+
+Bestiary — toggle `k` for a codex of discovered monsters with their element, behavior and depth.
+
+![Bestiary](assets/07-codex.png)
 
 ## Run
 
