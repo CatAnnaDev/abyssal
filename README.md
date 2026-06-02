@@ -1,5 +1,7 @@
 # Abyssal
 
+*Read this in [Français](README.fr.md).*
+
 A fully autonomous, watch-only roguelike for the terminal, written in Rust.
 
 An AI hero descends alone into an endless procedurally generated abyss: it explores, fights, loots, levels up, learns talents, trades with rare merchants, dodges telegraphed boss attacks, dies, and starts again — all on its own. You don't play. You watch.
@@ -55,6 +57,9 @@ The game plays itself. Input is optional:
 | `m` / `1` `2` `3` | cycle / set the hero's mindset |
 | `a` | mute / unmute sound |
 | `g` | toggle sprite view (half-block pixel-art) / classic glyph map |
+| `z` | cycle sprite-view zoom |
+| `k` | open / close the bestiary codex |
+| `b` | (debug) spawn a test merchant |
 | `s` / `l` | save / load |
 | `n` | new run |
 | `q` / `esc` | save & quit |
@@ -73,8 +78,8 @@ Progress autoloads on launch (`abyssal.save.json`).
 - Unique relics dropped by bosses and champions with special effects (lifesteal on kill, ghostly dodge, chain-lightning procs, burning hits, +max HP, raise-the-dead for any class)
 - Atmosphere: per-biome lore lines, boss intros, and ambient particles (embers, snow, fog) drifting through the lit area
 - Elemental synergies: shatter frozen foes for bonus damage, lightning that arcs to a nearby enemy, and poison that spreads between adjacent monsters
-- A bestiary/codex (toggle `k`) listing discovered monsters with their element, behavior and depth
 - Elemental system (fire / ice / poison / lightning) with offensive weaknesses, on-hit effects, and defensive armor affinities (your gear's element resists matching attacks and is weak to its opposite)
+- A bestiary/codex (toggle `k`) listing discovered monsters with their element, behavior and depth
 - Ascension / NG+: reaching deeper floors permanently raises your ascension tier, stacking enemy scaling and a score multiplier on future runs
 - Loot rarity and affixes, rings, amulets, scrolls, and class-restricted equipment
 - Set bonuses (matching affixes across gear slots grant scaling ATK/DEF/crit) and a rare Forge feature that spends gold to upgrade a gear piece (and can enchant toward completing a set)
@@ -94,4 +99,43 @@ Progress autoloads on launch (`abyssal.save.json`).
 
 ## Config
 
-`abyssal.config.json` is created on first run. It controls the optional Twitch integration and the audio: `sound_enabled`, `ambient_enabled` (the music track), and the `master_volume` / `ambient_volume` levels (0.0–2.0). Sound can also be muted in-game with `a`.
+`abyssal.config.json` is created on first run. Fields:
+
+- `sound_enabled` / `ambient_enabled` — SFX and the music track on/off
+- `master_volume` / `ambient_volume` — levels, 0.0–2.0 (sound also toggles in-game with `a`)
+- `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote` — the optional Twitch integration (off by default)
+
+## Saves & files
+
+- `abyssal.save.json` — the current run; autoloads on launch, written on save (`s`) and quit
+- `abyssal.profile.json` — the persistent lifetime profile (runs, deaths, best floor/score, total kills, ascension tier) that drives meta unlocks
+- `abyssal.config.json` — the config above
+
+All three live next to the binary and are git-ignored.
+
+## Twitch integration
+
+With `twitch_enabled` on, the game connects anonymously (read-only, no token) to `twitch_channel`'s chat and viewers can influence the run:
+
+- `!1` / `!2` / `!3` — vote the hero's mindset (completionist / fighter / rusher)
+- `!arme` / `!armure` / `!potion` / `!soin` / `!reroll` / `!purge` — vote the merchant purchase when a trader is up
+- `!faster` / `!slower` — nudge the speed (if `allow_speed_vote`)
+
+Votes are tallied over `vote_window_secs`; each viewer counts once per window.
+
+## How it works
+
+Everything is generated and rendered at runtime — no art, audio, or data files.
+
+- `map.rs` — procedural generation (rooms + corridors), Bresenham line-of-sight FOV, discovery metering
+- `ai.rs` — BFS pathfinding (`step_toward`, `nearest_goal`)
+- `entity.rs` — hero, classes, monsters (bestiary), items, affixes, relics, talents, pets/allies, elements
+- `game.rs` — the simulation: turn order, the hero's priority-based AI (dodge → heal → ability → bolt → scroll → attack → hunt/loot/feature/merchant/explore/descend), combat, biomes, branching, mutators, bosses
+- `render.rs` — manual ANSI truecolor rendering: lit tiles with torch falloff + per-biome tint, the framed panel, the half-block sprite renderer, overlays
+- `fx.rs` — floating text, particles, projectiles, screen shake, combos, transitions
+- `audio.rs` — a tiny chiptune synth (square/triangle/sine/noise + ADSR) feeding `rodio`; SFX and the layered adaptive music are computed as raw samples
+- `profile.rs` / `config.rs` / `twitch.rs` / `rng.rs` — persistence, config, anonymous Twitch IRC reader, xorshift PRNG
+
+## License / credits
+
+A personal project by [CatAnnaDev](https://github.com/CatAnnaDev). Built in Rust with `crossterm`, `rodio`, and `serde`.
