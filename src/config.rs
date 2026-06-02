@@ -10,6 +10,14 @@ pub struct Config {
     pub allow_style_vote: bool,
     pub allow_speed_vote: bool,
     pub allow_merchant_vote: bool,
+    #[serde(default = "yes")]
+    pub sound_enabled: bool,
+    #[serde(default = "yes")]
+    pub ambient_enabled: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 impl Default for Config {
@@ -21,6 +29,8 @@ impl Default for Config {
             allow_style_vote: true,
             allow_speed_vote: false,
             allow_merchant_vote: true,
+            sound_enabled: true,
+            ambient_enabled: true,
         }
     }
 }

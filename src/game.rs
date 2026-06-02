@@ -1,4 +1,5 @@
 use crate::ai::{nearest_goal, step_toward};
+use crate::audio::Sound;
 use crate::entity::{Affix, Color, Element, Feature, FeatureKind, Hero, HeroClass, Item, ItemKind, Merchant, Monster, Pet, ScrollKind, Talent};
 use crate::fx::Fx;
 use crate::map::{Map, Tile};
@@ -223,6 +224,8 @@ pub struct Game {
     #[serde(skip)]
     pub hud_note: String,
     #[serde(skip)]
+    pub sfx: Vec<Sound>,
+    #[serde(skip)]
     explore_target: Option<(i32, i32)>,
     map_w: i32,
     map_h: i32,
@@ -306,6 +309,7 @@ impl Game {
             merchant_votes: [0; 7],
             top_voters: Vec::new(),
             hud_note: String::new(),
+            sfx: Vec::new(),
             explore_target: None,
             map_w,
             map_h,
@@ -494,6 +498,9 @@ impl Game {
 
     pub fn update(&mut self) {
         self.hero_struck = false;
+        if self.sfx.len() > 256 {
+            self.sfx.clear();
+        }
         self.fx.tick();
         self.flashes.retain_mut(|f| {
             f.3 -= 1;
@@ -678,6 +685,7 @@ impl Game {
         let (hx, hy) = (self.hero.x, self.hero.y);
         let dmg = 10 + self.floor * 2;
         self.last_action = "boule de feu";
+        self.sfx.push(Sound::Scroll);
         self.fx.burst(&mut self.rng, hx, hy, (255, 140, 50), 26, '\u{2736}');
         self.fx.label(hx, hy, "BOULE DE FEU", (255, 150, 60));
         self.fx.add_shake(5);
@@ -698,6 +706,7 @@ impl Game {
     fn cast_freeze(&mut self) {
         let (hx, hy) = (self.hero.x, self.hero.y);
         self.last_action = "gel";
+        self.sfx.push(Sound::Scroll);
         for m in self.monsters.iter_mut() {
             if (m.x - hx).abs().max((m.y - hy).abs()) <= 4 {
                 m.stun = m.stun.max(4);
@@ -947,6 +956,7 @@ impl Game {
         if let Some(idx) = target {
             let (mx, my) = (self.monsters[idx].x, self.monsters[idx].y);
             self.fx.projectile(hx, hy, mx, my, '\u{2726}', (170, 225, 255));
+            self.sfx.push(Sound::Bolt);
             let cc = self.hero_crit();
             let (dmg, crit) = resolve(self.hero.atk() - 2, self.monsters[idx].def, &mut self.rng, cc);
             self.last_action = "eclair";
@@ -986,6 +996,7 @@ impl Game {
         if crit {
             self.fx.add_shake(3);
         }
+        self.sfx.push(if crit { Sound::Crit } else { Sound::Hit });
         if self.hero.has_affix(Affix::Lifesteal) || self.hero.has_talent(Talent::Sangsue) {
             self.hero.hp = (self.hero.hp + (dmg / 4).max(1)).min(self.hero.max_hp);
         }
@@ -1009,6 +1020,7 @@ impl Game {
             self.total_kills += 1;
             self.hero.gold += m.gold_reward;
             self.fx.bump_combo();
+            self.sfx.push(if is_boss { Sound::BossHit } else { Sound::Kill });
             self.discover(&name);
             let sparks = if is_boss { 30 } else { 9 };
             self.fx.burst(&mut self.rng, mx, my, color, sparks, '\u{2736}');
@@ -1029,6 +1041,7 @@ impl Game {
                 self.unlock("centurion", "Centurion - 100 elimines");
             }
             if self.hero.gain_xp(m.xp_reward) {
+                self.sfx.push(Sound::LevelUp);
                 self.fx.burst(&mut self.rng, self.hero.x, self.hero.y, (255, 225, 120), 16, '\u{2022}');
                 self.fx.label(self.hero.x, self.hero.y, "NIVEAU+", (255, 225, 120));
                 self.push_log(
@@ -1048,6 +1061,7 @@ impl Game {
             self.hero.potions -= 1;
             let heal = (self.hero.max_hp / 2).max(10);
             self.hero.hp = (self.hero.hp + heal).min(self.hero.max_hp);
+            self.sfx.push(Sound::Quaff);
             self.push_log(format!("Vous buvez une potion (+{} PV).", heal), GOOD);
             return true;
         }
@@ -1380,6 +1394,7 @@ impl Game {
         if self.merchant.as_ref().is_some_and(|m| m.x == nx && m.y == ny) {
             if self.shop_timer == 0 {
                 self.shop_timer = SHOP_HOLD;
+                self.sfx.push(Sound::Trade);
                 self.fx.label(self.hero.x, self.hero.y, "MARCHAND", (130, 235, 240));
                 self.push_log("Vous abordez le marchand...".into(), (120, 220, 230));
             }
@@ -1403,6 +1418,7 @@ impl Game {
             match item.kind {
                 ItemKind::Gold(amount) => {
                     self.hero.gold += amount;
+                    self.sfx.push(Sound::Gold);
                     self.push_log(format!("Vous ramassez {} pieces d'or.", amount), GOLD);
                 }
                 ItemKind::Potion => {
@@ -1419,6 +1435,7 @@ impl Game {
                         self.hero.weapon_bonus = bonus;
                         self.hero.weapon = name;
                         self.hero.weapon_affix = affix;
+                        self.sfx.push(Sound::Item);
                         self.push_log(format!("Vous equipez : {} (ATQ {}).", self.hero.weapon, self.hero.atk()), rarity);
                     } else {
                         self.hero.gold += bonus;
@@ -1435,6 +1452,7 @@ impl Game {
                         self.hero.armor_bonus = bonus;
                         self.hero.armor = name;
                         self.hero.armor_affix = affix;
+                        self.sfx.push(Sound::Item);
                         self.push_log(format!("Vous equipez : {} (DEF {}).", self.hero.armor, self.hero.def()), rarity);
                     } else {
                         self.hero.gold += bonus;
@@ -1463,6 +1481,7 @@ impl Game {
                 }
                 ItemKind::Scroll(kind) => {
                     self.hero.scrolls.push(kind);
+                    self.sfx.push(Sound::Item);
                     self.push_log(format!("Parchemin ramasse : {}.", kind.label()), (235, 235, 170));
                 }
             }
@@ -1654,6 +1673,7 @@ impl Game {
     fn grant_talent(&mut self) {
         let t = Talent::ALL[self.rng.below(Talent::ALL.len())];
         self.hero.talents.push(t);
+        self.sfx.push(Sound::Talent);
         if t == Talent::Colosse {
             self.hero.max_hp += 12;
             self.hero.hp = self.hero.max_hp;
@@ -1725,6 +1745,7 @@ impl Game {
                                 _ => "SALVE imminente !",
                             };
                             self.fx.label(mx, my, "!", (255, 80, 80));
+                            self.sfx.push(Sound::BossWarn);
                             self.push_log(format!("Le boss prepare : {}", warn), (255, 140, 80));
                             continue;
                         }
@@ -2011,6 +2032,7 @@ impl Game {
             ),
             BAD,
         );
+        self.sfx.push(Sound::Death);
         self.phase = Phase::Dead(DEATH_HOLD);
     }
 
@@ -2028,6 +2050,7 @@ impl Game {
         }
         self.populate_floor(false);
         self.fx.begin_transition(self.floor);
+        self.sfx.push(Sound::Descend);
     }
 }
 

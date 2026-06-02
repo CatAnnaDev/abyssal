@@ -1,4 +1,5 @@
 mod ai;
+mod audio;
 mod config;
 mod entity;
 mod fx;
@@ -232,6 +233,8 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
     let _ = stdout.execute(Clear(ClearType::All));
 
     let cfg = Config::load_or_create();
+    let mut audio = audio::Audio::new(cfg.ambient_enabled);
+    audio.muted = !cfg.sound_enabled;
     let votes = if cfg.twitch_active() {
         Some(twitch::connect(&cfg.twitch_channel))
     } else {
@@ -279,6 +282,10 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     }
                     KeyCode::Char('-') | KeyCode::Char('_') | KeyCode::Down => {
                         speed = speed.saturating_sub(1);
+                    }
+                    KeyCode::Char('a') => {
+                        audio.toggle_mute();
+                        game.push_log(if audio.muted { "Son coupe." } else { "Son active." }.into(), (130, 235, 240));
                     }
                     KeyCode::Char('m') => game.cycle_style(),
                     KeyCode::Char('b') => game.spawn_test_merchant(),
@@ -390,6 +397,17 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                 accumulator -= interval;
                 steps += 1;
             }
+        }
+
+        let mut played: Vec<audio::Sound> = Vec::new();
+        for s in game.sfx.drain(..) {
+            if !played.contains(&s) {
+                audio.play(s);
+                played.push(s);
+            }
+        }
+        if struck {
+            audio.play(audio::Sound::Hurt);
         }
 
         render::draw(&game, cols, rows, paused, SPEEDS[speed].0, stdout);

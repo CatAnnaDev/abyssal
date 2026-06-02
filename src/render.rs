@@ -115,7 +115,7 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
         buf.push('\u{2550}');
     }
     buf.push('\u{255d}');
-    let hint = " espace:pause  +/-:vitesse  m:mindset  b:marchand  s/l/n  q:quitter ";
+    let hint = " espace:pause  +/-:vitesse  m:mindset  a:son  b:marchand  s/l/n  q:quitter ";
     let h: String = hint.chars().take((cols - 4).max(0) as usize).collect();
     let _ = write!(buf, "\x1b[{};3H\x1b[38;2;130;130;150m{}", rows, h);
 

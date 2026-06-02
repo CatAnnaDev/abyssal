@@ -45,6 +45,7 @@ The game plays itself. Input is optional:
 | `space` | pause / resume |
 | `+` / `-` | faster / slower (lent → ultra) |
 | `m` / `1` `2` `3` | cycle / set the hero's mindset |
+| `a` | mute / unmute sound |
 | `s` / `l` | save / load |
 | `n` | new run |
 | `q` / `esc` | save & quit |
@@ -62,8 +63,9 @@ Progress autoloads on launch (`abyssal.save.json`).
 - Ranged casters that wind up and can be sidestepped
 - Curse altars, shrines, fountains, mimic chests, familiars and per-floor events
 - Rare merchants, an endless abyss mode with a scoreboard, a bestiary and death cards
+- Procedural 8/16-bit chiptune: synthesized square/triangle/noise SFX for hits, crits, kills, loot, level-ups, boss tells and death, plus a looping ambient drone — no audio files, everything is generated at runtime
 - Optional Twitch chat integration: viewers vote on the hero's mindset and merchant purchases (fully configurable, off by default)
 
 ## Config
 
-`abyssal.config.json` is created on first run and controls the optional Twitch integration.
+`abyssal.config.json` is created on first run. It controls the optional Twitch integration and the audio (`sound_enabled`, `ambient_enabled`); sound can also be toggled in-game with `a`.
