@@ -449,11 +449,16 @@ impl Audio {
         }
         self.voice = style;
         let stems = [Stem::Base, Stem::Combat, Stem::Boss];
+        let muted = self.muted;
         for (i, st) in self.music.iter_mut().enumerate() {
             st.sink.clear();
             st.sink.set_volume(st.cur);
             st.sink.append(SamplesBuffer::new(1, SR, music_stem(stems[i], style)).repeat_infinite());
-            st.sink.play();
+            if muted {
+                st.sink.pause();
+            } else {
+                st.sink.play();
+            }
         }
     }
 

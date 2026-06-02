@@ -164,16 +164,17 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
         }
 
         if profile.runs > 0 {
+            let clamp = |s: String| -> String { s.chars().take((bw - 6) as usize).collect() };
             put(
                 &mut buf,
                 ox + 3,
                 oy + bh - 6,
                 (170, 150, 110),
-                &format!("Profil: {} runs · etage max {} · score {} · asc {}", profile.runs, profile.best_floor, profile.best_score, profile.ascension),
+                &clamp(format!("Profil: {} runs · etage {} · score {} · asc {}", profile.runs, profile.best_floor, profile.best_score, profile.ascension)),
             );
             let perks = profile.perk_labels();
             let perks_txt = if perks.is_empty() { "aucun (atteins l'etage 4...)".to_string() } else { perks.join(", ") };
-            put(&mut buf, ox + 3, oy + bh - 5, (150, 200, 140), &format!("Bonus debloques: {}", perks_txt));
+            put(&mut buf, ox + 3, oy + bh - 5, (150, 200, 140), &clamp(format!("Bonus: {}", perks_txt)));
         }
         put(&mut buf, ox + 3, oy + bh - 4, c, &"\u{2500}".repeat((bw - 6) as usize));
         put(&mut buf, ox + 3, oy + bh - 3, (150, 200, 150), "Entree: lancer    fleches: choisir/changer");
