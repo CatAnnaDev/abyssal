@@ -4,6 +4,8 @@ A fully autonomous, watch-only roguelike for the terminal, written in Rust.
 
 An AI hero descends alone into an endless procedurally generated abyss: it explores, fights, loots, levels up, learns talents, trades with rare merchants, dodges telegraphed boss attacks, dies, and starts again — all on its own. You don't play. You watch.
 
+![Abyssal in action](assets/demo.gif)
+
 ## Screenshots
 
 Exploration — the hero reveals rooms and corridors with a torch-lit field of view, minimap and live journal on the right.
