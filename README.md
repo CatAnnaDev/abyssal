@@ -4,6 +4,28 @@ A fully autonomous, watch-only roguelike for the terminal, written in Rust.
 
 An AI hero descends alone into an endless procedurally generated abyss: it explores, fights, loots, levels up, learns talents, trades with rare merchants, dodges telegraphed boss attacks, dies, and starts again — all on its own. You don't play. You watch.
 
+## Screenshots
+
+Exploration — the hero reveals rooms and corridors with a torch-lit field of view, minimap and live journal on the right.
+
+![Exploration](assets/01-explore.png)
+
+Combat — floating damage, elemental hits, kill combos. Here the hero springs a mimic (yes, even Frieren falls for them).
+
+![Combat](assets/02-combat.png)
+
+Boss telegraph — floor bosses wind up their attacks over several turns, flashing the danger tiles in red so the hero can dodge the incoming charge.
+
+![Boss telegraph](assets/03-boss.png)
+
+Merchant — a rare trader appears with rolled stock; viewers can vote on the purchase when Twitch mode is on, and the simulation pauses during the deal.
+
+![Merchant](assets/04-merchant.png)
+
+Death — a cause-coherent death card with score, best scores, and a fittingly dramatic last word before a new soul descends.
+
+![Death screen](assets/05-death.png)
+
 ## Run
 
 ```sh
