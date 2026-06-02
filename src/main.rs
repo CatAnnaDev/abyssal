@@ -233,7 +233,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
     let _ = stdout.execute(Clear(ClearType::All));
 
     let cfg = Config::load_or_create();
-    let mut audio = audio::Audio::new(cfg.ambient_enabled);
+    let mut audio = audio::Audio::new(cfg.ambient_enabled, cfg.master_volume, cfg.ambient_volume);
     audio.muted = !cfg.sound_enabled;
     let votes = if cfg.twitch_active() {
         Some(twitch::connect(&cfg.twitch_channel))

@@ -14,10 +14,22 @@ pub struct Config {
     pub sound_enabled: bool,
     #[serde(default = "yes")]
     pub ambient_enabled: bool,
+    #[serde(default = "default_volume")]
+    pub master_volume: f32,
+    #[serde(default = "default_ambient_volume")]
+    pub ambient_volume: f32,
 }
 
 fn yes() -> bool {
     true
+}
+
+fn default_volume() -> f32 {
+    0.5
+}
+
+fn default_ambient_volume() -> f32 {
+    0.35
 }
 
 impl Default for Config {
@@ -31,18 +43,18 @@ impl Default for Config {
             allow_merchant_vote: true,
             sound_enabled: true,
             ambient_enabled: true,
+            master_volume: 0.5,
+            ambient_volume: 0.35,
         }
     }
 }
 
 impl Config {
     pub fn load_or_create() -> Config {
-        if let Ok(data) = std::fs::read_to_string(CONFIG_PATH) {
-            if let Ok(cfg) = serde_json::from_str(&data) {
-                return cfg;
-            }
-        }
-        let cfg = Config::default();
+        let cfg = std::fs::read_to_string(CONFIG_PATH)
+            .ok()
+            .and_then(|data| serde_json::from_str(&data).ok())
+            .unwrap_or_default();
         if let Ok(json) = serde_json::to_string_pretty(&cfg) {
             let _ = std::fs::write(CONFIG_PATH, json);
         }

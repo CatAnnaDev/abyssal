@@ -203,34 +203,36 @@ pub struct Audio {
     _stream: Option<OutputStream>,
     handle: Option<OutputStreamHandle>,
     ambient: Option<Sink>,
+    volume: f32,
     pub muted: bool,
 }
 
 impl Audio {
-    pub fn new(ambient_on: bool) -> Self {
+    pub fn new(ambient_on: bool, master_volume: f32, ambient_volume: f32) -> Self {
+        let volume = master_volume.clamp(0.0, 2.0);
         match OutputStream::try_default() {
             Ok((stream, handle)) => {
                 let ambient = if ambient_on {
                     Sink::try_new(&handle).ok().map(|sink| {
-                        sink.set_volume(0.5);
+                        sink.set_volume((ambient_volume * volume).clamp(0.0, 2.0));
                         sink.append(SamplesBuffer::new(1, SR, ambient_loop()).repeat_infinite());
                         sink
                     })
                 } else {
                     None
                 };
-                Audio { _stream: Some(stream), handle: Some(handle), ambient, muted: false }
+                Audio { _stream: Some(stream), handle: Some(handle), ambient, volume, muted: false }
             }
-            Err(_) => Audio { _stream: None, handle: None, ambient: None, muted: false },
+            Err(_) => Audio { _stream: None, handle: None, ambient: None, volume, muted: false },
         }
     }
 
     pub fn play(&self, sound: Sound) {
-        if self.muted {
+        if self.muted || self.volume <= 0.0 {
             return;
         }
         if let Some(handle) = &self.handle {
-            let _ = handle.play_raw(SamplesBuffer::new(1, SR, render(sound)));
+            let _ = handle.play_raw(SamplesBuffer::new(1, SR, render(sound)).amplify(self.volume));
         }
     }
 
@@ -270,7 +272,7 @@ mod preview {
         f.write_all(b"data").unwrap();
         f.write_all(&data_len.to_le_bytes()).unwrap();
         for s in samples {
-            let v = (s.clamp(-1.0, 1.0) * 32767.0) as i16;
+            let v = ((s * 0.5).clamp(-1.0, 1.0) * 32767.0) as i16;
             f.write_all(&v.to_le_bytes()).unwrap();
         }
     }
