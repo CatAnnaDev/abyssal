@@ -65,7 +65,7 @@ Progress autoloads on launch (`abyssal.save.json`).
 - Set bonuses (matching affixes across gear slots grant scaling ATK/DEF/crit) and a rare Forge feature that spends gold to upgrade a gear piece (and can enchant toward completing a set)
 - A live panel showing the full loadout — weapon/armor with bonus & affix, ring, amulet, set bonus, potions, scrolls by type, and talents
 - Run mutators (Sanguinaire, Cupidite, Fragile, Pullulement, Champions) rolled per run that twist spawns, scaling and rewards
-- A persistent lifetime profile (runs, deaths, deepest floor, best score, total kills) shown on the pre-game menu
+- A persistent lifetime profile (runs, deaths, deepest floor, best score, total kills) shown on the menu, with milestones that unlock permanent starting bonuses (+ATK, +HP, extra potions, a starting talent)
 - Monster behaviors beyond melee: ranged casters, healers that mend wounded allies, skirmishers that flee when near death, summoners, exploding kamikazes, and bosses that enrage below half health
 - Temporary buffs (rage, ward, regen) with HUD icons, gamble shrines (risk/reward) and blessing fountains
 - Familiars come in three flavors — striker, mender (heals you) and guardian — and level up as the hero does

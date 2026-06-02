@@ -119,7 +119,7 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
         let mut buf = String::new();
         buf.push_str("\x1b[2J\x1b[H");
         let bw = 52i32;
-        let bh = 16i32;
+        let bh = 18i32;
         let ox = (cols - bw) / 2;
         let oy = (rows - bh) / 2;
         let c = (120, 120, 150);
@@ -162,10 +162,13 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
             put(
                 &mut buf,
                 ox + 3,
-                oy + bh - 5,
+                oy + bh - 6,
                 (170, 150, 110),
                 &format!("Profil: {} runs · etage max {} · score {} · {} kills", profile.runs, profile.best_floor, profile.best_score, profile.total_kills),
             );
+            let perks = profile.perk_labels();
+            let perks_txt = if perks.is_empty() { "aucun (atteins l'etage 4...)".to_string() } else { perks.join(", ") };
+            put(&mut buf, ox + 3, oy + bh - 5, (150, 200, 140), &format!("Bonus debloques: {}", perks_txt));
         }
         put(&mut buf, ox + 3, oy + bh - 4, c, &"\u{2500}".repeat((bw - 6) as usize));
         put(&mut buf, ox + 3, oy + bh - 3, (150, 200, 150), "Entree: lancer    fleches: choisir/changer");
@@ -218,9 +221,9 @@ fn dims(cols: u16, rows: u16) -> (i32, i32, i32, i32) {
     (cols, rows, map_w, map_h)
 }
 
-fn build_game(map_w: i32, map_h: i32, setup: &Option<Setup>) -> Game {
+fn build_game(map_w: i32, map_h: i32, setup: &Option<Setup>, meta: (i32, i32, i32, bool)) -> Game {
     match setup {
-        Some(s) => Game::new_with(map_w, map_h, seed(), s.class, s.style, s.diff_mult, s.diff_label.clone(), s.boon),
+        Some(s) => Game::new_with(map_w, map_h, seed(), s.class, s.style, s.diff_mult, s.diff_label.clone(), s.boon, meta),
         None => Game::new(map_w, map_h, seed()),
     }
 }
@@ -236,7 +239,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         MenuResult::Quit => return Ok(()),
         MenuResult::Continue => Game::load().unwrap_or_else(|| Game::new(map_w, map_h, seed())),
         MenuResult::Start(s) => {
-            let g = Game::new_with(map_w, map_h, seed(), s.class, s.style, s.diff_mult, s.diff_label.clone(), s.boon);
+            let g = Game::new_with(map_w, map_h, seed(), s.class, s.style, s.diff_mult, s.diff_label.clone(), s.boon, profile.meta());
             setup = Some(s);
             g
         }
@@ -289,7 +292,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                         }
                     }
                     KeyCode::Char('n') => {
-                        game = build_game(map_w, map_h, &setup);
+                        game = build_game(map_w, map_h, &setup, profile.meta());
                         let _ = stdout.execute(Clear(ClearType::All));
                     }
                     KeyCode::Char(' ') => paused = !paused,
@@ -324,7 +327,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     rows = d.1;
                     map_w = d.2;
                     map_h = d.3;
-                    game = build_game(map_w, map_h, &setup);
+                    game = build_game(map_w, map_h, &setup, profile.meta());
                     let _ = stdout.execute(Clear(ClearType::All));
                 }
                 _ => {}

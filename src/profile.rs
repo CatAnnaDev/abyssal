@@ -26,6 +26,50 @@ impl Profile {
         }
     }
 
+    pub fn meta(&self) -> (i32, i32, i32, bool) {
+        let mut hp = 0;
+        let mut might = 0;
+        let mut pot = 0;
+        if self.best_floor >= 4 {
+            pot += 1;
+        }
+        if self.best_floor >= 14 {
+            pot += 1;
+        }
+        if self.total_kills >= 75 {
+            might += 2;
+        }
+        if self.best_score >= 8000 {
+            might += 2;
+        }
+        if self.best_floor >= 8 {
+            hp += 12;
+        }
+        if self.best_floor >= 15 {
+            hp += 12;
+        }
+        let talent = self.total_kills >= 250;
+        (hp, might, pot, talent)
+    }
+
+    pub fn perk_labels(&self) -> Vec<String> {
+        let (hp, might, pot, talent) = self.meta();
+        let mut v = Vec::new();
+        if might > 0 {
+            v.push(format!("+{} ATQ", might));
+        }
+        if hp > 0 {
+            v.push(format!("+{} PV", hp));
+        }
+        if pot > 0 {
+            v.push(format!("+{} potion", pot));
+        }
+        if talent {
+            v.push("talent de depart".to_string());
+        }
+        v
+    }
+
     pub fn record_death(&mut self, floor: i32, score: i32, kills: i32, gold: i32) {
         self.runs += 1;
         self.deaths += 1;

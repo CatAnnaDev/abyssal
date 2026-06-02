@@ -362,6 +362,14 @@ pub struct Game {
     pub boon: Boon,
     #[serde(default)]
     pub mutators: Vec<Mutator>,
+    #[serde(default)]
+    meta_hp: i32,
+    #[serde(default)]
+    meta_might: i32,
+    #[serde(default)]
+    meta_pot: i32,
+    #[serde(default)]
+    meta_talent: bool,
     pub last_cause: String,
     pub death_quip: String,
     #[serde(skip)]
@@ -428,7 +436,7 @@ const MAGIC: Color = (160, 150, 240);
 
 impl Game {
     pub fn new(map_w: i32, map_h: i32, seed: u64) -> Self {
-        Game::new_with(map_w, map_h, seed, None, Playstyle::Completionist, 1.0, "Normal".to_string(), Boon::None)
+        Game::new_with(map_w, map_h, seed, None, Playstyle::Completionist, 1.0, "Normal".to_string(), Boon::None, (0, 0, 0, false))
     }
 
     pub fn new_with(
@@ -440,6 +448,7 @@ impl Game {
         diff_mult: f32,
         diff_label: String,
         boon: Boon,
+        meta: (i32, i32, i32, bool),
     ) -> Self {
         let mut rng = Rng::from_seed(seed);
         let class = start_class.unwrap_or_else(|| HeroClass::pick(&mut rng));
@@ -448,6 +457,14 @@ impl Game {
         let mut hero = Hero::fresh(hx, hy);
         class.apply(&mut hero);
         boon.apply(&mut hero);
+        hero.max_hp += meta.0;
+        hero.might += meta.1;
+        hero.potions += meta.2;
+        hero.hp = hero.max_hp;
+        if meta.3 {
+            let t = Talent::ALL[rng.below(Talent::ALL.len())];
+            hero.talents.push(t);
+        }
         let mut game = Game {
             map,
             hero,
@@ -478,6 +495,10 @@ impl Game {
             diff_label,
             boon,
             mutators: Vec::new(),
+            meta_hp: meta.0,
+            meta_might: meta.1,
+            meta_pot: meta.2,
+            meta_talent: meta.3,
             last_cause: String::new(),
             death_quip: String::new(),
             last_action: "spawn",
@@ -1123,6 +1144,14 @@ impl Game {
         self.hero = Hero::fresh(hx, hy);
         self.class.apply(&mut self.hero);
         self.boon.apply(&mut self.hero);
+        self.hero.max_hp += self.meta_hp;
+        self.hero.might += self.meta_might;
+        self.hero.potions += self.meta_pot;
+        self.hero.hp = self.hero.max_hp;
+        if self.meta_talent {
+            let t = Talent::ALL[self.rng.below(Talent::ALL.len())];
+            self.hero.talents.push(t);
+        }
         self.roll_mutators();
         self.pet = None;
         self.apply_relics();
