@@ -67,7 +67,8 @@ Progress autoloads on launch (`abyssal.save.json`).
 - Branching descents: at every stairway the AI weighs 2–3 paths by mindset (and heads for a Rest branch when wounded), each leading to a biome and a room type (treasure / challenge / warren / rest)
 - Five biomes (Caverns, Catacombs, Frostvault, Emberdepths, Abyss), each with its own palette, lighting tint, biased fauna, ambient hazard, a themed champion mini-boss, and musical key
 - Two render modes (toggle with `g`): the classic colored-glyph map, or a half-block pixel-art "sprite" view — a hero-centred camera with procedural per-archetype sprites, distinct item/feature icons, an idle bob, particles and floating damage, all drawn in any truecolor terminal with no asset files (zoom with `z`)
-- Four hero classes (Warrior / Rogue / Mage / Paladin) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown (Warrior charge, Rogue blink-strike, Mage ice nova, Paladin smite-heal)
+- Five hero classes (Warrior / Rogue / Mage / Paladin / Necromancer) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown (Warrior charge, Rogue blink-strike, Mage ice nova, Paladin smite-heal, Necromancer raise-dead)
+- Summoned allies: the Necromancer raises slain monsters as temporary undead that fight alongside the hero (a reusable allied-unit system)
 - Elemental synergies: shatter frozen foes for bonus damage, lightning that arcs to a nearby enemy, and poison that spreads between adjacent monsters
 - A bestiary/codex (toggle `k`) listing discovered monsters with their element, behavior and depth
 - Elemental system (fire / ice / poison / lightning) with resistances, weaknesses and on-hit effects

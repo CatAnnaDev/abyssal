@@ -90,12 +90,13 @@ enum MenuResult {
     Quit,
 }
 
-const M_CLASSES: [(&str, Option<HeroClass>); 5] = [
+const M_CLASSES: [(&str, Option<HeroClass>); 6] = [
     ("Aleatoire", None),
     ("Guerrier", Some(HeroClass::Warrior)),
     ("Voleur", Some(HeroClass::Rogue)),
     ("Mage", Some(HeroClass::Mage)),
     ("Paladin", Some(HeroClass::Paladin)),
+    ("Necromancien", Some(HeroClass::Necromancer)),
 ];
 const M_MODES: [(&str, Playstyle); 3] = [
     ("Completionniste", Playstyle::Completionist),

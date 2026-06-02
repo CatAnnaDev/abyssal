@@ -66,6 +66,7 @@ pub enum HeroClass {
     Rogue,
     Mage,
     Paladin,
+    Necromancer,
 }
 
 impl HeroClass {
@@ -75,15 +76,17 @@ impl HeroClass {
             HeroClass::Rogue => "Voleur",
             HeroClass::Mage => "Mage",
             HeroClass::Paladin => "Paladin",
+            HeroClass::Necromancer => "Necromancien",
         }
     }
 
     pub fn pick(rng: &mut Rng) -> HeroClass {
-        match rng.below(4) {
+        match rng.below(5) {
             0 => HeroClass::Warrior,
             1 => HeroClass::Rogue,
             2 => HeroClass::Mage,
-            _ => HeroClass::Paladin,
+            3 => HeroClass::Paladin,
+            _ => HeroClass::Necromancer,
         }
     }
 
@@ -93,6 +96,7 @@ impl HeroClass {
             HeroClass::Rogue => 0.28,
             HeroClass::Mage => 0.14,
             HeroClass::Paladin => 0.12,
+            HeroClass::Necromancer => 0.13,
         }
     }
 
@@ -107,6 +111,7 @@ impl HeroClass {
     pub fn bolt_level(self) -> i32 {
         match self {
             HeroClass::Mage => 1,
+            HeroClass::Necromancer => 2,
             HeroClass::Rogue => 6,
             HeroClass::Warrior => 999,
             HeroClass::Paladin => 999,
@@ -117,12 +122,17 @@ impl HeroClass {
         matches!(self, HeroClass::Rogue)
     }
 
+    pub fn raises_dead(self) -> bool {
+        matches!(self, HeroClass::Necromancer)
+    }
+
     pub fn weapon_class(self) -> WeaponClass {
         match self {
             HeroClass::Warrior => WeaponClass::Heavy,
             HeroClass::Rogue => WeaponClass::Light,
             HeroClass::Mage => WeaponClass::Staff,
             HeroClass::Paladin => WeaponClass::Heavy,
+            HeroClass::Necromancer => WeaponClass::Staff,
         }
     }
 
@@ -132,6 +142,7 @@ impl HeroClass {
             HeroClass::Rogue => ArmorClass::Leather,
             HeroClass::Mage => ArmorClass::Cloth,
             HeroClass::Paladin => ArmorClass::Plate,
+            HeroClass::Necromancer => ArmorClass::Cloth,
         }
     }
 
@@ -152,6 +163,10 @@ impl HeroClass {
                 h.max_hp += 20;
                 h.guard += 3;
                 h.might += 1;
+            }
+            HeroClass::Necromancer => {
+                h.might += 3;
+                h.max_hp += 2;
             }
         }
         h.weapon = weapons_for(self.weapon_class())[0].0.into();
@@ -542,6 +557,45 @@ impl Pet {
             kind,
             level: 1,
             heal_cd: 0,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Ally {
+    pub x: i32,
+    pub y: i32,
+    pub hp: i32,
+    pub atk: i32,
+    pub ttl: i32,
+    pub glyph: char,
+    pub color: Color,
+}
+
+impl Ally {
+    pub fn raised(floor: i32, x: i32, y: i32, src: &Monster) -> Ally {
+        let depth = floor.max(1);
+        Ally {
+            x,
+            y,
+            hp: (src.max_hp / 2).max(3),
+            atk: (src.atk * 2 / 3 + depth / 2).max(2),
+            ttl: 30,
+            glyph: '\u{2625}',
+            color: (180, 200, 175),
+        }
+    }
+
+    pub fn skeleton(floor: i32, x: i32, y: i32) -> Ally {
+        let depth = floor.max(1);
+        Ally {
+            x,
+            y,
+            hp: 10 + depth * 2,
+            atk: 5 + depth,
+            ttl: 40,
+            glyph: '\u{2625}',
+            color: (205, 210, 195),
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::ai::{nearest_goal, step_toward};
 use crate::audio::Sound;
-use crate::entity::{Affix, Color, Element, Feature, FeatureKind, Hero, HeroClass, Item, ItemKind, Merchant, Monster, Pet, PetKind, ScrollKind, Talent};
+use crate::entity::{Affix, Ally, Color, Element, Feature, FeatureKind, Hero, HeroClass, Item, ItemKind, Merchant, Monster, Pet, PetKind, ScrollKind, Talent};
 use crate::fx::Fx;
 use crate::map::{Map, Tile};
 use crate::rng::Rng;
@@ -342,6 +342,8 @@ pub struct Game {
     pub best_gold: i32,
     pub features: Vec<Feature>,
     pub pet: Option<Pet>,
+    #[serde(default)]
+    pub allies: Vec<Ally>,
     pub event: FloorEvent,
     #[serde(default = "default_biome")]
     pub biome: Biome,
@@ -486,6 +488,7 @@ impl Game {
             best_gold: 0,
             features: Vec::new(),
             pet: None,
+            allies: Vec::new(),
             event: FloorEvent::Calm,
             biome: Biome::Caverns,
             room_kind: RoomKind::Standard,
@@ -743,6 +746,7 @@ impl Game {
         self.danger.clear();
         self.cast_danger.clear();
         self.hazard.clear();
+        self.allies.clear();
         self.floor_turns = 0;
         self.objective = Objective::None;
         self.objective_done = false;
@@ -858,6 +862,7 @@ impl Game {
             return;
         }
         self.pet_turn();
+        self.ally_turns();
         self.floor_turns += 1;
         self.check_objective();
     }
@@ -1399,6 +1404,80 @@ impl Game {
             HeroClass::Rogue => self.ability_blink(),
             HeroClass::Mage => self.ability_nova(),
             HeroClass::Paladin => self.ability_smite(),
+            HeroClass::Necromancer => self.ability_raise(),
+        }
+    }
+
+    fn ability_raise(&mut self) -> bool {
+        if self.allies.len() >= 4 {
+            return false;
+        }
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let mut spawned = 0;
+        for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)] {
+            if spawned >= 2 || self.allies.len() >= 4 {
+                break;
+            }
+            let (nx, ny) = (hx + dx, hy + dy);
+            if self.map.is_walkable(nx, ny) && self.monster_at(nx, ny).is_none() && !self.allies.iter().any(|a| a.x == nx && a.y == ny) {
+                self.allies.push(Ally::skeleton(self.floor, nx, ny));
+                self.fx.burst(&mut self.rng, nx, ny, (200, 210, 195), 6, '\u{2736}');
+                spawned += 1;
+            }
+        }
+        if spawned == 0 {
+            return false;
+        }
+        self.fx.label(hx, hy, "LEVEE DES MORTS", (200, 210, 195));
+        self.sfx.push(Sound::Scroll);
+        self.hero.ability_cd = 10;
+        self.last_action = "levee";
+        true
+    }
+
+    fn ally_turns(&mut self) {
+        let mut i = 0;
+        while i < self.allies.len() {
+            self.allies[i].ttl -= 1;
+            if self.allies[i].ttl <= 0 || self.allies[i].hp <= 0 {
+                let (ax, ay) = (self.allies[i].x, self.allies[i].y);
+                self.fx.burst(&mut self.rng, ax, ay, (120, 130, 120), 5, '\u{00b7}');
+                self.allies.swap_remove(i);
+                continue;
+            }
+            let (ax, ay, atk) = (self.allies[i].x, self.allies[i].y, self.allies[i].atk);
+            if let Some(j) = self.monsters.iter().position(|m| (m.x - ax).abs() + (m.y - ay).abs() == 1) {
+                let (dmg, crit) = resolve(atk, self.monsters[j].def, &mut self.rng, 0.08);
+                self.hit_monster(j, dmg, crit, Element::Physical);
+                i += 1;
+                continue;
+            }
+            let target = self
+                .monsters
+                .iter()
+                .filter(|m| self.map.is_visible(m.x, m.y))
+                .min_by_key(|m| (m.x - ax).abs() + (m.y - ay).abs())
+                .map(|m| (m.x, m.y));
+            if let Some((tx, ty)) = target {
+                let mut occ: Vec<(i32, i32)> = self.monsters.iter().map(|m| (m.x, m.y)).collect();
+                occ.push((self.hero.x, self.hero.y));
+                if let Some(p) = &self.pet {
+                    occ.push((p.x, p.y));
+                }
+                for (k, a) in self.allies.iter().enumerate() {
+                    if k != i {
+                        occ.push((a.x, a.y));
+                    }
+                }
+                if let Some((dx, dy)) = step_toward(&self.map, ax, ay, &occ, |x, y| x == tx && y == ty) {
+                    let (nx, ny) = (ax + dx, ay + dy);
+                    if self.monster_at(nx, ny).is_none() && !(nx == self.hero.x && ny == self.hero.y) {
+                        self.allies[i].x = nx;
+                        self.allies[i].y = ny;
+                    }
+                }
+            }
+            i += 1;
         }
     }
 
@@ -1627,6 +1706,11 @@ impl Game {
         }
         if self.monsters[idx].hp <= 0 {
             let m = self.monsters.swap_remove(idx);
+            if self.class.raises_dead() && !m.boss && self.allies.len() < 5 && self.monster_at(mx, my).is_none() && self.rng.chance(0.5) {
+                self.allies.push(Ally::raised(self.floor, mx, my, &m));
+                self.fx.burst(&mut self.rng, mx, my, (170, 220, 180), 8, '\u{2736}');
+                self.fx.label(mx, my, "LEVE", (170, 220, 180));
+            }
             self.hero.kills += 1;
             self.total_kills += 1;
             self.hero.gold += (m.gold_reward as f32 * self.mut_gold_mult()) as i32;

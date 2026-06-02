@@ -647,6 +647,8 @@ fn draw_sprite_map(game: &Game, mw: i32, mh: i32, sdx: i32, tint: (f32, f32, f32
                     overlay_sprite(&mut cell, &SPR_HERO, (255, 246, 150), lx, -bob + ly);
                 } else if game.pet.as_ref().is_some_and(|p| p.x == wx && p.y == wy) {
                     overlay_sprite(&mut cell, &SPR_CREATURE, (120, 230, 180), 0, -bob);
+                } else if let Some(a) = game.allies.iter().find(|a| a.x == wx && a.y == wy) {
+                    overlay_sprite(&mut cell, &SPR_CREATURE, a.color, 0, -bob);
                 } else if let Some(i) = game.monster_at(wx, wy) {
                     let m = &game.monsters[i];
                     overlay_sprite(&mut cell, monster_sprite(m), m.color, 0, -bob);
@@ -779,6 +781,8 @@ fn cell_render(game: &Game, x: i32, y: i32, tint: (f32, f32, f32)) -> (char, Col
         result = ('@', (255, 246, 150), bg_lit);
     } else if game.pet.as_ref().is_some_and(|p| p.x == x && p.y == y) {
         result = ('d', (120, 230, 180), bg_lit);
+    } else if let Some(a) = game.allies.iter().find(|a| a.x == x && a.y == y) {
+        result = (a.glyph, shade(a.color, light.max(0.8), (1.0, 1.0, 1.0)), bg_lit);
     } else if let Some(i) = game.monster_at(x, y) {
         let m = &game.monsters[i];
         result = (m.glyph, shade(m.color, light.max(0.8), (1.0, 1.0, 1.0)), bg_lit);
