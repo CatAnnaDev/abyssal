@@ -166,7 +166,7 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
                 ox + 3,
                 oy + bh - 6,
                 (170, 150, 110),
-                &format!("Profil: {} runs · etage max {} · score {} · {} kills", profile.runs, profile.best_floor, profile.best_score, profile.total_kills),
+                &format!("Profil: {} runs · etage max {} · score {} · asc {}", profile.runs, profile.best_floor, profile.best_score, profile.ascension),
             );
             let perks = profile.perk_labels();
             let perks_txt = if perks.is_empty() { "aucun (atteins l'etage 4...)".to_string() } else { perks.join(", ") };
@@ -223,7 +223,7 @@ fn dims(cols: u16, rows: u16) -> (i32, i32, i32, i32) {
     (cols, rows, map_w, map_h)
 }
 
-fn build_game(map_w: i32, map_h: i32, setup: &Option<Setup>, meta: (i32, i32, i32, bool)) -> Game {
+fn build_game(map_w: i32, map_h: i32, setup: &Option<Setup>, meta: (i32, i32, i32, bool, i32)) -> Game {
     match setup {
         Some(s) => Game::new_with(map_w, map_h, seed(), s.class, s.style, s.diff_mult, s.diff_label.clone(), s.boon, meta),
         None => Game::new(map_w, map_h, seed()),

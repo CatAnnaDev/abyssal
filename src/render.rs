@@ -115,6 +115,7 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
         let names: Vec<&str> = game.mutators.iter().map(|m| m.label()).collect();
         format!("  ·  \u{2622} {}", names.join("+"))
     };
+    let asc = if game.ascension > 0 { format!("  ·  Asc.{}", game.ascension) } else { String::new() };
     let title = format!(
         " ABYSSAL  ·  etage {} {}  ·  {}  ·  run #{}  ·  {}{}{}{} ",
         game.floor,
@@ -126,7 +127,7 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
         boon,
         evt
     );
-    let title = format!("{}{}", title.trim_end(), muts);
+    let title = format!("{}{}{}", title.trim_end(), asc, muts);
     let title = format!("{} ", title);
     let avail = (cols - 2).max(0) as usize;
     let t: String = title.chars().take(avail).collect();
@@ -260,6 +261,9 @@ fn draw_panel(game: &Game, cols: i32, rows: i32, mw: i32, buf: &mut String) {
         line(buf, &mut er, (210, 200, 160), format!("\u{2666} {}", amu));
         if let Some(a) = h.set_affix() {
             line(buf, &mut er, (255, 215, 120), format!("SET {} \u{00d7}{}", a.label(), h.set_bonus()));
+        }
+        if h.armor_element() != Element::Physical {
+            line(buf, &mut er, (170, 210, 190), format!("resiste : {}", h.armor_element().label()));
         }
         er += 1;
         line(buf, &mut er, (180, 215, 160), format!("sac: pot {}", h.potions));

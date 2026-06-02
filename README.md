@@ -71,7 +71,8 @@ Progress autoloads on launch (`abyssal.save.json`).
 - Summoned allies: the Necromancer raises slain monsters as temporary undead that fight alongside the hero (a reusable allied-unit system)
 - Elemental synergies: shatter frozen foes for bonus damage, lightning that arcs to a nearby enemy, and poison that spreads between adjacent monsters
 - A bestiary/codex (toggle `k`) listing discovered monsters with their element, behavior and depth
-- Elemental system (fire / ice / poison / lightning) with resistances, weaknesses and on-hit effects
+- Elemental system (fire / ice / poison / lightning) with offensive weaknesses, on-hit effects, and defensive armor affinities (your gear's element resists matching attacks and is weak to its opposite)
+- Ascension / NG+: reaching deeper floors permanently raises your ascension tier, stacking enemy scaling and a score multiplier on future runs
 - Loot rarity and affixes, rings, amulets, scrolls, and class-restricted equipment
 - Set bonuses (matching affixes across gear slots grant scaling ATK/DEF/crit) and a rare Forge feature that spends gold to upgrade a gear piece (and can enchant toward completing a set)
 - A live panel showing the full loadout — weapon/armor with bonus & affix, ring, amulet, set bonus, potions, scrolls by type, and talents

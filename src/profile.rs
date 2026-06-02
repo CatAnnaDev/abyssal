@@ -10,6 +10,8 @@ pub struct Profile {
     pub best_score: i32,
     pub total_kills: u64,
     pub total_gold: u64,
+    #[serde(default)]
+    pub ascension: i32,
 }
 
 impl Profile {
@@ -26,7 +28,7 @@ impl Profile {
         }
     }
 
-    pub fn meta(&self) -> (i32, i32, i32, bool) {
+    pub fn meta(&self) -> (i32, i32, i32, bool, i32) {
         let mut hp = 0;
         let mut might = 0;
         let mut pot = 0;
@@ -49,11 +51,11 @@ impl Profile {
             hp += 12;
         }
         let talent = self.total_kills >= 250;
-        (hp, might, pot, talent)
+        (hp, might, pot, talent, self.ascension)
     }
 
     pub fn perk_labels(&self) -> Vec<String> {
-        let (hp, might, pot, talent) = self.meta();
+        let (hp, might, pot, talent, _) = self.meta();
         let mut v = Vec::new();
         if might > 0 {
             v.push(format!("+{} ATQ", might));
@@ -77,6 +79,7 @@ impl Profile {
         self.best_score = self.best_score.max(score);
         self.total_kills += kills.max(0) as u64;
         self.total_gold += gold.max(0) as u64;
+        self.ascension = (self.best_floor / 25).clamp(0, 8).max(self.ascension);
         self.save();
     }
 }

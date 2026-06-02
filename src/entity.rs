@@ -111,7 +111,7 @@ impl HeroClass {
     pub fn bolt_level(self) -> i32 {
         match self {
             HeroClass::Mage => 1,
-            HeroClass::Necromancer => 2,
+            HeroClass::Necromancer => 1,
             HeroClass::Rogue => 6,
             HeroClass::Warrior => 999,
             HeroClass::Paladin => 999,
@@ -156,8 +156,8 @@ impl HeroClass {
                 h.might += 3;
             }
             HeroClass::Mage => {
-                h.might += 4;
-                h.max_hp -= 6;
+                h.might += 6;
+                h.max_hp += 2;
             }
             HeroClass::Paladin => {
                 h.max_hp += 20;
@@ -166,7 +166,7 @@ impl HeroClass {
             }
             HeroClass::Necromancer => {
                 h.might += 3;
-                h.max_hp += 2;
+                h.max_hp += 8;
             }
         }
         h.weapon = weapons_for(self.weapon_class())[0].0.into();
@@ -346,8 +346,8 @@ impl Hero {
         Hero {
             x,
             y,
-            hp: 30,
-            max_hp: 30,
+            hp: 32,
+            max_hp: 32,
             might: 5,
             guard: 1,
             weapon_bonus: 0,
@@ -430,6 +430,15 @@ impl Hero {
             e
         } else {
             self.ring.element()
+        }
+    }
+
+    pub fn armor_element(&self) -> Element {
+        let e = self.armor_affix.element();
+        if e != Element::Physical {
+            e
+        } else {
+            self.amulet.element()
         }
     }
 

@@ -316,7 +316,7 @@ impl Mutator {
     fn apply_hero(self, h: &mut Hero) {
         if self == Mutator::Fragile {
             h.might += 6;
-            h.max_hp = (h.max_hp * 7 / 10).max(10);
+            h.max_hp = (h.max_hp * 8 / 10).max(10);
             h.hp = h.max_hp;
         }
     }
@@ -364,6 +364,8 @@ pub struct Game {
     pub boon: Boon,
     #[serde(default)]
     pub mutators: Vec<Mutator>,
+    #[serde(default)]
+    pub ascension: i32,
     #[serde(default)]
     meta_hp: i32,
     #[serde(default)]
@@ -446,7 +448,7 @@ const MAGIC: Color = (160, 150, 240);
 
 impl Game {
     pub fn new(map_w: i32, map_h: i32, seed: u64) -> Self {
-        Game::new_with(map_w, map_h, seed, None, Playstyle::Completionist, 1.0, "Normal".to_string(), Boon::None, (0, 0, 0, false))
+        Game::new_with(map_w, map_h, seed, None, Playstyle::Completionist, 1.0, "Normal".to_string(), Boon::None, (0, 0, 0, false, 0))
     }
 
     pub fn new_with(
@@ -458,7 +460,7 @@ impl Game {
         diff_mult: f32,
         diff_label: String,
         boon: Boon,
-        meta: (i32, i32, i32, bool),
+        meta: (i32, i32, i32, bool, i32),
     ) -> Self {
         let mut rng = Rng::from_seed(seed);
         let class = start_class.unwrap_or_else(|| HeroClass::pick(&mut rng));
@@ -506,6 +508,7 @@ impl Game {
             diff_label,
             boon,
             mutators: Vec::new(),
+            ascension: meta.4,
             meta_hp: meta.0,
             meta_might: meta.1,
             meta_pot: meta.2,
@@ -609,7 +612,12 @@ impl Game {
             }
             RoomKind::Standard => {}
         }
-        monster_count = ((monster_count as f32 * self.mut_count_mult()) as usize).min(40);
+        if self.floor >= 3 {
+            monster_count = ((monster_count as f32 * self.mut_count_mult()) as usize).min(40);
+        }
+        if self.floor <= 2 {
+            monster_count = monster_count.min(2 + self.floor as usize * 2);
+        }
 
         let biome_el = self.biome.element();
         let fauna = self.biome.fauna();
@@ -725,8 +733,10 @@ impl Game {
             self.merchant = Some(Merchant::roll(self.floor, x, y, &mut self.rng, self.class.weapon_class(), self.class.armor_class()));
         }
 
-        let hp_scale = self.diff_mult * self.mut_hp_mult();
-        let atk_scale = self.diff_mult * self.mut_atk_mult();
+        let asc = 1.0 + 0.1 * self.ascension as f32;
+        let (mm_hp, mm_atk) = if self.floor >= 3 { (self.mut_hp_mult(), self.mut_atk_mult()) } else { (1.0, 1.0) };
+        let hp_scale = self.diff_mult * mm_hp * asc;
+        let atk_scale = self.diff_mult * mm_atk * asc;
         if (hp_scale - 1.0).abs() > 0.01 || (atk_scale - 1.0).abs() > 0.01 {
             for m in self.monsters.iter_mut() {
                 m.hp = ((m.hp as f32 * hp_scale) as i32).max(1);
@@ -764,6 +774,16 @@ impl Game {
                 _ => {
                     self.objective = Objective::Swift;
                     self.objective_target = 90;
+                }
+            }
+        }
+
+        if first && self.class.raises_dead() {
+            for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                let (nx, ny) = (hx + dx, hy + dy);
+                if self.map.is_walkable(nx, ny) && self.monster_at(nx, ny).is_none() {
+                    self.allies.push(Ally::skeleton(self.floor, nx, ny));
+                    break;
                 }
             }
         }
@@ -1706,7 +1726,7 @@ impl Game {
         }
         if self.monsters[idx].hp <= 0 {
             let m = self.monsters.swap_remove(idx);
-            if self.class.raises_dead() && !m.boss && self.allies.len() < 5 && self.monster_at(mx, my).is_none() && self.rng.chance(0.5) {
+            if self.class.raises_dead() && !m.boss && self.allies.len() < 4 && self.monster_at(mx, my).is_none() && self.rng.chance(0.4) {
                 self.allies.push(Ally::raised(self.floor, mx, my, &m));
                 self.fx.burst(&mut self.rng, mx, my, (170, 220, 180), 8, '\u{2736}');
                 self.fx.label(mx, my, "LEVE", (170, 220, 180));
@@ -2466,6 +2486,22 @@ impl Game {
         }
     }
 
+    fn hero_def_mult(&self, attacker: Element) -> f32 {
+        if attacker == Element::Physical {
+            return 1.0;
+        }
+        let armor = self.hero.armor_element();
+        if armor == Element::Physical {
+            1.0
+        } else if armor == attacker {
+            0.7
+        } else if armor == attacker.opposite() {
+            1.3
+        } else {
+            1.0
+        }
+    }
+
     fn hero_crit(&self) -> f32 {
         self.class.crit_chance()
             + if self.hero.has_affix(Affix::Keen) { 0.12 } else { 0.0 }
@@ -2803,7 +2839,9 @@ impl Game {
         self.fx.add_shake(7);
         if self.hero_in_danger() {
             let atk = self.monsters[i].atk * 7 / 4;
-            let (dmg, _) = resolve(atk, self.hero.def(), &mut self.rng, 0.1);
+            let em = self.monsters[i].element;
+            let (raw, _) = resolve(atk, self.hero.def(), &mut self.rng, 0.1);
+            let dmg = ((raw as f32 * self.hero_def_mult(em)) as i32).max(1);
             self.hero.hp -= dmg;
             self.hero_struck = true;
             self.fx.damage(self.hero.x, self.hero.y, dmg, true);
@@ -2933,7 +2971,9 @@ impl Game {
         self.fx.add_shake(6);
         if self.hero_in_danger() {
             let atk = self.monsters[i].atk * 3 / 2;
-            let (dmg, _) = resolve(atk, self.hero.def(), &mut self.rng, 0.1);
+            let em = self.monsters[i].element;
+            let (raw, _) = resolve(atk, self.hero.def(), &mut self.rng, 0.1);
+            let dmg = ((raw as f32 * self.hero_def_mult(em)) as i32).max(1);
             self.hero.hp -= dmg;
             self.hero_struck = true;
             self.fx.damage(self.hero.x, self.hero.y, dmg, true);
@@ -2959,8 +2999,10 @@ impl Game {
             self.fx.projectile(bx, by, target.0, target.1, '\u{2217}', color);
         }
         if self.hero_in_danger() {
+            let em = self.monsters[i].element;
             for _ in 0..3 {
-                let (dmg, _) = resolve(self.monsters[i].atk * 2 / 3, self.hero.def(), &mut self.rng, 0.05);
+                let (raw, _) = resolve(self.monsters[i].atk * 2 / 3, self.hero.def(), &mut self.rng, 0.05);
+                let dmg = ((raw as f32 * self.hero_def_mult(em)) as i32).max(1);
                 self.hero.hp -= dmg;
                 self.hero_struck = true;
                 self.fx.damage(self.hero.x, self.hero.y, dmg, false);
@@ -2997,7 +3039,8 @@ impl Game {
             self.push_log(format!("Le {} vous rate.", name), GOOD);
             return;
         }
-        let (dmg, crit) = resolve(self.monsters[idx].atk - 1, self.hero.def(), &mut self.rng, 0.08);
+        let (raw, crit) = resolve(self.monsters[idx].atk - 1, self.hero.def(), &mut self.rng, 0.08);
+        let dmg = ((raw as f32 * self.hero_def_mult(self.monsters[idx].element)) as i32).max(1);
         self.hero.hp -= dmg;
         self.hero_struck = true;
         self.fx.damage(self.hero.x, self.hero.y, dmg, crit);
@@ -3025,7 +3068,8 @@ impl Game {
     }
 
     fn monster_attacks(&mut self, idx: usize) {
-        let (dmg, crit) = resolve(self.monsters[idx].atk, self.hero.def(), &mut self.rng, 0.08);
+        let (raw, crit) = resolve(self.monsters[idx].atk, self.hero.def(), &mut self.rng, 0.08);
+        let dmg = ((raw as f32 * self.hero_def_mult(self.monsters[idx].element)) as i32).max(1);
         let name = self.monsters[idx].name.clone();
         self.hero.hp -= dmg;
         self.thorns_reflect(idx);
@@ -3046,7 +3090,8 @@ impl Game {
     fn die(&mut self, cause: &str) {
         self.best_floor = self.best_floor.max(self.floor);
         self.best_gold = self.best_gold.max(self.hero.gold);
-        let score = self.floor * 1000 + self.hero.gold + self.hero.kills * 10;
+        let base = self.floor * 1000 + self.hero.gold + self.hero.kills * 10;
+        let score = (base as f32 * (1.0 + 0.25 * self.ascension as f32)) as i32;
         self.last_score = score;
         self.high_scores.push(score);
         self.high_scores.sort_by(|a, b| b.cmp(a));
