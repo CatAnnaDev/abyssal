@@ -1,7 +1,7 @@
 use crate::ai::{nearest_goal, step_toward};
 use crate::audio::Sound;
-use crate::entity::{Affix, Ally, Color, Element, Feature, FeatureKind, Hero, HeroClass, Item, ItemKind, Merchant, Monster, Pet, PetKind, ScrollKind, Talent};
-use crate::fx::Fx;
+use crate::entity::{Affix, Ally, Color, Element, Feature, FeatureKind, Hero, HeroClass, Item, ItemKind, Merchant, Monster, Pet, PetKind, Relic, ScrollKind, Talent};
+use crate::fx::{Fx, Particle};
 use crate::map::{Map, Tile};
 use crate::rng::Rng;
 use serde::{Deserialize, Serialize};
@@ -96,6 +96,16 @@ impl Biome {
             Biome::Frostvault => &['s', 'a', 'k', 'g'],
             Biome::Emberdepths => &['w', 'D', 'o', 'a'],
             Biome::Abyss => &['D', 'Y', 'T', 'w'],
+        }
+    }
+
+    pub fn lore(self) -> &'static str {
+        match self {
+            Biome::Caverns => "L'air sent la terre humide et le minerai.",
+            Biome::Catacombs => "Des ossements craquent sous vos pas.",
+            Biome::Frostvault => "Un froid mordant fige votre souffle.",
+            Biome::Emberdepths => "La chaleur fait onduler l'air, le sol gronde.",
+            Biome::Abyss => "Le vide murmure des choses sans nom.",
         }
     }
 
@@ -721,7 +731,10 @@ impl Game {
                 self.monsters.push(b);
                 self.push_log(format!("\u{2638} BOSS FINAL : {} vous attend !", bn), (255, 80, 120));
             } else {
-                self.monsters.push(Monster::boss(self.floor, spot.0, spot.1));
+                let b = Monster::boss(self.floor, spot.0, spot.1);
+                let bn = b.name.clone();
+                self.monsters.push(b);
+                self.push_log(format!("\u{2620} {} garde l'escalier...", bn), (255, 150, 90));
             }
         }
 
@@ -796,6 +809,7 @@ impl Game {
         } else {
             self.push_log(format!("Etage {} - {} ({}).", self.floor, self.biome.label(), self.room_kind.label()), MAGIC);
         }
+        self.push_log(self.biome.lore().to_string(), (150, 150, 165));
         if self.room_kind == RoomKind::Rest {
             self.hero.hp = self.hero.max_hp;
             self.hero.burn = 0;
@@ -843,12 +857,39 @@ impl Game {
         }
     }
 
+    fn spawn_ambient(&mut self) {
+        let x = self.hero.x + self.rng.between(-9, 10);
+        let y = self.hero.y + self.rng.between(-6, 7);
+        if !self.map.is_visible(x, y) {
+            return;
+        }
+        let (glyph, color, vy) = match self.biome {
+            Biome::Caverns => ('\u{00b7}', (120, 110, 95), 0.05),
+            Biome::Catacombs => ('\u{00b7}', (120, 150, 110), 0.0),
+            Biome::Frostvault => ('*', (210, 225, 245), 0.12),
+            Biome::Emberdepths => ('\u{2218}', (240, 150, 70), -0.10),
+            Biome::Abyss => ('\u{00b7}', (175, 125, 215), 0.0),
+        };
+        self.fx.particles.push(Particle {
+            x: x as f32,
+            y: y as f32,
+            vx: self.rng.range(-0.04, 0.04),
+            vy,
+            glyph,
+            color,
+            ttl: self.rng.between(8, 16),
+        });
+    }
+
     pub fn update(&mut self) {
         self.hero_struck = false;
         if self.sfx.len() > 256 {
             self.sfx.clear();
         }
         self.fx.tick();
+        if matches!(self.phase, Phase::Playing) && self.rng.chance(0.3) {
+            self.spawn_ambient();
+        }
         self.flashes.retain_mut(|f| {
             f.3 -= 1;
             f.3 > 0
@@ -984,7 +1025,7 @@ impl Game {
             self.hero.regen -= 1;
             self.hero.hp = (self.hero.hp + 2).min(self.hero.max_hp);
         }
-        if (self.hero.has_affix(Affix::Regen) || self.hero.has_talent(Talent::Regen)) && self.hero.hp < self.hero.max_hp {
+        if (self.hero.has_affix(Affix::Regen) || self.hero.has_talent(Talent::Regen) || self.hero.has_relic(Relic::Colossus)) && self.hero.hp < self.hero.max_hp {
             self.hero.hp += 1;
         }
         if self.event == FloorEvent::Inferno && self.rng.chance(0.06) {
@@ -1723,13 +1764,26 @@ impl Game {
             if self.class.bleeds() {
                 self.monsters[idx].poison = self.monsters[idx].poison.max(3);
             }
+            if self.hero.has_relic(Relic::Ember) {
+                self.monsters[idx].poison = self.monsters[idx].poison.max(3);
+            }
         }
         if self.monsters[idx].hp <= 0 {
             let m = self.monsters.swap_remove(idx);
-            if self.class.raises_dead() && !m.boss && self.allies.len() < 4 && self.monster_at(mx, my).is_none() && self.rng.chance(0.4) {
+            let raise_cap = if self.hero.has_relic(Relic::Undying) { 6 } else { 4 };
+            let can_raise = self.class.raises_dead() || self.hero.has_relic(Relic::Undying);
+            if can_raise && !m.boss && self.allies.len() < raise_cap && self.monster_at(mx, my).is_none() && self.rng.chance(0.4) {
                 self.allies.push(Ally::raised(self.floor, mx, my, &m));
                 self.fx.burst(&mut self.rng, mx, my, (170, 220, 180), 8, '\u{2736}');
                 self.fx.label(mx, my, "LEVE", (170, 220, 180));
+            }
+            if self.hero.has_relic(Relic::Vampire) {
+                self.hero.hp = (self.hero.hp + 4).min(self.hero.max_hp);
+            }
+            if is_boss {
+                self.grant_relic();
+            } else if m.elite && self.rng.chance(0.12) {
+                self.grant_relic();
             }
             self.hero.kills += 1;
             self.total_kills += 1;
@@ -1775,7 +1829,8 @@ impl Game {
             self.push_log(format!("Vous touchez le {} ({} degats).", name, dmg), WHITE);
         }
 
-        if element == Element::Lightning && !self.chaining {
+        let storm = self.hero.has_relic(Relic::Storm) && self.rng.chance(0.3);
+        if (element == Element::Lightning || storm) && !self.chaining {
             let target = self
                 .monsters
                 .iter()
@@ -2525,6 +2580,24 @@ impl Game {
         }
     }
 
+    fn grant_relic(&mut self) {
+        let available: Vec<Relic> = Relic::ALL.iter().copied().filter(|r| !self.hero.has_relic(*r)).collect();
+        if available.is_empty() {
+            self.hero.gold += 50;
+            return;
+        }
+        let r = available[self.rng.below(available.len())];
+        self.hero.relics.push(r);
+        if r == Relic::Colossus {
+            self.hero.max_hp += 20;
+            self.hero.hp += 20;
+        }
+        self.fx.burst(&mut self.rng, self.hero.x, self.hero.y, (255, 200, 90), 20, '\u{2726}');
+        self.fx.label(self.hero.x, self.hero.y, "RELIQUE", (255, 210, 110));
+        self.sfx.push(Sound::LevelUp);
+        self.push_log(format!("RELIQUE : {} !", r.label()), (255, 210, 120));
+    }
+
     fn grant_talent(&mut self) {
         let available: Vec<Talent> = Talent::ALL.iter().copied().filter(|t| !self.hero.has_talent(*t)).collect();
         if available.is_empty() {
@@ -3039,6 +3112,10 @@ impl Game {
             self.push_log(format!("Le {} vous rate.", name), GOOD);
             return;
         }
+        if self.hero.has_relic(Relic::Spectral) && self.rng.chance(0.2) {
+            self.fx.label(self.hero.x, self.hero.y, "spectre!", (180, 200, 240));
+            return;
+        }
         let (raw, crit) = resolve(self.monsters[idx].atk - 1, self.hero.def(), &mut self.rng, 0.08);
         let dmg = ((raw as f32 * self.hero_def_mult(self.monsters[idx].element)) as i32).max(1);
         self.hero.hp -= dmg;
@@ -3068,6 +3145,10 @@ impl Game {
     }
 
     fn monster_attacks(&mut self, idx: usize) {
+        if self.hero.has_relic(Relic::Spectral) && self.rng.chance(0.2) {
+            self.fx.label(self.hero.x, self.hero.y, "spectre!", (180, 200, 240));
+            return;
+        }
         let (raw, crit) = resolve(self.monsters[idx].atk, self.hero.def(), &mut self.rng, 0.08);
         let dmg = ((raw as f32 * self.hero_def_mult(self.monsters[idx].element)) as i32).max(1);
         let name = self.monsters[idx].name.clone();

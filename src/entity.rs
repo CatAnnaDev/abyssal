@@ -225,6 +225,42 @@ impl Talent {
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum Relic {
+    Vampire,
+    Spectral,
+    Storm,
+    Ember,
+    Colossus,
+    Undying,
+}
+
+impl Relic {
+    pub const ALL: [Relic; 6] = [Relic::Vampire, Relic::Spectral, Relic::Storm, Relic::Ember, Relic::Colossus, Relic::Undying];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Relic::Vampire => "Coeur Vampirique",
+            Relic::Spectral => "Voile Spectral",
+            Relic::Storm => "Orbe Fulgurant",
+            Relic::Ember => "Braise Eternelle",
+            Relic::Colossus => "Talisman du Colosse",
+            Relic::Undying => "Pacte Mort-vivant",
+        }
+    }
+
+    pub fn short(self) -> &'static str {
+        match self {
+            Relic::Vampire => "vampire",
+            Relic::Spectral => "spectral",
+            Relic::Storm => "fulgurant",
+            Relic::Ember => "braise",
+            Relic::Colossus => "colosse",
+            Relic::Undying => "mort-vivant",
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum Element {
     Physical,
     Fire,
@@ -339,6 +375,14 @@ pub struct Hero {
     pub talents: Vec<Talent>,
     #[serde(default)]
     pub ability_cd: i32,
+    #[serde(default)]
+    pub relics: Vec<Relic>,
+}
+
+impl Hero {
+    pub fn has_relic(&self, r: Relic) -> bool {
+        self.relics.contains(&r)
+    }
 }
 
 impl Hero {
@@ -375,6 +419,7 @@ impl Hero {
             scrolls: Vec::new(),
             talents: Vec::new(),
             ability_cd: 0,
+            relics: Vec::new(),
         }
     }
 

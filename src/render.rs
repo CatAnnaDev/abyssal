@@ -277,6 +277,12 @@ fn draw_panel(game: &Game, cols: i32, rows: i32, mw: i32, buf: &mut String) {
                 line(buf, &mut er, (185, 200, 235), w);
             }
         }
+        if !h.relics.is_empty() {
+            let names: Vec<&str> = h.relics.iter().map(|r| r.short()).collect();
+            for w in wrap_text(&format!("\u{2726} {}", names.join(", ")), iw as usize) {
+                line(buf, &mut er, (255, 210, 120), w);
+            }
+        }
     }
 
     let jy = 2 + hh + eq;

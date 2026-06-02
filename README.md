@@ -69,6 +69,8 @@ Progress autoloads on launch (`abyssal.save.json`).
 - Two render modes (toggle with `g`): the classic colored-glyph map, or a half-block pixel-art "sprite" view — a hero-centred camera with procedural per-archetype sprites, distinct item/feature icons, an idle bob, particles and floating damage, all drawn in any truecolor terminal with no asset files (zoom with `z`)
 - Five hero classes (Warrior / Rogue / Mage / Paladin / Necromancer) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown (Warrior charge, Rogue blink-strike, Mage ice nova, Paladin smite-heal, Necromancer raise-dead)
 - Summoned allies: the Necromancer raises slain monsters as temporary undead that fight alongside the hero (a reusable allied-unit system)
+- Unique relics dropped by bosses and champions with special effects (lifesteal on kill, ghostly dodge, chain-lightning procs, burning hits, +max HP, raise-the-dead for any class)
+- Atmosphere: per-biome lore lines, boss intros, and ambient particles (embers, snow, fog) drifting through the lit area
 - Elemental synergies: shatter frozen foes for bonus damage, lightning that arcs to a nearby enemy, and poison that spreads between adjacent monsters
 - A bestiary/codex (toggle `k`) listing discovered monsters with their element, behavior and depth
 - Elemental system (fire / ice / poison / lightning) with offensive weaknesses, on-hit effects, and defensive armor affinities (your gear's element resists matching attacks and is weak to its opposite)
