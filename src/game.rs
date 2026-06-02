@@ -2196,7 +2196,17 @@ impl Game {
     }
 
     fn grant_talent(&mut self) {
-        let t = Talent::ALL[self.rng.below(Talent::ALL.len())];
+        let available: Vec<Talent> = Talent::ALL.iter().copied().filter(|t| !self.hero.has_talent(*t)).collect();
+        if available.is_empty() {
+            self.hero.might += 1;
+            self.hero.guard += 1;
+            self.hero.max_hp += 6;
+            self.hero.hp = self.hero.max_hp;
+            self.fx.label(self.hero.x, self.hero.y, "MAITRISE", (200, 220, 255));
+            self.push_log("Maitrise : tous les talents acquis, +PV/ATQ/DEF.".into(), (200, 220, 255));
+            return;
+        }
+        let t = available[self.rng.below(available.len())];
         self.hero.talents.push(t);
         self.sfx.push(Sound::Talent);
         if t == Talent::Colosse {
