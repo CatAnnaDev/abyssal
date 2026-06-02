@@ -226,6 +226,14 @@ pub struct Game {
     #[serde(skip)]
     pub sfx: Vec<Sound>,
     #[serde(skip)]
+    pub low_hp_pulse: f32,
+    #[serde(skip)]
+    prev_tile: (i32, i32),
+    #[serde(skip)]
+    turn_start_tile: (i32, i32),
+    #[serde(skip)]
+    pursue_merchant: bool,
+    #[serde(skip)]
     explore_target: Option<(i32, i32)>,
     map_w: i32,
     map_h: i32,
@@ -310,6 +318,10 @@ impl Game {
             top_voters: Vec::new(),
             hud_note: String::new(),
             sfx: Vec::new(),
+            low_hp_pulse: 0.0,
+            prev_tile: (-1, -1),
+            turn_start_tile: (-1, -1),
+            pursue_merchant: false,
             explore_target: None,
             map_w,
             map_h,
@@ -429,6 +441,7 @@ impl Game {
         }
 
         self.merchant = None;
+        self.pursue_merchant = false;
         if self.floor >= 2 && self.rng.chance(0.4) && !floor_tiles.is_empty() {
             let pick = self.rng.below(floor_tiles.len());
             let (x, y) = floor_tiles.swap_remove(pick);
@@ -494,6 +507,34 @@ impl Game {
 
     pub fn monster_at(&self, x: i32, y: i32) -> Option<usize> {
         self.monsters.iter().position(|m| m.x == x && m.y == y)
+    }
+
+    pub fn is_alive(&self) -> bool {
+        matches!(self.phase, Phase::Playing)
+    }
+
+    pub fn hp_fraction(&self) -> f32 {
+        self.hero.hp as f32 / self.hero.max_hp.max(1) as f32
+    }
+
+    pub fn music_mode(&self) -> crate::audio::MusicMode {
+        use crate::audio::MusicMode;
+        if matches!(self.phase, Phase::Dead(_)) {
+            return MusicMode::Calm;
+        }
+        if self.monsters.iter().any(|m| m.boss) {
+            return MusicMode::Boss;
+        }
+        let threat = self
+            .monsters
+            .iter()
+            .filter(|m| self.map.is_visible(m.x, m.y) && (m.x - self.hero.x).abs().max((m.y - self.hero.y).abs()) <= 7)
+            .count();
+        if threat >= 1 {
+            MusicMode::Combat
+        } else {
+            MusicMode::Calm
+        }
     }
 
     pub fn update(&mut self) {
@@ -769,6 +810,8 @@ impl Game {
     }
 
     fn hero_turn(&mut self) {
+        self.prev_tile = self.turn_start_tile;
+        self.turn_start_tile = (self.hero.x, self.hero.y);
         if self.act_dodge() {
             return;
         }
@@ -916,21 +959,48 @@ impl Game {
             return false;
         }
         let (hx, hy) = (self.hero.x, self.hero.y);
-        for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)] {
-            let (nx, ny) = (hx + dx, hy + dy);
-            if self.map.is_walkable(nx, ny)
-                && self.monster_at(nx, ny).is_none()
-                && !self.tile_dangerous(nx, ny)
-                && !self.merchant.as_ref().is_some_and(|m| m.x == nx && m.y == ny)
-            {
-                self.hero.x = nx;
-                self.hero.y = ny;
-                let fr = self.fov_radius();
-                self.map.compute_fov(nx, ny, fr);
-                self.last_action = "esquive";
-                self.pickup_here();
-                return true;
+        let safe = |s: &Self, nx: i32, ny: i32| {
+            s.map.is_walkable(nx, ny)
+                && s.monster_at(nx, ny).is_none()
+                && !s.tile_dangerous(nx, ny)
+                && !s.merchant.as_ref().is_some_and(|m| m.x == nx && m.y == ny)
+        };
+        let threat = self
+            .monsters
+            .iter()
+            .filter(|m| self.map.is_visible(m.x, m.y))
+            .min_by_key(|m| (m.x - hx).abs() + (m.y - hy).abs())
+            .map(|m| (m.x, m.y));
+        let mut best: Option<(i32, i32, i32)> = None;
+        for allow_reverse in [false, true] {
+            for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)] {
+                let (nx, ny) = (hx + dx, hy + dy);
+                if !safe(self, nx, ny) {
+                    continue;
+                }
+                if !allow_reverse && (nx, ny) == self.prev_tile {
+                    continue;
+                }
+                let score = match threat {
+                    Some((tx, ty)) => (nx - tx).abs() + (ny - ty).abs(),
+                    None => 0,
+                };
+                if best.map_or(true, |b| score < b.2) {
+                    best = Some((nx, ny, score));
+                }
             }
+            if best.is_some() {
+                break;
+            }
+        }
+        if let Some((nx, ny, _)) = best {
+            self.hero.x = nx;
+            self.hero.y = ny;
+            let fr = self.fov_radius();
+            self.map.compute_fov(nx, ny, fr);
+            self.last_action = "esquive";
+            self.pickup_here();
+            return true;
         }
         false
     }
@@ -1075,7 +1145,7 @@ impl Game {
             self.nearest_visible_monster()
         };
         if let Some((tx, ty)) = target {
-            let open: [(i32, i32); 0] = [];
+            let open = self.blocked_tiles();
             if let Some((dx, dy)) =
                 step_toward(&self.map, self.hero.x, self.hero.y, &open, |x, y| x == tx && y == ty)
             {
@@ -1089,7 +1159,7 @@ impl Game {
 
     fn act_loot(&mut self) -> bool {
         if let Some((tx, ty)) = self.nearest_seen_item() {
-            let open: [(i32, i32); 0] = [];
+            let open = self.blocked_tiles();
             if let Some((dx, dy)) =
                 step_toward(&self.map, self.hero.x, self.hero.y, &open, |x, y| x == tx && y == ty)
             {
@@ -1110,7 +1180,7 @@ impl Game {
             .min_by_key(|f| (f.x - hx).abs() + (f.y - hy).abs())
             .map(|f| (f.x, f.y));
         if let Some((tx, ty)) = target {
-            let open: [(i32, i32); 0] = [];
+            let open = self.blocked_tiles();
             if let Some((dx, dy)) = step_toward(&self.map, hx, hy, &open, |x, y| x == tx && y == ty) {
                 self.last_action = "autel";
                 self.move_or_act(dx, dy);
@@ -1121,26 +1191,31 @@ impl Game {
     }
 
     fn act_merchant(&mut self) -> bool {
-        if !self.merchant_wants_trade() {
+        let Some((mx, my)) = self.merchant.as_ref().map(|m| (m.x, m.y)) else {
+            self.pursue_merchant = false;
+            return false;
+        };
+        if !self.pursue_merchant {
+            if !self.merchant_wants_trade() {
+                return false;
+            }
+            self.pursue_merchant = true;
+        }
+        if !self.map.is_explored(mx, my) {
             return false;
         }
-        if let Some((mx, my)) = self.merchant.as_ref().map(|m| (m.x, m.y)) {
-            if self.map.is_explored(mx, my) {
-                let open: [(i32, i32); 0] = [];
-                if let Some((dx, dy)) =
-                    step_toward(&self.map, self.hero.x, self.hero.y, &open, |x, y| x == mx && y == my)
-                {
-                    self.last_action = "marchand";
-                    self.move_or_act(dx, dy);
-                    return true;
-                }
-            }
+        let open = self.blocked_tiles();
+        if let Some((dx, dy)) = step_toward(&self.map, self.hero.x, self.hero.y, &open, |x, y| x == mx && y == my) {
+            self.last_action = "marchand";
+            self.move_or_act(dx, dy);
+            return true;
         }
+        self.pursue_merchant = false;
         false
     }
 
     fn act_explore(&mut self) -> bool {
-        let open: [(i32, i32); 0] = [];
+        let open = self.blocked_tiles();
         let target_valid = match self.explore_target {
             Some((tx, ty)) => self.map.has_unexplored_neighbor(tx, ty),
             None => false,
@@ -1165,7 +1240,7 @@ impl Game {
 
     fn act_to_stairs(&mut self) -> bool {
         let (sx, sy) = self.map.stairs;
-        let open: [(i32, i32); 0] = [];
+        let open = self.blocked_tiles();
         if let Some((dx, dy)) = step_toward(&self.map, self.hero.x, self.hero.y, &open, |x, y| x == sx && y == sy) {
             self.last_action = "vers escalier";
             self.move_or_act(dx, dy);
@@ -1257,6 +1332,7 @@ impl Game {
     }
 
     fn trade(&mut self) {
+        self.pursue_merchant = false;
         let Some(m) = self.merchant.take() else { return };
         match self.forced_purchase.take() {
             Some(pick) => {
@@ -1709,6 +1785,9 @@ impl Game {
                 self.monsters[i].stun -= 1;
                 continue;
             }
+            if self.monsters[i].cast_cd > 0 {
+                self.monsters[i].cast_cd -= 1;
+            }
 
             if self.monsters[i].boss {
                 let dnow = (mx - self.hero.x).abs().max((my - self.hero.y).abs());
@@ -1758,6 +1837,9 @@ impl Game {
                 if self.monsters[i].cast_wind == 0 {
                     let (tx, ty) = (self.monsters[i].cast_tx, self.monsters[i].cast_ty);
                     self.ranged_attack_at(i, tx, ty);
+                    if i < self.monsters.len() {
+                        self.monsters[i].cast_cd = 4;
+                    }
                     if matches!(self.phase, Phase::Dead(_)) {
                         return;
                     }
@@ -1790,6 +1872,7 @@ impl Game {
             let hy = self.hero.y;
 
             if self.monsters[i].ranged
+                && self.monsters[i].cast_cd == 0
                 && dist >= 2
                 && dist <= 6
                 && self.map.line_of_sight(mx, my, hx, hy)
@@ -1881,6 +1964,12 @@ impl Game {
         let (hx, hy) = (self.hero.x, self.hero.y);
         self.danger.iter().any(|&(x, y)| x == hx && y == hy)
             || self.cast_danger.iter().any(|&(x, y)| x == hx && y == hy)
+    }
+
+    fn blocked_tiles(&self) -> Vec<(i32, i32)> {
+        let mut v = self.danger.clone();
+        v.extend_from_slice(&self.cast_danger);
+        v
     }
 
     fn tile_dangerous(&self, x: i32, y: i32) -> bool {
@@ -2180,3 +2269,4 @@ mod tests {
 fn super_panel() -> i32 {
     34
 }
+

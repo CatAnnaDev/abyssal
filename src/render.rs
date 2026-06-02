@@ -21,6 +21,16 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
     };
     let sdx = game.fx.shake_offset();
     let lights: Vec<(f32, f32, Color)> = game.fx.projectiles.iter().map(|p| (p.x, p.y, p.color)).collect();
+    let vignette = if matches!(game.phase, Phase::Playing) {
+        let frac = game.hp_fraction();
+        if frac < 0.30 {
+            ((0.30 - frac) / 0.30) * (0.55 + 0.45 * game.low_hp_pulse.clamp(0.0, 1.0))
+        } else {
+            0.0
+        }
+    } else {
+        0.0
+    };
 
     for y in 0..mh {
         let _ = write!(buf, "\x1b[{};{}H\x1b[0m", MROW + y, MCOL);
@@ -32,6 +42,9 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
             let (ch, fg, mut bg) = cell_render(game, x, y, tint);
             if !lights.is_empty() {
                 bg = light_add(bg, &lights, x, y);
+            }
+            if vignette > 0.0 {
+                bg = vignette_add(bg, x, y, mw, mh, vignette);
             }
             if last != Some((fg, bg)) {
                 let _ = write!(buf, "\x1b[38;2;{};{};{};48;2;{};{};{}m", fg.0, fg.1, fg.2, bg.0, bg.1, bg.2);
@@ -369,6 +382,22 @@ fn floor_tint(floor: i32) -> (f32, f32, f32) {
         (1.12, 1.00, 0.78),
     ];
     THEMES[((floor - 1).max(0) as usize) % THEMES.len()]
+}
+
+fn vignette_add(base: Color, x: i32, y: i32, mw: i32, mh: i32, strength: f32) -> Color {
+    if strength <= 0.0 {
+        return base;
+    }
+    let d = x.min(mw - 1 - x).min(y).min(mh - 1 - y) as f32;
+    let band = (mw.min(mh) as f32 * 0.45).max(1.0);
+    let edge = (1.0 - d / band).clamp(0.0, 1.0);
+    let a = (strength * edge * edge).clamp(0.0, 0.85);
+    let target = (185.0, 25.0, 25.0);
+    (
+        (base.0 as f32 * (1.0 - a) + target.0 * a) as u8,
+        (base.1 as f32 * (1.0 - a) + target.1 * a) as u8,
+        (base.2 as f32 * (1.0 - a) + target.2 * a) as u8,
+    )
 }
 
 fn light_add(base: Color, lights: &[(f32, f32, Color)], x: i32, y: i32) -> Color {

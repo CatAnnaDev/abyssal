@@ -20,6 +20,7 @@ pub enum Sound {
     BossHit,
     Death,
     Trade,
+    Heartbeat,
 }
 
 const SR: u32 = 44100;
@@ -175,34 +176,197 @@ fn render(sound: Sound) -> Vec<f32> {
             s.silence(&mut b, 0.02);
             s.tone(&mut b, 1047.0, 0.08, 0.26, Wave::Tri, 0.5);
         }
+        Sound::Heartbeat => {
+            s.tone(&mut b, 60.0, 0.1, 0.22, Wave::Sine, 0.5);
+            s.silence(&mut b, 0.05);
+            s.tone(&mut b, 46.0, 0.13, 0.16, Wave::Sine, 0.5);
+        }
     }
     b
 }
 
-fn ambient_loop() -> Vec<f32> {
-    let mut s = Synth::new();
-    let dur = 7.0f32;
+fn hz(midi: i32) -> f32 {
+    440.0 * 2.0f32.powf((midi as f32 - 69.0) / 12.0)
+}
+
+fn add_voice(buf: &mut [f32], start: usize, freq: f32, dur: f32, vol: f32, wave: Wave, attack: f32, release: f32) {
     let n = (SR as f32 * dur) as usize;
-    let mut b: Vec<f32> = Vec::with_capacity(n);
-    let base = 55.0f32;
+    let atk = (SR as f32 * attack).max(1.0);
+    let rel = (SR as f32 * release).max(1.0);
     for i in 0..n {
+        let idx = start + i;
+        if idx >= buf.len() {
+            break;
+        }
         let t = i as f32 / SR as f32;
-        let lfo = (t * TAU / dur).sin() * 0.5 + 0.5;
-        let drone = (base * t * TAU).sin() * 0.5
-            + (base * 1.5 * t * TAU).sin() * 0.22
-            + (base * 2.01 * t * TAU).sin() * 0.12;
-        let shimmer = ((base * 4.0 + 0.3 * (t * 0.5).sin()) * t * TAU).sin() * 0.05 * lfo;
-        let wind = s.rand() * 0.015 * lfo;
-        let edge = (i.min(n - i) as f32 / (SR as f32 * 0.4)).min(1.0);
-        b.push((drone * 0.5 + shimmer + wind) * 0.5 * edge);
+        let ph = (freq * t).fract();
+        let raw = match wave {
+            Wave::Square => {
+                if ph < 0.5 {
+                    1.0
+                } else {
+                    -1.0
+                }
+            }
+            Wave::Tri => 4.0 * (ph - 0.5).abs() - 1.0,
+            Wave::Sine => (ph * TAU).sin(),
+            Wave::Noise => 0.0,
+        };
+        let env = if (i as f32) < atk {
+            i as f32 / atk
+        } else if i as f32 > n as f32 - rel {
+            ((n - i) as f32 / rel).max(0.0)
+        } else {
+            1.0
+        };
+        buf[idx] += raw * env * vol;
     }
-    b
+}
+
+fn add_kick(buf: &mut [f32], start: usize, vol: f32) {
+    let n = (SR as f32 * 0.2) as usize;
+    let mut phase = 0.0f32;
+    for i in 0..n {
+        let idx = start + i;
+        if idx >= buf.len() {
+            break;
+        }
+        let p = i as f32 / n as f32;
+        let freq = 50.0 + 90.0 * (1.0 - p).powf(3.0);
+        phase = (phase + freq / SR as f32).fract();
+        let env = (1.0 - p).powf(2.0);
+        buf[idx] += (phase * TAU).sin() * env * vol;
+    }
+}
+
+fn add_snare(buf: &mut [f32], start: usize, vol: f32, seed: &mut u32) {
+    let n = (SR as f32 * 0.16) as usize;
+    for i in 0..n {
+        let idx = start + i;
+        if idx >= buf.len() {
+            break;
+        }
+        *seed ^= *seed << 13;
+        *seed ^= *seed >> 17;
+        *seed ^= *seed << 5;
+        let noise = (*seed as f32 / u32::MAX as f32) * 2.0 - 1.0;
+        let p = i as f32 / n as f32;
+        let body = ((180.0 * i as f32 / SR as f32) * TAU).sin();
+        let env = (1.0 - p).powf(2.5);
+        buf[idx] += (noise * 0.7 + body * 0.4) * env * vol;
+    }
+}
+
+fn add_hat(buf: &mut [f32], start: usize, vol: f32, seed: &mut u32) {
+    let n = (SR as f32 * 0.04) as usize;
+    let mut prev = 0.0f32;
+    for i in 0..n {
+        let idx = start + i;
+        if idx >= buf.len() {
+            break;
+        }
+        *seed ^= *seed << 13;
+        *seed ^= *seed >> 17;
+        *seed ^= *seed << 5;
+        let noise = (*seed as f32 / u32::MAX as f32) * 2.0 - 1.0;
+        let hp = noise - prev;
+        prev = noise;
+        let p = i as f32 / n as f32;
+        let env = (1.0 - p).powf(3.0);
+        buf[idx] += hp * env * vol;
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum MusicMode {
+    Calm,
+    Combat,
+    Boss,
+}
+
+#[derive(Clone, Copy)]
+enum Stem {
+    Base,
+    Combat,
+    Boss,
+}
+
+fn music_stem(stem: Stem) -> Vec<f32> {
+    let bpm = 96.0f32;
+    let beat = SR as f32 * 60.0 / bpm;
+    let eighth = beat / 2.0;
+    let bars = 4usize;
+    let total = (beat * 4.0 * bars as f32) as usize;
+    let mut buf = vec![0.0f32; total];
+    let mut seed = match stem {
+        Stem::Base => 0x2545_F491u32,
+        Stem::Combat => 0x9E37_79B9,
+        Stem::Boss => 0x1B56_C4E9,
+    };
+
+    let pads: [&[i32]; 4] = [&[60, 64, 67, 71], &[62, 67, 71, 74], &[57, 60, 64, 67], &[53, 57, 60, 64]];
+    let basses: [i32; 4] = [36, 43, 45, 41];
+
+    for (bar, chord) in pads.iter().enumerate() {
+        let bar_start = (bar as f32 * 4.0 * beat) as usize;
+        let bar_len = 4.0 * beat / SR as f32;
+        match stem {
+            Stem::Base => {
+                for &m in chord.iter() {
+                    add_voice(&mut buf, bar_start, hz(m), bar_len * 0.98, 0.06, Wave::Tri, 0.06, 0.2);
+                }
+                add_voice(&mut buf, bar_start, hz(basses[bar]), beat * 2.0 / SR as f32, 0.2, Wave::Sine, 0.005, 0.06);
+                add_voice(&mut buf, bar_start + (beat * 2.0) as usize, hz(basses[bar]), beat * 2.0 / SR as f32, 0.2, Wave::Sine, 0.005, 0.06);
+                for slot in 0..8 {
+                    if slot % 2 == 1 {
+                        add_hat(&mut buf, bar_start + (slot as f32 * eighth) as usize, 0.08, &mut seed);
+                    }
+                }
+                add_kick(&mut buf, bar_start, 0.55);
+                add_kick(&mut buf, bar_start + (beat * 2.0) as usize, 0.55);
+                add_snare(&mut buf, bar_start + beat as usize, 0.35, &mut seed);
+                add_snare(&mut buf, bar_start + (beat * 3.0) as usize, 0.35, &mut seed);
+            }
+            Stem::Combat => {
+                let arp = [0usize, 2, 1, 3, 2, 3, 1, 2];
+                for slot in 0..8 {
+                    let at = bar_start + (slot as f32 * eighth) as usize;
+                    let m = chord[arp[slot] % chord.len()] + 12;
+                    add_voice(&mut buf, at, hz(m), eighth * 0.85 / SR as f32, 0.1, Wave::Square, 0.003, 0.04);
+                    add_hat(&mut buf, at, if slot % 2 == 1 { 0.12 } else { 0.07 }, &mut seed);
+                }
+                add_kick(&mut buf, bar_start + (beat * 2.0 + eighth * 1.5) as usize, 0.4);
+                add_snare(&mut buf, bar_start + (beat * 3.0 + eighth) as usize, 0.18, &mut seed);
+            }
+            Stem::Boss => {
+                let root = basses[bar] - 12;
+                add_voice(&mut buf, bar_start, hz(root), bar_len * 0.95, 0.16, Wave::Square, 0.02, 0.15);
+                add_voice(&mut buf, bar_start, hz(root + 6), bar_len * 0.5, 0.05, Wave::Square, 0.02, 0.2);
+                for b in 0..8 {
+                    add_kick(&mut buf, bar_start + (b as f32 * eighth) as usize, 0.42);
+                }
+                add_snare(&mut buf, bar_start + (beat * 2.0) as usize, 0.28, &mut seed);
+            }
+        }
+    }
+
+    for s in buf.iter_mut() {
+        *s = (*s * 0.9).tanh();
+    }
+    buf
+}
+
+struct StemSink {
+    sink: Sink,
+    cur: f32,
+    target: f32,
 }
 
 pub struct Audio {
     _stream: Option<OutputStream>,
     handle: Option<OutputStreamHandle>,
-    ambient: Option<Sink>,
+    music: Vec<StemSink>,
+    music_level: f32,
     volume: f32,
     pub muted: bool,
 }
@@ -210,20 +374,23 @@ pub struct Audio {
 impl Audio {
     pub fn new(ambient_on: bool, master_volume: f32, ambient_volume: f32) -> Self {
         let volume = master_volume.clamp(0.0, 2.0);
+        let music_level = (ambient_volume * volume).clamp(0.0, 2.0);
         match OutputStream::try_default() {
             Ok((stream, handle)) => {
-                let ambient = if ambient_on {
-                    Sink::try_new(&handle).ok().map(|sink| {
-                        sink.set_volume((ambient_volume * volume).clamp(0.0, 2.0));
-                        sink.append(SamplesBuffer::new(1, SR, ambient_loop()).repeat_infinite());
-                        sink
-                    })
-                } else {
-                    None
-                };
-                Audio { _stream: Some(stream), handle: Some(handle), ambient, volume, muted: false }
+                let mut music = Vec::new();
+                if ambient_on {
+                    for (i, stem) in [Stem::Base, Stem::Combat, Stem::Boss].into_iter().enumerate() {
+                        if let Ok(sink) = Sink::try_new(&handle) {
+                            let start = if i == 0 { music_level } else { 0.0 };
+                            sink.set_volume(start);
+                            sink.append(SamplesBuffer::new(1, SR, music_stem(stem)).repeat_infinite());
+                            music.push(StemSink { sink, cur: start, target: start });
+                        }
+                    }
+                }
+                Audio { _stream: Some(stream), handle: Some(handle), music, music_level, volume, muted: false }
             }
-            Err(_) => Audio { _stream: None, handle: None, ambient: None, volume, muted: false },
+            Err(_) => Audio { _stream: None, handle: None, music: Vec::new(), music_level, volume, muted: false },
         }
     }
 
@@ -236,13 +403,40 @@ impl Audio {
         }
     }
 
+    pub fn set_music_mode(&mut self, mode: MusicMode) {
+        if self.music.len() < 3 {
+            return;
+        }
+        let lvl = self.music_level;
+        self.music[0].target = lvl;
+        self.music[1].target = if mode != MusicMode::Calm { lvl } else { 0.0 };
+        self.music[2].target = if mode == MusicMode::Boss { lvl } else { 0.0 };
+    }
+
+    pub fn tick(&mut self) {
+        if self.muted {
+            return;
+        }
+        let step = (self.music_level * 0.06).max(0.01);
+        for st in self.music.iter_mut() {
+            if (st.cur - st.target).abs() <= step {
+                st.cur = st.target;
+            } else if st.cur < st.target {
+                st.cur += step;
+            } else {
+                st.cur -= step;
+            }
+            st.sink.set_volume(st.cur);
+        }
+    }
+
     pub fn toggle_mute(&mut self) {
         self.muted = !self.muted;
-        if let Some(a) = &self.ambient {
+        for st in self.music.iter() {
             if self.muted {
-                a.pause();
+                st.sink.pause();
             } else {
-                a.play();
+                st.sink.play();
             }
         }
     }
@@ -299,6 +493,7 @@ mod preview {
             ("bosshit", Sound::BossHit),
             ("death", Sound::Death),
             ("trade", Sound::Trade),
+            ("heartbeat", Sound::Heartbeat),
         ];
         let mut montage: Vec<f32> = Vec::new();
         let gap = vec![0.0f32; (SR as f32 * 0.22) as usize];
@@ -309,8 +504,31 @@ mod preview {
             montage.extend_from_slice(&gap);
         }
         write_wav(&format!("{}/_all_sfx.wav", dir), &montage);
-        let amb = ambient_loop();
-        write_wav(&format!("{}/ambient.wav", dir), &amb);
-        assert!(!montage.is_empty());
+
+        let base = music_stem(Stem::Base);
+        let combat = music_stem(Stem::Combat);
+        let boss = music_stem(Stem::Boss);
+        let mix = |layers: &[&Vec<f32>]| -> Vec<f32> {
+            let mut out = vec![0.0f32; base.len()];
+            for layer in layers {
+                for (o, v) in out.iter_mut().zip(layer.iter()) {
+                    *o += v;
+                }
+            }
+            out.iter().map(|s| (s * 0.45).clamp(-1.0, 1.0)).collect()
+        };
+        let scenes = [
+            ("music_calm", mix(&[&base])),
+            ("music_combat", mix(&[&base, &combat])),
+            ("music_boss", mix(&[&base, &combat, &boss])),
+        ];
+        for (name, loop_buf) in &scenes {
+            let mut x3 = Vec::new();
+            for _ in 0..3 {
+                x3.extend_from_slice(loop_buf);
+            }
+            write_wav(&format!("{}/{}.wav", dir, name), &x3);
+        }
+        assert!(!montage.is_empty() && !base.is_empty());
     }
 }

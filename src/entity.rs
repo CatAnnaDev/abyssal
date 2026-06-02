@@ -414,6 +414,8 @@ pub struct Monster {
     pub cast_wind: i32,
     pub cast_tx: i32,
     pub cast_ty: i32,
+    #[serde(default)]
+    pub cast_cd: i32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -519,6 +521,7 @@ impl Monster {
             cast_wind: 0,
             cast_tx: 0,
             cast_ty: 0,
+            cast_cd: 0,
         }
     }
 
@@ -565,6 +568,7 @@ impl Monster {
             cast_wind: 0,
             cast_tx: 0,
             cast_ty: 0,
+            cast_cd: 0,
         }
     }
 
@@ -595,6 +599,7 @@ impl Monster {
             cast_wind: 0,
             cast_tx: 0,
             cast_ty: 0,
+            cast_cd: 0,
         }
     }
 
@@ -623,6 +628,7 @@ impl Monster {
             cast_wind: 0,
             cast_tx: 0,
             cast_ty: 0,
+            cast_cd: 0,
         }
     }
 }

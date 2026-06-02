@@ -250,6 +250,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
     let mut paused = false;
     let mut accumulator = 0.0f32;
     let mut last = Instant::now();
+    let mut heartbeat_acc = 0.0f32;
     let mut shop_window = 0.0f32;
     let mut prev_merchant = false;
 
@@ -409,6 +410,22 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         if struck {
             audio.play(audio::Sound::Hurt);
         }
+        let frac = game.hp_fraction();
+        if game.is_alive() && frac < 0.30 {
+            let t = (frac / 0.30).clamp(0.0, 1.0);
+            let interval = 0.45 + 0.45 * t;
+            heartbeat_acc += dt;
+            if heartbeat_acc >= interval {
+                heartbeat_acc = 0.0;
+                audio.play(audio::Sound::Heartbeat);
+                game.low_hp_pulse = 1.0;
+            }
+        } else {
+            heartbeat_acc = 0.0;
+        }
+        game.low_hp_pulse *= 0.85;
+        audio.set_music_mode(game.music_mode());
+        audio.tick();
 
         render::draw(&game, cols, rows, paused, SPEEDS[speed].0, stdout);
 

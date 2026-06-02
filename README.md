@@ -63,9 +63,9 @@ Progress autoloads on launch (`abyssal.save.json`).
 - Ranged casters that wind up and can be sidestepped
 - Curse altars, shrines, fountains, mimic chests, familiars and per-floor events
 - Rare merchants, an endless abyss mode with a scoreboard, a bestiary and death cards
-- Procedural 8/16-bit chiptune: synthesized square/triangle/noise SFX for hits, crits, kills, loot, level-ups, boss tells and death, plus a looping ambient drone — no audio files, everything is generated at runtime
+- Procedural 8/16-bit chiptune, all generated at runtime with no audio files: synthesized square/triangle/noise SFX for hits, crits, kills, loot, level-ups, boss tells and death, plus an **adaptive** chill-pop backing track — a base groove (seventh-chord progression, soft bass, pad and drums) that layers in a driving arpeggio when enemies are near and a tense theme when a boss is alive, crossfading smoothly with the action
 - Optional Twitch chat integration: viewers vote on the hero's mindset and merchant purchases (fully configurable, off by default)
 
 ## Config
 
-`abyssal.config.json` is created on first run. It controls the optional Twitch integration and the audio (`sound_enabled`, `ambient_enabled`); sound can also be toggled in-game with `a`.
+`abyssal.config.json` is created on first run. It controls the optional Twitch integration and the audio: `sound_enabled`, `ambient_enabled` (the music track), and the `master_volume` / `ambient_volume` levels (0.0–2.0). Sound can also be muted in-game with `a`.

@@ -29,7 +29,7 @@ fn default_volume() -> f32 {
 }
 
 fn default_ambient_volume() -> f32 {
-    0.35
+    0.5
 }
 
 impl Default for Config {
@@ -44,7 +44,7 @@ impl Default for Config {
             sound_enabled: true,
             ambient_enabled: true,
             master_volume: 0.5,
-            ambient_volume: 0.35,
+            ambient_volume: 0.5,
         }
     }
 }
