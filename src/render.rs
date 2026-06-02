@@ -1,5 +1,5 @@
-use crate::entity::{Color, Element, FeatureKind};
-use crate::game::{FloorEvent, Game, Objective, Phase};
+use crate::entity::{Affix, Color, Element, FeatureKind, ScrollKind};
+use crate::game::{Biome, FloorEvent, Game, Objective, Phase};
 use crate::map::Tile;
 use std::fmt::Write as _;
 use std::io::Write;
@@ -8,7 +8,7 @@ const MROW: i32 = 2;
 const MCOL: i32 = 2;
 const FRAME: Color = (95, 95, 120);
 
-pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, out: &mut impl Write) {
+pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, sprite: bool, zoom: i32, out: &mut impl Write) {
     let mut buf = String::with_capacity((cols * rows) as usize * 7);
     buf.push_str("\x1b[H");
 
@@ -17,7 +17,7 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
     let tint = if game.event == FloorEvent::Inferno {
         (1.22, 0.82, 0.66)
     } else {
-        floor_tint(game.floor)
+        game.biome.tint()
     };
     let sdx = game.fx.shake_offset();
     let lights: Vec<(f32, f32, Color)> = game.fx.projectiles.iter().map(|p| (p.x, p.y, p.color)).collect();
@@ -32,29 +32,33 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
         0.0
     };
 
-    for y in 0..mh {
-        let _ = write!(buf, "\x1b[{};{}H\x1b[0m", MROW + y, MCOL);
-        for _ in 0..sdx {
-            buf.push(' ');
+    if sprite {
+        draw_sprite_map(game, mw, mh, sdx, tint, vignette, zoom, &mut buf);
+        draw_fx_sprite(game, mw, mh, sdx, zoom, &mut buf);
+    } else {
+        for y in 0..mh {
+            let _ = write!(buf, "\x1b[{};{}H\x1b[0m", MROW + y, MCOL);
+            for _ in 0..sdx {
+                buf.push(' ');
+            }
+            let mut last: Option<(Color, Color)> = None;
+            for x in 0..mw {
+                let (ch, fg, mut bg) = cell_render(game, x, y, tint);
+                if !lights.is_empty() {
+                    bg = light_add(bg, &lights, x, y);
+                }
+                if vignette > 0.0 {
+                    bg = vignette_add(bg, x, y, mw, mh, vignette);
+                }
+                if last != Some((fg, bg)) {
+                    let _ = write!(buf, "\x1b[38;2;{};{};{};48;2;{};{};{}m", fg.0, fg.1, fg.2, bg.0, bg.1, bg.2);
+                    last = Some((fg, bg));
+                }
+                buf.push(ch);
+            }
         }
-        let mut last: Option<(Color, Color)> = None;
-        for x in 0..mw {
-            let (ch, fg, mut bg) = cell_render(game, x, y, tint);
-            if !lights.is_empty() {
-                bg = light_add(bg, &lights, x, y);
-            }
-            if vignette > 0.0 {
-                bg = vignette_add(bg, x, y, mw, mh, vignette);
-            }
-            if last != Some((fg, bg)) {
-                let _ = write!(buf, "\x1b[38;2;{};{};{};48;2;{};{};{}m", fg.0, fg.1, fg.2, bg.0, bg.1, bg.2);
-                last = Some((fg, bg));
-            }
-            buf.push(ch);
-        }
+        draw_fx(game, mw, mh, sdx, &mut buf);
     }
-
-    draw_fx(game, mw, mh, sdx, &mut buf);
     buf.push_str("\x1b[0m");
     draw_frame(game, cols, rows, mw, paused, speed_label, &mut buf);
     draw_panel(game, cols, rows, mw, &mut buf);
@@ -102,9 +106,16 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
         crate::game::Boon::None => String::new(),
         b => format!("  ·  {}", b.label()),
     };
+    let muts = if game.mutators.is_empty() {
+        String::new()
+    } else {
+        let names: Vec<&str> = game.mutators.iter().map(|m| m.label()).collect();
+        format!("  ·  \u{2622} {}", names.join("+"))
+    };
     let title = format!(
-        " ROGUE  ·  etage {}  ·  {}  ·  run #{}  ·  {}{}{}{} ",
+        " ABYSSAL  ·  etage {} {}  ·  {}  ·  run #{}  ·  {}{}{}{} ",
         game.floor,
+        game.biome.label(),
         game.class.label(),
         game.runs,
         if paused { "PAUSE" } else { speed_label },
@@ -112,6 +123,8 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
         boon,
         evt
     );
+    let title = format!("{}{}", title.trim_end(), muts);
+    let title = format!("{} ", title);
     let avail = (cols - 2).max(0) as usize;
     let t: String = title.chars().take(avail).collect();
     let fill = avail - t.chars().count();
@@ -128,7 +141,7 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
         buf.push('\u{2550}');
     }
     buf.push('\u{255d}');
-    let hint = " espace:pause  +/-:vitesse  m:mindset  a:son  b:marchand  s/l/n  q:quitter ";
+    let hint = " espace:pause  +/-:vitesse  m:mindset  a:son  g:sprite  z:zoom  b:marchand  s/l/n  q:quitter ";
     let h: String = hint.chars().take((cols - 4).max(0) as usize).collect();
     let _ = write!(buf, "\x1b[{};3H\x1b[38;2;130;130;150m{}", rows, h);
 
@@ -195,9 +208,9 @@ fn draw_panel(game: &Game, cols: i32, rows: i32, mw: i32, buf: &mut String) {
     }
 
     let ph = rows - 2;
-    let hh = 13.min(ph);
-    let cm = 9.min((ph - hh).max(0));
-    let jh = (ph - hh - cm).max(0);
+    let hh = 10.min(ph);
+    let eq = 14.min((ph - hh).max(0));
+    let jh = (ph - hh - eq).max(0);
     let ix = px + 1;
     let iw = pin - 2;
     let h = &game.hero;
@@ -214,17 +227,7 @@ fn draw_panel(game: &Game, cols: i32, rows: i32, mw: i32, buf: &mut String) {
     r += 1;
     put(buf, ix, r, (170, 170, 185), &format!("ATQ {:<4} DEF {:<4} or {}", h.atk(), h.def(), h.gold));
     r += 1;
-    let we = h.weapon_element();
-    let wtxt = if we != Element::Physical {
-        format!("\u{2694} {} [{}]", h.weapon, we.label())
-    } else {
-        format!("\u{2694} {}", h.weapon)
-    };
-    put(buf, ix, r, (200, 220, 230), &fit(&wtxt, iw));
-    r += 1;
-    put(buf, ix, r, (190, 200, 235), &fit(&format!("\u{25c8} {}", h.armor), iw));
-    r += 1;
-    put(buf, ix, r, (200, 170, 90), &fit(&format!("{} · pot {} · {}%", game.style.label(), h.potions, game.map.discovery_percent()), iw));
+    put(buf, ix, r, (200, 170, 90), &fit(&format!("{} · {}%", game.style.label(), game.map.discovery_percent()), iw));
     r += 1;
     put(buf, ix, r, (210, 150, 120), &fit(&status_line(game), iw));
     r += 1;
@@ -233,13 +236,43 @@ fn draw_panel(game: &Game, cols: i32, rows: i32, mw: i32, buf: &mut String) {
         put(buf, ix, r, col, &fit(&format!("Obj: {} {}", game.objective.desc(game.objective_target), mark), iw));
     }
 
-    let cy = 2 + hh;
-    if cm >= 4 {
-        draw_box(buf, px, cy, pin, cm, "CARTE", FRAME);
-        draw_minimap(game, ix, cy + 1, iw, cm - 2, buf);
+    let eqy = 2 + hh;
+    if eq >= 5 {
+        draw_box(buf, px, eqy, pin, eq, "EQUIPEMENT", FRAME);
+        let we = h.weapon_element();
+        let wsuffix = if we != Element::Physical { format!(" [{}]", we.label()) } else { String::new() };
+        let last = eqy + eq - 1;
+        let mut er = eqy + 1;
+        let line = |buf: &mut String, er: &mut i32, col: Color, s: String| {
+            if *er < last {
+                put(buf, ix, *er, col, &fit(&s, iw));
+                *er += 1;
+            }
+        };
+        line(buf, &mut er, (205, 222, 232), format!("\u{2694} {}{}", slot_txt(&h.weapon, h.weapon_bonus, h.weapon_affix), wsuffix));
+        line(buf, &mut er, (195, 205, 238), format!("\u{25c8} {}", slot_txt(&h.armor, h.armor_bonus, h.armor_affix)));
+        let ring = if h.ring != Affix::None { format!("anneau +{} {}", h.ring_bonus, h.ring.label()) } else { "anneau: -".to_string() };
+        let amu = if h.amulet != Affix::None { format!("amulette +{} {}", h.amulet_bonus, h.amulet.label()) } else { "amulette: -".to_string() };
+        line(buf, &mut er, (210, 200, 160), format!("\u{2218} {}", ring));
+        line(buf, &mut er, (210, 200, 160), format!("\u{2666} {}", amu));
+        if let Some(a) = h.set_affix() {
+            line(buf, &mut er, (255, 215, 120), format!("SET {} \u{00d7}{}", a.label(), h.set_bonus()));
+        }
+        er += 1;
+        line(buf, &mut er, (180, 215, 160), format!("sac: pot {}", h.potions));
+        line(buf, &mut er, (180, 215, 160), scroll_breakdown(&h.scrolls));
+        if h.talents.is_empty() {
+            line(buf, &mut er, (150, 160, 175), "talents: -".to_string());
+        } else {
+            let names: Vec<&str> = h.talents.iter().map(|t| t.label().split(' ').next().unwrap_or("")).collect();
+            let joined = format!("\u{2605} {}", names.join(", "));
+            for w in wrap_text(&joined, iw as usize) {
+                line(buf, &mut er, (185, 200, 235), w);
+            }
+        }
     }
 
-    let jy = 2 + hh + cm;
+    let jy = 2 + hh + eq;
     if jh >= 3 {
         draw_box(buf, px, jy, pin, jh, "JOURNAL", FRAME);
         let rows_avail = (jh - 2) as usize;
@@ -256,6 +289,35 @@ fn draw_panel(game: &Game, cols: i32, rows: i32, mw: i32, buf: &mut String) {
             put(buf, ix, jy + 1 + k as i32, *color, text);
         }
     }
+}
+
+fn slot_txt(name: &str, bonus: i32, affix: Affix) -> String {
+    let aff = if affix != Affix::None { format!(" {}", affix.label()) } else { String::new() };
+    if bonus > 0 {
+        format!("{} +{}{}", name, bonus, aff)
+    } else {
+        format!("{}{}", name, aff)
+    }
+}
+
+fn scroll_breakdown(scrolls: &[ScrollKind]) -> String {
+    if scrolls.is_empty() {
+        return "parch -".to_string();
+    }
+    let f = scrolls.iter().filter(|s| matches!(s, ScrollKind::Fireball)).count();
+    let g = scrolls.iter().filter(|s| matches!(s, ScrollKind::Freeze)).count();
+    let t = scrolls.iter().filter(|s| matches!(s, ScrollKind::Teleport)).count();
+    let mut parts: Vec<String> = Vec::new();
+    if f > 0 {
+        parts.push(format!("feu{}", f));
+    }
+    if g > 0 {
+        parts.push(format!("gel{}", g));
+    }
+    if t > 0 {
+        parts.push(format!("tp{}", t));
+    }
+    format!("parch {}", parts.join(" "))
 }
 
 fn status_line(game: &Game) -> String {
@@ -276,6 +338,9 @@ fn status_line(game: &Game) -> String {
     if h.bolt_cd > 0 {
         s.push_str(&format!("\u{26a1}{} ", h.bolt_cd));
     }
+    if h.ability_cd > 0 {
+        s.push_str(&format!("\u{2694}{} ", h.ability_cd));
+    }
     if s.is_empty() {
         s.push_str("(en forme)");
     }
@@ -283,105 +348,317 @@ fn status_line(game: &Game) -> String {
         s.push_str(&format!("\u{00a7}{} ", h.scrolls.len()));
     }
     if !h.talents.is_empty() {
-        s.push_str(&format!("\u{2605}{}", h.talents.len()));
+        s.push_str(&format!("\u{2605}{} ", h.talents.len()));
+    }
+    let set = h.set_bonus();
+    if set > 0 {
+        s.push_str(&format!("SET\u{00d7}{}", set));
     }
     s
-}
-
-fn draw_minimap(game: &Game, x: i32, y: i32, w: i32, h: i32, buf: &mut String) {
-    if w < 1 || h < 1 {
-        return;
-    }
-    let mw = game.map.width;
-    let mh = game.map.height;
-    let sx = ((mw + w - 1) / w).max(1);
-    let sy = ((mh + h - 1) / h).max(1);
-    for j in 0..h {
-        let _ = write!(buf, "\x1b[{};{}H", y + j, x);
-        let mut last: Option<Color> = None;
-        for i in 0..w {
-            let (ch, col) = minimap_cell(game, i * sx, j * sy, sx, sy);
-            if last != Some(col) {
-                let _ = write!(buf, "\x1b[38;2;{};{};{}m", col.0, col.1, col.2);
-                last = Some(col);
-            }
-            buf.push(ch);
-        }
-    }
-}
-
-fn minimap_cell(game: &Game, x0: i32, y0: i32, sx: i32, sy: i32) -> (char, Color) {
-    let mut hero = false;
-    let mut boss = false;
-    let mut mob = false;
-    let mut stairs = false;
-    let mut floor_vis = false;
-    let mut floor_exp = false;
-    let mut wall_exp = false;
-    for yy in y0..(y0 + sy).min(game.map.height) {
-        for xx in x0..(x0 + sx).min(game.map.width) {
-            if game.hero.x == xx && game.hero.y == yy {
-                hero = true;
-            }
-            if !game.map.is_explored(xx, yy) {
-                continue;
-            }
-            let vis = game.map.is_visible(xx, yy);
-            match game.map.tile(xx, yy) {
-                Tile::Wall => wall_exp = true,
-                Tile::Floor => {
-                    if vis {
-                        floor_vis = true;
-                    } else {
-                        floor_exp = true;
-                    }
-                }
-                Tile::StairsDown => stairs = true,
-            }
-            if vis {
-                if let Some(i) = game.monster_at(xx, yy) {
-                    if game.monsters[i].boss {
-                        boss = true;
-                    } else {
-                        mob = true;
-                    }
-                }
-            }
-        }
-    }
-    if hero {
-        ('@', (255, 245, 150))
-    } else if boss {
-        ('\u{2588}', (235, 70, 70))
-    } else if mob {
-        ('\u{2588}', (210, 110, 90))
-    } else if stairs {
-        ('>', (245, 235, 120))
-    } else if floor_vis {
-        ('\u{2588}', (90, 95, 115))
-    } else if floor_exp {
-        ('\u{2588}', (48, 50, 62))
-    } else if wall_exp {
-        ('\u{2588}', (28, 26, 30))
-    } else {
-        (' ', (0, 0, 0))
-    }
 }
 
 fn fit(text: &str, width: i32) -> String {
     text.chars().take(width.max(0) as usize).collect()
 }
 
-fn floor_tint(floor: i32) -> (f32, f32, f32) {
-    const THEMES: [(f32, f32, f32); 6] = [
-        (1.00, 1.00, 1.00),
-        (0.84, 1.06, 0.90),
-        (1.12, 0.92, 0.84),
-        (0.85, 0.96, 1.18),
-        (1.06, 0.86, 1.12),
-        (1.12, 1.00, 0.78),
-    ];
-    THEMES[((floor - 1).max(0) as usize) % THEMES.len()]
+fn biome_palette(biome: Biome) -> ((Color, Color), (Color, Color)) {
+    match biome {
+        Biome::Caverns => (((150, 134, 112), (78, 67, 54)), ((64, 61, 74), (26, 25, 32))),
+        Biome::Catacombs => (((124, 132, 112), (58, 66, 50)), ((60, 66, 56), (22, 28, 22))),
+        Biome::Frostvault => (((152, 172, 202), (60, 80, 104)), ((70, 86, 104), (26, 33, 44))),
+        Biome::Emberdepths => (((162, 112, 86), (88, 52, 40)), ((80, 58, 54), (32, 23, 21))),
+        Biome::Abyss => (((142, 110, 162), (70, 56, 88)), ((66, 58, 82), (28, 24, 40))),
+    }
+}
+
+fn px_dark(c: Color, f: f32) -> Color {
+    ((c.0 as f32 * f) as u8, (c.1 as f32 * f) as u8, (c.2 as f32 * f) as u8)
+}
+
+fn px_lite(c: Color, f: f32) -> Color {
+    (
+        (c.0 as f32 + (255.0 - c.0 as f32) * f) as u8,
+        (c.1 as f32 + (255.0 - c.1 as f32) * f) as u8,
+        (c.2 as f32 + (255.0 - c.2 as f32) * f) as u8,
+    )
+}
+
+fn px_blend(base: Color, over: Color, a: f32) -> Color {
+    (
+        (base.0 as f32 * (1.0 - a) + over.0 as f32 * a) as u8,
+        (base.1 as f32 * (1.0 - a) + over.1 as f32 * a) as u8,
+        (base.2 as f32 * (1.0 - a) + over.2 as f32 * a) as u8,
+    )
+}
+
+fn overlay_sprite(cell: &mut [[Color; 4]; 4], pat: &[&str; 4], color: Color, ox: i32, oy: i32) {
+    for (sy, row) in pat.iter().enumerate() {
+        for (sx, ch) in row.chars().enumerate() {
+            if sx >= 4 {
+                break;
+            }
+            let c = match ch {
+                'X' => color,
+                '.' => px_dark(color, 0.65),
+                '*' => px_lite(color, 0.45),
+                'o' => (24, 20, 26),
+                'v' => (235, 235, 235),
+                _ => continue,
+            };
+            let tx = sx as i32 + ox;
+            let ty = sy as i32 + oy;
+            if (0..4).contains(&tx) && (0..4).contains(&ty) {
+                cell[ty as usize][tx as usize] = c;
+            }
+        }
+    }
+}
+
+fn feature_color(kind: FeatureKind) -> Color {
+    match kind {
+        FeatureKind::Shrine => (205, 175, 255),
+        FeatureKind::Fountain => (110, 205, 235),
+        FeatureKind::Chest => (255, 210, 90),
+        FeatureKind::Altar => (215, 110, 235),
+        FeatureKind::Familiar => (120, 230, 180),
+        FeatureKind::Trap => (210, 95, 75),
+        FeatureKind::Forge => (255, 170, 70),
+    }
+}
+
+const SPR_HERO: [&str; 4] = [" ** ", " XX ", "XXXX", "X  X"];
+const SPR_CREATURE: [&str; 4] = [" XX ", "XXXX", "XooX", "X  X"];
+const SPR_BOSS: [&str; 4] = ["XXXX", "XooX", "XXXX", " XX "];
+const SPR_ITEM: [&str; 4] = [" X  ", "XXX ", " X  ", "    "];
+const SPR_MERCHANT: [&str; 4] = [" XX ", "XXXX", "X  X", "X  X"];
+const SPR_VERMIN: [&str; 4] = ["    ", "oXXo", "XXXX", "X  X"];
+const SPR_ARCHER: [&str; 4] = [" XX*", "XXX*", "Xoo*", "X X*"];
+const SPR_CASTER: [&str; 4] = [" *  ", " ** ", "XXXX", "XooX"];
+const SPR_BRUTE: [&str; 4] = ["XXXX", "XooX", "XXXX", "XXXX"];
+const SPR_DEMON: [&str; 4] = ["*XX*", "XXXX", "XooX", "X  X"];
+const SPR_DRAGON: [&str; 4] = ["*XX*", "XXXX", "XooX", "*XX*"];
+const SPR_MIMIC: [&str; 4] = ["XXXX", "XvvX", "XXXX", "X  X"];
+const SPR_FINAL: [&str; 4] = ["*vv*", "vXXv", "XooX", "vXXv"];
+const SPR_COIN: [&str; 4] = [" XX ", "X*vX", "Xv*X", " XX "];
+const SPR_POTION: [&str; 4] = [" .. ", " XX ", "X*XX", "XXXX"];
+const SPR_BLADE: [&str; 4] = ["  .v", " .X ", ".X. ", "*.  "];
+const SPR_ARMOR: [&str; 4] = [" XX ", "X..X", "X..X", "XXXX"];
+const SPR_RING: [&str; 4] = ["    ", " vv ", "v  v", " vv "];
+const SPR_AMULET: [&str; 4] = [" v  ", "v X ", " X v", "  v "];
+const SPR_SCROLL: [&str; 4] = ["XXXX", "X..X", "XXXX", " .. "];
+const SPR_CHEST: [&str; 4] = ["XXXX", "X**X", "XvvX", "XXXX"];
+const SPR_TRAP: [&str; 4] = ["v v ", "XXXX", "v v ", "    "];
+
+fn item_sprite(glyph: char) -> &'static [&'static str; 4] {
+    match glyph {
+        '$' => &SPR_COIN,
+        '!' => &SPR_POTION,
+        '/' => &SPR_BLADE,
+        '[' => &SPR_ARMOR,
+        '\u{2218}' => &SPR_RING,
+        '\u{2666}' => &SPR_AMULET,
+        '?' => &SPR_SCROLL,
+        _ => &SPR_ITEM,
+    }
+}
+
+fn feature_sprite(kind: FeatureKind) -> &'static [&'static str; 4] {
+    match kind {
+        FeatureKind::Chest => &SPR_CHEST,
+        FeatureKind::Trap => &SPR_TRAP,
+        FeatureKind::Fountain => &SPR_POTION,
+        _ => &SPR_ITEM,
+    }
+}
+
+fn monster_sprite(m: &crate::entity::Monster) -> &'static [&'static str; 4] {
+    if m.boss {
+        return if m.glyph == '\u{2638}' { &SPR_FINAL } else { &SPR_BOSS };
+    }
+    match m.glyph {
+        'r' => &SPR_VERMIN,
+        'a' => &SPR_ARCHER,
+        'w' => &SPR_CASTER,
+        'O' | 'T' => &SPR_BRUTE,
+        'D' => &SPR_DEMON,
+        'Y' => &SPR_DRAGON,
+        '\u{25a4}' => &SPR_MIMIC,
+        _ => &SPR_CREATURE,
+    }
+}
+
+fn sprite_cam(game: &Game, mw: i32, mh: i32, zoom: i32) -> (i32, i32, i32) {
+    let t = zoom.clamp(2, 8);
+    let camw = (mw / t).max(1);
+    let camh = (mh * 2 / t).max(1);
+    let cx0 = (game.hero.x - camw / 2).clamp(0, (game.map.width - camw).max(0));
+    let cy0 = (game.hero.y - camh / 2).clamp(0, (game.map.height - camh).max(0));
+    (cx0, cy0, t)
+}
+
+fn draw_fx_sprite(game: &Game, mw: i32, mh: i32, sdx: i32, zoom: i32, buf: &mut String) {
+    let (cx0, cy0, t) = sprite_cam(game, mw, mh, zoom);
+    let map_x = |wx: f32| MCOL + sdx + ((wx - cx0 as f32) * t as f32 + t as f32 * 0.5) as i32;
+    let map_y = |wy: f32| MROW + ((wy - cy0 as f32) * (t as f32 * 0.5) + t as f32 * 0.25) as i32;
+    for p in &game.fx.particles {
+        let x = map_x(p.x);
+        let y = map_y(p.y);
+        if x >= MCOL && x < MCOL + mw && y >= MROW && y < MROW + mh {
+            put(buf, x, y, p.color, &p.glyph.to_string());
+        }
+    }
+    for p in &game.fx.projectiles {
+        let x = map_x(p.x);
+        let y = map_y(p.y);
+        if x >= MCOL && x < MCOL + mw && y >= MROW && y < MROW + mh {
+            put(buf, x, y, p.color, &p.glyph.to_string());
+        }
+    }
+    for f in &game.fx.floats {
+        let x = map_x(f.x);
+        let y = map_y(f.y);
+        if x >= MCOL && x < MCOL + mw && y >= MROW && y < MROW + mh {
+            let room = (MCOL + mw - x).max(0) as usize;
+            let text: String = f.text.chars().take(room).collect();
+            put(buf, x, y, f.color, &text);
+        }
+    }
+}
+
+fn draw_sprite_map(game: &Game, mw: i32, mh: i32, sdx: i32, tint: (f32, f32, f32), vignette: f32, zoom: i32, buf: &mut String) {
+    let pw = mw;
+    let ph = mh * 2;
+    let (cx0, cy0, t) = sprite_cam(game, mw, mh, zoom);
+    let camw = (pw / t).max(1);
+    let camh = (ph / t).max(1);
+    let bgfill: Color = (6, 6, 9);
+    let mut fb = vec![bgfill; (pw * ph) as usize];
+    let ((wall_fg, wall_bg), (floor_fg, floor_bg)) = biome_palette(game.biome);
+
+    for ty in 0..camh {
+        for tx in 0..camw {
+            let wx = cx0 + tx;
+            let wy = cy0 + ty;
+            if !game.map.in_bounds(wx, wy) {
+                continue;
+            }
+            let visible = game.map.is_visible(wx, wy);
+            let explored = game.map.is_explored(wx, wy);
+            if !visible && !explored {
+                continue;
+            }
+            let light = if visible {
+                let dx = (wx - game.hero.x) as f32;
+                let dy = (wy - game.hero.y) as f32;
+                (1.2 - (dx * dx + dy * dy).sqrt() * 0.085).clamp(0.34, 1.0)
+            } else {
+                0.42
+            };
+            let tile = game.map.tile(wx, wy);
+            let mut cell = [[bgfill; 4]; 4];
+            for sy in 0..4usize {
+                for sx in 0..4usize {
+                    let base = match tile {
+                        Tile::Wall => {
+                            if sy == 0 {
+                                wall_fg
+                            } else if sy == 3 {
+                                px_dark(wall_bg, 0.78)
+                            } else {
+                                wall_bg
+                            }
+                        }
+                        Tile::Floor => {
+                            if (wx * 7 + wy * 13 + sx as i32 * 3 + sy as i32 * 5) & 7 == 0 {
+                                floor_fg
+                            } else {
+                                floor_bg
+                            }
+                        }
+                        Tile::StairsDown => floor_bg,
+                    };
+                    cell[sy][sx] = shade(base, light, tint);
+                }
+            }
+            if tile == Tile::StairsDown {
+                for &(ax, ay) in &[(1usize, 0usize), (2, 1), (1, 2), (0, 1), (1, 1)] {
+                    cell[ay][ax] = shade((255, 240, 140), light.max(0.8), (1.0, 1.0, 1.0));
+                }
+            }
+            if game.danger.iter().any(|&(a, b)| a == wx && b == wy) {
+                for row in cell.iter_mut() {
+                    for c in row.iter_mut() {
+                        *c = px_blend(*c, game.danger_color, 0.5);
+                    }
+                }
+            } else if game.cast_danger.iter().any(|&(a, b)| a == wx && b == wy) {
+                for row in cell.iter_mut() {
+                    for c in row.iter_mut() {
+                        *c = px_blend(*c, (235, 140, 60), 0.5);
+                    }
+                }
+            }
+            if visible {
+                let bob = ((game.anim_t / 18 + (wx + wy) as u32) % 2) as i32;
+                if game.hero.x == wx && game.hero.y == wy {
+                    let (lx, ly) = if game.lunge.2 > 0 { (game.lunge.0, game.lunge.1) } else { (0, 0) };
+                    overlay_sprite(&mut cell, &SPR_HERO, (255, 246, 150), lx, -bob + ly);
+                } else if game.pet.as_ref().is_some_and(|p| p.x == wx && p.y == wy) {
+                    overlay_sprite(&mut cell, &SPR_CREATURE, (120, 230, 180), 0, -bob);
+                } else if let Some(i) = game.monster_at(wx, wy) {
+                    let m = &game.monsters[i];
+                    overlay_sprite(&mut cell, monster_sprite(m), m.color, 0, -bob);
+                } else if game.merchant.as_ref().is_some_and(|mm| mm.x == wx && mm.y == wy) {
+                    overlay_sprite(&mut cell, &SPR_MERCHANT, (130, 235, 240), 0, 0);
+                } else if let Some(it) = game.items.iter().find(|it| it.x == wx && it.y == wy) {
+                    overlay_sprite(&mut cell, item_sprite(it.glyph), it.color, 0, 0);
+                } else if let Some(f) = game.features.iter().find(|f| f.x == wx && f.y == wy) {
+                    overlay_sprite(&mut cell, feature_sprite(f.kind), feature_color(f.kind), 0, 0);
+                }
+            }
+            if let Some(f) = game.flashes.iter().find(|f| f.0 == wx && f.1 == wy) {
+                for row in cell.iter_mut() {
+                    for c in row.iter_mut() {
+                        *c = px_blend(*c, f.2, 0.6);
+                    }
+                }
+            }
+            let ox = tx * t;
+            let oy = ty * t;
+            for py in 0..t {
+                for px in 0..t {
+                    let fx = ox + px;
+                    let fy = oy + py;
+                    if fx < pw && fy < ph {
+                        let sx = (px * 4 / t).min(3);
+                        let sy = (py * 4 / t).min(3);
+                        fb[(fy * pw + fx) as usize] = cell[sy as usize][sx as usize];
+                    }
+                }
+            }
+        }
+    }
+
+    for cy in 0..mh {
+        let _ = write!(buf, "\x1b[{};{}H\x1b[0m", MROW + cy, MCOL);
+        for _ in 0..sdx {
+            buf.push(' ');
+        }
+        let mut last: Option<(Color, Color)> = None;
+        for cx in 0..mw {
+            let mut top = fb[((2 * cy) * pw + cx) as usize];
+            let mut bot = fb[((2 * cy + 1) * pw + cx) as usize];
+            if vignette > 0.0 {
+                top = vignette_add(top, cx, cy, mw, mh, vignette);
+                bot = vignette_add(bot, cx, cy, mw, mh, vignette);
+            }
+            if last != Some((top, bot)) {
+                let _ = write!(buf, "\x1b[38;2;{};{};{};48;2;{};{};{}m", top.0, top.1, top.2, bot.0, bot.1, bot.2);
+                last = Some((top, bot));
+            }
+            buf.push('\u{2580}');
+        }
+    }
 }
 
 fn vignette_add(base: Color, x: i32, y: i32, mw: i32, mh: i32, strength: f32) -> Color {
@@ -447,9 +724,10 @@ fn cell_render(game: &Game, x: i32, y: i32, tint: (f32, f32, f32)) -> (char, Col
     let dy = (y - game.hero.y) as f32;
     let light = (1.2 - (dx * dx + dy * dy).sqrt() * 0.085).clamp(0.34, 1.0);
 
+    let ((wall_fg, wall_bg), (floor_fg, floor_bg)) = biome_palette(game.biome);
     let (terrain_fg, terrain_bg, terrain_ch) = match tile {
-        Tile::Wall => ((150, 134, 112), (78, 67, 54), ' '),
-        Tile::Floor => ((64, 61, 74), (26, 25, 32), '\u{00b7}'),
+        Tile::Wall => (wall_fg, wall_bg, ' '),
+        Tile::Floor => (floor_fg, floor_bg, '\u{00b7}'),
         Tile::StairsDown => ((255, 240, 140), (46, 42, 30), '>'),
     };
     let bg_lit = shade(terrain_bg, light, tint);
@@ -474,6 +752,7 @@ fn cell_render(game: &Game, x: i32, y: i32, tint: (f32, f32, f32)) -> (char, Col
             FeatureKind::Altar => ('\u{2628}', (215, 110, 235)),
             FeatureKind::Familiar => ('d', (120, 230, 180)),
             FeatureKind::Trap => ('^', (210, 95, 75)),
+            FeatureKind::Forge => ('\u{2692}', (255, 170, 70)),
         };
         result = (ch, shade(col, light.max(0.8), (1.0, 1.0, 1.0)), bg_lit);
     }

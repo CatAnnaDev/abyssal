@@ -39,6 +39,106 @@ impl FloorEvent {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum Biome {
+    Caverns,
+    Catacombs,
+    Frostvault,
+    Emberdepths,
+    Abyss,
+}
+
+impl Biome {
+    pub fn label(self) -> &'static str {
+        match self {
+            Biome::Caverns => "Cavernes",
+            Biome::Catacombs => "Catacombes",
+            Biome::Frostvault => "Glacier",
+            Biome::Emberdepths => "Tref-fonds",
+            Biome::Abyss => "Abime",
+        }
+    }
+
+    pub fn tint(self) -> (f32, f32, f32) {
+        match self {
+            Biome::Caverns => (1.05, 1.0, 0.9),
+            Biome::Catacombs => (0.86, 1.05, 0.9),
+            Biome::Frostvault => (0.82, 0.96, 1.22),
+            Biome::Emberdepths => (1.22, 0.84, 0.66),
+            Biome::Abyss => (1.04, 0.8, 1.2),
+        }
+    }
+
+    pub fn element(self) -> Option<Element> {
+        match self {
+            Biome::Caverns => None,
+            Biome::Catacombs => Some(Element::Poison),
+            Biome::Frostvault => Some(Element::Ice),
+            Biome::Emberdepths => Some(Element::Fire),
+            Biome::Abyss => Some(Element::Lightning),
+        }
+    }
+
+    pub fn style_id(self) -> i32 {
+        match self {
+            Biome::Caverns => 0,
+            Biome::Catacombs => 1,
+            Biome::Frostvault => 2,
+            Biome::Emberdepths => 3,
+            Biome::Abyss => 4,
+        }
+    }
+
+    pub fn fauna(self) -> &'static [char] {
+        match self {
+            Biome::Caverns => &['r', 'g', 'k', 'o'],
+            Biome::Catacombs => &['k', 's', 'h', 'T'],
+            Biome::Frostvault => &['s', 'a', 'k', 'g'],
+            Biome::Emberdepths => &['w', 'D', 'o', 'a'],
+            Biome::Abyss => &['D', 'Y', 'T', 'w'],
+        }
+    }
+
+    pub fn champion(self) -> (char, &'static str, Element) {
+        match self {
+            Biome::Caverns => ('o', "Roi-Gobelin des Cavernes", Element::Physical),
+            Biome::Catacombs => ('s', "Liche des Catacombes", Element::Poison),
+            Biome::Frostvault => ('s', "Seigneur de Givre", Element::Ice),
+            Biome::Emberdepths => ('w', "Archimage de Braise", Element::Fire),
+            Biome::Abyss => ('D', "Heraut de l'Abime", Element::Lightning),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum RoomKind {
+    Standard,
+    Treasure,
+    Challenge,
+    Rest,
+    Warren,
+}
+
+impl RoomKind {
+    pub fn label(self) -> &'static str {
+        match self {
+            RoomKind::Standard => "salle",
+            RoomKind::Treasure => "tresor",
+            RoomKind::Challenge => "defi",
+            RoomKind::Rest => "repos",
+            RoomKind::Warren => "nuee",
+        }
+    }
+}
+
+fn default_biome() -> Biome {
+    Biome::Caverns
+}
+
+fn default_room() -> RoomKind {
+    RoomKind::Standard
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MerchantPick {
     Weapon,
@@ -154,6 +254,74 @@ impl Playstyle {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Mutator {
+    Sanguinaire,
+    Cupidite,
+    Fragile,
+    Pullulement,
+    Champions,
+}
+
+impl Mutator {
+    pub const ALL: [Mutator; 5] = [Mutator::Sanguinaire, Mutator::Cupidite, Mutator::Fragile, Mutator::Pullulement, Mutator::Champions];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Mutator::Sanguinaire => "Sanguinaire",
+            Mutator::Cupidite => "Cupidite",
+            Mutator::Fragile => "Fragile",
+            Mutator::Pullulement => "Pullulement",
+            Mutator::Champions => "Champions",
+        }
+    }
+
+    fn count_mult(self) -> f32 {
+        match self {
+            Mutator::Pullulement => 1.6,
+            _ => 1.0,
+        }
+    }
+
+    fn hp_mult(self) -> f32 {
+        match self {
+            Mutator::Cupidite => 1.25,
+            Mutator::Pullulement => 0.7,
+            _ => 1.0,
+        }
+    }
+
+    fn atk_mult(self) -> f32 {
+        match self {
+            Mutator::Sanguinaire => 1.25,
+            _ => 1.0,
+        }
+    }
+
+    fn gold_mult(self) -> f32 {
+        match self {
+            Mutator::Cupidite => 2.0,
+            Mutator::Sanguinaire => 1.5,
+            _ => 1.0,
+        }
+    }
+
+    fn elite_add(self) -> f32 {
+        match self {
+            Mutator::Champions => 0.25,
+            _ => 0.0,
+        }
+    }
+
+    fn apply_hero(self, h: &mut Hero) {
+        if self == Mutator::Fragile {
+            h.might += 6;
+            h.max_hp = (h.max_hp * 7 / 10).max(10);
+            h.hp = h.max_hp;
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct LogLine {
     pub text: String,
@@ -175,6 +343,10 @@ pub struct Game {
     pub features: Vec<Feature>,
     pub pet: Option<Pet>,
     pub event: FloorEvent,
+    #[serde(default = "default_biome")]
+    pub biome: Biome,
+    #[serde(default = "default_room")]
+    pub room_kind: RoomKind,
     pub total_kills: i32,
     pub unlocked: Vec<String>,
     pub discovered: Vec<String>,
@@ -188,6 +360,8 @@ pub struct Game {
     pub diff_mult: f32,
     pub diff_label: String,
     pub boon: Boon,
+    #[serde(default)]
+    pub mutators: Vec<Mutator>,
     pub last_cause: String,
     pub death_quip: String,
     #[serde(skip)]
@@ -227,6 +401,10 @@ pub struct Game {
     pub sfx: Vec<Sound>,
     #[serde(skip)]
     pub low_hp_pulse: f32,
+    #[serde(skip)]
+    pub anim_t: u32,
+    #[serde(skip)]
+    pub lunge: (i32, i32, i32),
     #[serde(skip)]
     prev_tile: (i32, i32),
     #[serde(skip)]
@@ -284,6 +462,8 @@ impl Game {
             features: Vec::new(),
             pet: None,
             event: FloorEvent::Calm,
+            biome: Biome::Caverns,
+            room_kind: RoomKind::Standard,
             total_kills: 0,
             unlocked: Vec::new(),
             discovered: Vec::new(),
@@ -297,6 +477,7 @@ impl Game {
             diff_mult,
             diff_label,
             boon,
+            mutators: Vec::new(),
             last_cause: String::new(),
             death_quip: String::new(),
             last_action: "spawn",
@@ -319,6 +500,8 @@ impl Game {
             hud_note: String::new(),
             sfx: Vec::new(),
             low_hp_pulse: 0.0,
+            anim_t: 0,
+            lunge: (0, 0, 0),
             prev_tile: (-1, -1),
             turn_start_tile: (-1, -1),
             pursue_merchant: false,
@@ -327,6 +510,7 @@ impl Game {
             map_h,
             rng,
         };
+        game.roll_mutators();
         game.populate_floor(true);
         game
     }
@@ -366,25 +550,76 @@ impl Game {
 
         let mut monster_count = (4 + self.floor * 2).min(28) as usize;
         let mut item_count = (3 + self.floor).min(14) as usize;
+        let mut bonus_chests = 0usize;
         if self.event == FloorEvent::Treasure {
             monster_count = (monster_count / 2).max(2);
             item_count += 4;
         }
+        match self.room_kind {
+            RoomKind::Treasure => {
+                monster_count = (monster_count / 2).max(2);
+                item_count += 5;
+                bonus_chests += 4;
+            }
+            RoomKind::Challenge => {
+                monster_count += 3;
+                item_count += 2;
+            }
+            RoomKind::Warren => {
+                monster_count += 6;
+            }
+            RoomKind::Rest => {
+                monster_count = (monster_count / 3).max(1);
+            }
+            RoomKind::Standard => {}
+        }
+        monster_count = ((monster_count as f32 * self.mut_count_mult()) as usize).min(40);
 
+        let biome_el = self.biome.element();
+        let fauna = self.biome.fauna();
         for _ in 0..monster_count {
             if floor_tiles.is_empty() {
                 break;
             }
             let pick = self.rng.below(floor_tiles.len());
             let (x, y) = floor_tiles.swap_remove(pick);
-            self.monsters.push(Monster::roll(self.floor, x, y, &mut self.rng));
+            let mut m = Monster::roll_biased(self.floor, x, y, &mut self.rng, fauna);
+            if let Some(el) = biome_el {
+                if self.rng.chance(0.55) {
+                    m.element = el;
+                }
+            }
+            self.monsters.push(m);
         }
-        let elite_chance = (0.08 + self.floor as f32 * 0.012).min(0.35);
+        let mut elite_chance = (0.08 + self.floor as f32 * 0.012).min(0.35);
+        if self.room_kind == RoomKind::Challenge {
+            elite_chance = (elite_chance + 0.2).min(0.6);
+        } else if self.room_kind == RoomKind::Warren {
+            elite_chance *= 0.4;
+        }
+        elite_chance = (elite_chance + self.mut_elite_add()).min(0.75);
         let promote: Vec<bool> = (0..self.monsters.len()).map(|_| self.rng.chance(elite_chance)).collect();
         for (i, m) in self.monsters.iter_mut().enumerate() {
             if promote[i] {
                 m.promote();
             }
+        }
+
+        if self.floor >= 4 && self.floor % 5 != 0 && !floor_tiles.is_empty() && self.rng.chance(0.2) {
+            let pick = self.rng.below(floor_tiles.len());
+            let (x, y) = floor_tiles.swap_remove(pick);
+            let (glyph, name, element) = self.biome.champion();
+            let mut champ = Monster::specific(glyph, self.floor, x, y);
+            champ.promote();
+            champ.hp = (champ.hp * 9 / 5).max(1);
+            champ.max_hp = champ.hp;
+            champ.atk += 3 + self.floor / 4;
+            champ.name = name.to_string();
+            champ.element = element;
+            champ.gold_reward += 25 + self.floor * 2;
+            champ.xp_reward += 20 + self.floor;
+            self.monsters.push(champ);
+            self.push_log(format!("Un champion rode : {} !", name), (255, 150, 120));
         }
 
         for _ in 0..item_count {
@@ -414,7 +649,10 @@ impl Game {
         if self.pet.is_none() && self.rng.chance(0.15) {
             place_feature(&mut floor_tiles, &mut self.rng, FeatureKind::Familiar, &mut self.features);
         }
-        let chests = 1 + self.rng.below(2) + if self.event == FloorEvent::Treasure { 4 } else { 0 };
+        if self.floor >= 4 && self.rng.chance(0.08) {
+            place_feature(&mut floor_tiles, &mut self.rng, FeatureKind::Forge, &mut self.features);
+        }
+        let chests = 1 + self.rng.below(2) + if self.event == FloorEvent::Treasure { 4 } else { 0 } + bonus_chests;
         for _ in 0..chests {
             place_feature(&mut floor_tiles, &mut self.rng, FeatureKind::Chest, &mut self.features);
         }
@@ -448,12 +686,13 @@ impl Game {
             self.merchant = Some(Merchant::roll(self.floor, x, y, &mut self.rng, self.class.weapon_class(), self.class.armor_class()));
         }
 
-        if (self.diff_mult - 1.0).abs() > 0.01 {
-            let mult = self.diff_mult;
+        let hp_scale = self.diff_mult * self.mut_hp_mult();
+        let atk_scale = self.diff_mult * self.mut_atk_mult();
+        if (hp_scale - 1.0).abs() > 0.01 || (atk_scale - 1.0).abs() > 0.01 {
             for m in self.monsters.iter_mut() {
-                m.hp = ((m.hp as f32 * mult) as i32).max(1);
+                m.hp = ((m.hp as f32 * hp_scale) as i32).max(1);
                 m.max_hp = m.hp;
-                m.atk = ((m.atk as f32 * mult) as i32).max(1);
+                m.atk = ((m.atk as f32 * atk_scale) as i32).max(1);
             }
         }
 
@@ -492,9 +731,15 @@ impl Game {
         let fr = self.fov_radius();
         self.map.compute_fov(hx, hy, fr);
         if first {
-            self.push_log(format!("Vous entrez dans le donjon. Etage {}.", self.floor), WHITE);
+            self.push_log(format!("Vous entrez dans le donjon. Etage {} - {}.", self.floor, self.biome.label()), WHITE);
         } else {
-            self.push_log(format!("Vous descendez vers l'etage {}.", self.floor), MAGIC);
+            self.push_log(format!("Etage {} - {} ({}).", self.floor, self.biome.label(), self.room_kind.label()), MAGIC);
+        }
+        if self.room_kind == RoomKind::Rest {
+            self.hero.hp = self.hero.max_hp;
+            self.hero.burn = 0;
+            self.hero.poison = 0;
+            self.push_log("Une salle de repos : vous reprenez votre souffle.".into(), GOOD);
         }
     }
 
@@ -645,6 +890,9 @@ impl Game {
         if self.hero.bolt_cd > 0 {
             self.hero.bolt_cd -= 1;
         }
+        if self.hero.ability_cd > 0 {
+            self.hero.ability_cd -= 1;
+        }
         if self.hero.regen > 0 {
             self.hero.regen -= 1;
             self.hero.hp = (self.hero.hp + 2).min(self.hero.max_hp);
@@ -654,6 +902,11 @@ impl Game {
         }
         if self.event == FloorEvent::Inferno && self.rng.chance(0.06) {
             self.hero.burn = self.hero.burn.max(2);
+        }
+        match self.biome {
+            Biome::Emberdepths if self.rng.chance(0.045) => self.hero.burn = self.hero.burn.max(2),
+            Biome::Catacombs if self.rng.chance(0.045) => self.hero.poison = self.hero.poison.max(2),
+            _ => {}
         }
         let mut dot = 0;
         if self.hero.burn > 0 {
@@ -794,6 +1047,46 @@ impl Game {
         }
     }
 
+    fn mut_count_mult(&self) -> f32 {
+        self.mutators.iter().map(|m| m.count_mult()).product()
+    }
+    fn mut_hp_mult(&self) -> f32 {
+        self.mutators.iter().map(|m| m.hp_mult()).product()
+    }
+    fn mut_atk_mult(&self) -> f32 {
+        self.mutators.iter().map(|m| m.atk_mult()).product()
+    }
+    fn mut_gold_mult(&self) -> f32 {
+        self.mutators.iter().map(|m| m.gold_mult()).product()
+    }
+    fn mut_elite_add(&self) -> f32 {
+        self.mutators.iter().map(|m| m.elite_add()).sum()
+    }
+
+    fn roll_mutators(&mut self) {
+        self.mutators.clear();
+        if !self.rng.chance(0.55) {
+            return;
+        }
+        let mut pool: Vec<Mutator> = Mutator::ALL.to_vec();
+        let k = if self.rng.chance(0.3) { 2 } else { 1 };
+        for _ in 0..k {
+            if pool.is_empty() {
+                break;
+            }
+            let i = self.rng.below(pool.len());
+            self.mutators.push(pool.remove(i));
+        }
+        let muts = self.mutators.clone();
+        for m in muts {
+            m.apply_hero(&mut self.hero);
+        }
+        let names: Vec<&str> = self.mutators.iter().map(|m| m.label()).collect();
+        if !names.is_empty() {
+            self.push_log(format!("Mutateurs : {}", names.join(", ")), (235, 130, 200));
+        }
+    }
+
     fn start_new_run(&mut self) {
         self.runs += 1;
         self.floor = 1;
@@ -802,6 +1095,7 @@ impl Game {
         self.hero = Hero::fresh(hx, hy);
         self.class.apply(&mut self.hero);
         self.boon.apply(&mut self.hero);
+        self.roll_mutators();
         self.pet = None;
         self.apply_relics();
         self.phase = Phase::Playing;
@@ -816,6 +1110,9 @@ impl Game {
             return;
         }
         if self.act_heal() {
+            return;
+        }
+        if self.act_ability() {
             return;
         }
         if self.act_bolt() {
@@ -1005,6 +1302,121 @@ impl Game {
         false
     }
 
+    fn act_ability(&mut self) -> bool {
+        if self.hero.ability_cd > 0 {
+            return false;
+        }
+        match self.class {
+            HeroClass::Warrior => self.ability_charge(),
+            HeroClass::Rogue => self.ability_blink(),
+            HeroClass::Mage => self.ability_nova(),
+        }
+    }
+
+    fn ability_charge(&mut self) -> bool {
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+            for dist in 2..=3 {
+                let (tx, ty) = (hx + dx * dist, hy + dy * dist);
+                let Some(mi) = self.monster_at(tx, ty) else { continue };
+                if self.monsters[mi].boss {
+                    continue;
+                }
+                let mut clear = true;
+                for s in 1..dist {
+                    let (cx, cy) = (hx + dx * s, hy + dy * s);
+                    if !self.map.is_walkable(cx, cy) || self.monster_at(cx, cy).is_some() {
+                        clear = false;
+                        break;
+                    }
+                }
+                if !clear {
+                    continue;
+                }
+                let (lx, ly) = (hx + dx * (dist - 1), hy + dy * (dist - 1));
+                self.fx.projectile(hx, hy, lx, ly, '\u{00bb}', (255, 200, 120));
+                self.hero.x = lx;
+                self.hero.y = ly;
+                let fr = self.fov_radius();
+                self.map.compute_fov(lx, ly, fr);
+                self.fx.label(lx, ly, "CHARGE", (255, 180, 90));
+                self.fx.add_shake(4);
+                self.sfx.push(Sound::Crit);
+                let cc = self.hero_crit();
+                let (dmg, crit) = resolve(self.hero.atk() + 4, self.monsters[mi].def, &mut self.rng, cc);
+                let el = self.hero.weapon_element();
+                self.hit_monster(mi, dmg, crit, el);
+                self.hero.ability_cd = 7;
+                self.last_action = "charge";
+                return true;
+            }
+        }
+        false
+    }
+
+    fn ability_blink(&mut self) -> bool {
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let target = self
+            .monsters
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| {
+                let cheb = (m.x - hx).abs().max((m.y - hy).abs());
+                let man = (m.x - hx).abs() + (m.y - hy).abs();
+                man > 1 && cheb <= 5 && self.map.is_visible(m.x, m.y)
+            })
+            .min_by_key(|(_, m)| (m.x - hx).abs() + (m.y - hy).abs())
+            .map(|(i, _)| i);
+        let Some(mi) = target else { return false };
+        let (mx, my) = (self.monsters[mi].x, self.monsters[mi].y);
+        for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)] {
+            let (lx, ly) = (mx + dx, my + dy);
+            if self.map.is_walkable(lx, ly) && self.monster_at(lx, ly).is_none() && !(lx == hx && ly == hy) {
+                self.fx.burst(&mut self.rng, hx, hy, (150, 120, 220), 8, '\u{2022}');
+                self.hero.x = lx;
+                self.hero.y = ly;
+                let fr = self.fov_radius();
+                self.map.compute_fov(lx, ly, fr);
+                self.fx.label(lx, ly, "ASSAUT", (180, 140, 245));
+                self.fx.burst(&mut self.rng, lx, ly, (180, 140, 245), 10, '\u{2736}');
+                self.sfx.push(Sound::Crit);
+                let (dmg, crit) = resolve(self.hero.atk() + 2, self.monsters[mi].def, &mut self.rng, 1.0);
+                let el = self.hero.weapon_element();
+                self.hit_monster(mi, dmg, crit, el);
+                self.hero.ability_cd = 6;
+                self.last_action = "assaut";
+                return true;
+            }
+        }
+        false
+    }
+
+    fn ability_nova(&mut self) -> bool {
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let coords: Vec<(i32, i32)> = self
+            .monsters
+            .iter()
+            .filter(|m| (m.x - hx).abs().max((m.y - hy).abs()) <= 2)
+            .map(|m| (m.x, m.y))
+            .collect();
+        if coords.len() < 3 {
+            return false;
+        }
+        let dmg = 8 + self.floor * 2;
+        self.fx.burst(&mut self.rng, hx, hy, (130, 200, 255), 28, '\u{2737}');
+        self.fx.label(hx, hy, "NOVA", (140, 210, 255));
+        self.fx.add_shake(5);
+        self.sfx.push(Sound::Scroll);
+        for (cx, cy) in coords {
+            if let Some(j) = self.monster_at(cx, cy) {
+                self.hit_monster(j, dmg, false, Element::Ice);
+            }
+        }
+        self.hero.ability_cd = 9;
+        self.last_action = "nova";
+        true
+    }
+
     fn act_bolt(&mut self) -> bool {
         if self.hero.level < self.bolt_level() || self.hero.bolt_cd > 0 {
             return false;
@@ -1088,7 +1500,7 @@ impl Game {
             let m = self.monsters.swap_remove(idx);
             self.hero.kills += 1;
             self.total_kills += 1;
-            self.hero.gold += m.gold_reward;
+            self.hero.gold += (m.gold_reward as f32 * self.mut_gold_mult()) as i32;
             self.fx.bump_combo();
             self.sfx.push(if is_boss { Sound::BossHit } else { Sound::Kill });
             self.discover(&name);
@@ -1688,6 +2100,42 @@ impl Game {
                     self.die("un piege");
                 }
             }
+            FeatureKind::Forge => {
+                let cost = 25 + self.floor * 5;
+                if self.hero.gold < cost {
+                    self.push_log("La forge rare est froide : pas assez d'or.".into(), DIM);
+                    return;
+                }
+                self.hero.gold -= cost;
+                self.fx.burst(&mut self.rng, hx, hy, (255, 170, 70), 18, '\u{2737}');
+                self.fx.label(hx, hy, "FORGE", (255, 170, 70));
+                self.fx.add_shake(4);
+                let amt = 2 + self.floor / 6;
+                if self.hero.weapon_bonus <= self.hero.armor_bonus {
+                    self.hero.weapon_bonus += amt;
+                    self.push_log(format!("Forge rare ({} or) : {} ameliore (+{} ATQ).", cost, self.hero.weapon, amt), (255, 200, 110));
+                } else {
+                    self.hero.armor_bonus += amt;
+                    self.push_log(format!("Forge rare ({} or) : {} ameliore (+{} DEF).", cost, self.hero.armor, amt), (255, 200, 110));
+                }
+                if self.hero.weapon_affix == Affix::None || self.hero.armor_affix == Affix::None {
+                    let affixes = [Affix::Fire, Affix::Frost, Affix::Venom, Affix::Shock, Affix::Lifesteal, Affix::Keen, Affix::Regen, Affix::Thorns];
+                    let existing = [self.hero.weapon_affix, self.hero.armor_affix, self.hero.ring, self.hero.amulet]
+                        .into_iter()
+                        .find(|&a| a != Affix::None);
+                    let pick = existing.unwrap_or(affixes[self.rng.below(affixes.len())]);
+                    if self.hero.weapon_affix == Affix::None {
+                        self.hero.weapon_affix = pick;
+                        self.push_log(format!("La forge insuffle : arme {}.", pick.label()), (255, 190, 90));
+                    } else {
+                        self.hero.armor_affix = pick;
+                        self.push_log(format!("La forge insuffle : armure {}.", pick.label()), (255, 190, 90));
+                    }
+                    if let Some(a) = self.hero.set_affix() {
+                        self.push_log(format!("SET actif : {} x{} !", a.label(), self.hero.set_bonus()), (255, 215, 120));
+                    }
+                }
+            }
         }
     }
 
@@ -1728,6 +2176,7 @@ impl Game {
         self.class.crit_chance()
             + if self.hero.has_affix(Affix::Keen) { 0.12 } else { 0.0 }
             + 0.08 * self.hero.talent_count(Talent::Berserk) as f32
+            + 0.04 * self.hero.set_bonus() as f32
     }
 
     fn cleave_level(&self) -> i32 {
@@ -1759,9 +2208,13 @@ impl Game {
     }
 
     fn hero_attacks(&mut self, idx: usize) {
+        let (mx, my) = (self.monsters[idx].x, self.monsters[idx].y);
+        self.lunge = ((mx - self.hero.x).signum(), (my - self.hero.y).signum(), 3);
+        let el = self.hero.weapon_element();
+        let scol = if el != Element::Physical { el.color() } else { (235, 235, 245) };
+        self.fx.burst(&mut self.rng, mx, my, scol, 5, '\u{2215}');
         let cc = self.hero_crit();
         let (dmg, crit) = resolve(self.hero.atk(), self.monsters[idx].def, &mut self.rng, cc);
-        let el = self.hero.weapon_element();
         self.hit_monster(idx, dmg, crit, el);
     }
 
@@ -1832,6 +2285,34 @@ impl Game {
                 }
             }
 
+            if self.monsters[i].heals && self.monsters[i].cast_cd == 0 {
+                let mut target = None;
+                let mut bestd = i32::MAX;
+                for j in 0..self.monsters.len() {
+                    if j == i {
+                        continue;
+                    }
+                    let mj = &self.monsters[j];
+                    if mj.hp < mj.max_hp {
+                        let d = (mj.x - mx).abs().max((mj.y - my).abs());
+                        if d <= 4 && d < bestd {
+                            bestd = d;
+                            target = Some(j);
+                        }
+                    }
+                }
+                if let Some(j) = target {
+                    let heal = 5 + self.floor / 2;
+                    let mj = &mut self.monsters[j];
+                    mj.hp = (mj.hp + heal).min(mj.max_hp);
+                    let (tx, ty) = (mj.x, mj.y);
+                    self.monsters[i].cast_cd = 6;
+                    self.fx.burst(&mut self.rng, tx, ty, (120, 235, 180), 8, '\u{2726}');
+                    self.fx.label(tx, ty, "+", (120, 235, 180));
+                    continue;
+                }
+            }
+
             if self.monsters[i].cast_wind > 0 {
                 self.monsters[i].cast_wind -= 1;
                 if self.monsters[i].cast_wind == 0 {
@@ -1883,6 +2364,27 @@ impl Game {
                 self.cast_danger.push((hx, hy));
                 self.fx.label(mx, my, "!", (235, 150, 60));
                 continue;
+            }
+
+            let fleeing = self.monsters[i].flees && self.monsters[i].hp * 100 < self.monsters[i].max_hp * 35;
+            if fleeing {
+                let mut best: Option<(i32, i32, i32)> = None;
+                for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                    let (nx, ny) = (mx + dx, my + dy);
+                    if self.map.is_walkable(nx, ny) && self.monster_at(nx, ny).is_none() && !(nx == hx && ny == hy) {
+                        let d = (nx - hx).abs() + (ny - hy).abs();
+                        if best.map_or(true, |b| d > b.2) {
+                            best = Some((nx, ny, d));
+                        }
+                    }
+                }
+                if let Some((nx, ny, d)) = best {
+                    if d > manhattan {
+                        self.monsters[i].x = nx;
+                        self.monsters[i].y = ny;
+                        continue;
+                    }
+                }
             }
 
             let blocked: Vec<(i32, i32)> = self
@@ -2125,11 +2627,102 @@ impl Game {
         self.phase = Phase::Dead(DEATH_HOLD);
     }
 
+    fn roll_biome(&mut self) -> Biome {
+        let f = self.floor;
+        let weights: [(Biome, i32); 5] = [
+            (Biome::Caverns, (20 - f).max(2)),
+            (Biome::Catacombs, (16 - (f - 5).abs()).max(2)),
+            (Biome::Frostvault, (13 - (f - 11).abs()).max(1)),
+            (Biome::Emberdepths, (13 - (f - 16).abs()).max(1)),
+            (Biome::Abyss, (f - 6).max(1)),
+        ];
+        let total: i32 = weights.iter().map(|(_, w)| w).sum();
+        let mut roll = self.rng.below(total.max(1) as usize) as i32;
+        for (b, w) in weights {
+            roll -= w;
+            if roll < 0 {
+                return b;
+            }
+        }
+        Biome::Caverns
+    }
+
+    fn roll_room(&mut self) -> RoomKind {
+        match self.rng.below(100) {
+            0..=38 => RoomKind::Standard,
+            39..=58 => RoomKind::Treasure,
+            59..=76 => RoomKind::Challenge,
+            77..=89 => RoomKind::Warren,
+            _ => RoomKind::Rest,
+        }
+    }
+
+    fn room_appeal(&self, room: RoomKind) -> i32 {
+        match self.style {
+            Playstyle::Completionist => match room {
+                RoomKind::Treasure => 4,
+                RoomKind::Challenge => 3,
+                RoomKind::Warren => 2,
+                RoomKind::Standard => 1,
+                RoomKind::Rest => 0,
+            },
+            Playstyle::Combatant => match room {
+                RoomKind::Challenge => 4,
+                RoomKind::Warren => 3,
+                RoomKind::Treasure => 1,
+                RoomKind::Standard => 1,
+                RoomKind::Rest => 0,
+            },
+            Playstyle::Rusher => match room {
+                RoomKind::Rest => 3,
+                RoomKind::Standard => 2,
+                RoomKind::Treasure => 1,
+                RoomKind::Warren => 0,
+                RoomKind::Challenge => 0,
+            },
+        }
+    }
+
+    fn choose_branch(&mut self) {
+        let n = 2 + self.rng.below(2);
+        let candidates: Vec<(Biome, RoomKind)> = (0..n).map(|_| (self.roll_biome(), self.roll_room())).collect();
+        let hurt = self.hp_fraction() < 0.4;
+        let mut best = 0usize;
+        let mut best_score = i32::MIN;
+        for (i, &(_, room)) in candidates.iter().enumerate() {
+            let mut score = self.room_appeal(room) * 2;
+            if hurt && room == RoomKind::Rest {
+                score += 7;
+            }
+            if hurt && room == RoomKind::Challenge {
+                score -= 3;
+            }
+            score += self.rng.below(2) as i32;
+            if score > best_score {
+                best_score = score;
+                best = i;
+            }
+        }
+        let (biome, room) = candidates[best];
+        self.biome = biome;
+        self.room_kind = room;
+        let mut line = String::from("Voie : ");
+        for (i, (b, r)) in candidates.iter().enumerate() {
+            if i == best {
+                let _ = std::fmt::Write::write_fmt(&mut line, format_args!("[{} {}] ", b.label(), r.label()));
+            } else {
+                let _ = std::fmt::Write::write_fmt(&mut line, format_args!("{} {} · ", b.label(), r.label()));
+            }
+        }
+        self.push_log(line, (170, 205, 150));
+    }
+
     fn descend(&mut self) {
         if self.objective == Objective::Swift && !self.objective_done && self.floor_turns <= self.objective_target {
             self.complete_objective();
         }
         self.floor += 1;
+        self.choose_branch();
         self.best_floor = self.best_floor.max(self.floor);
         if self.floor >= 10 {
             self.unlock("plongeur", "Plongeur - etage 10");
@@ -2259,7 +2852,7 @@ mod tests {
             }
             assert!(game.map.in_bounds(game.hero.x, game.hero.y));
             sink.clear();
-            crate::render::draw(&game, 80 + super::super_panel(), 30, false, "1x", &mut sink);
+            crate::render::draw(&game, 80 + super::super_panel(), 30, false, "1x", false, 4, &mut sink);
         }
         assert!(game.best_floor >= 1);
     }

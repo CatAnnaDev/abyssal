@@ -46,6 +46,7 @@ The game plays itself. Input is optional:
 | `+` / `-` | faster / slower (lent → ultra) |
 | `m` / `1` `2` `3` | cycle / set the hero's mindset |
 | `a` | mute / unmute sound |
+| `g` | toggle sprite view (half-block pixel-art) / classic glyph map |
 | `s` / `l` | save / load |
 | `n` | new run |
 | `q` / `esc` | save & quit |
@@ -55,9 +56,17 @@ Progress autoloads on launch (`abyssal.save.json`).
 ## Features
 
 - Procedural dungeons with rooms, corridors, LOS field-of-view and a discovery meter
-- Three hero classes (Warrior / Rogue / Mage) with distinct weapons, armor, crits, cleave and bolts
+- Branching descents: at every stairway the AI weighs 2–3 paths by mindset (and heads for a Rest branch when wounded), each leading to a biome and a room type (treasure / challenge / warren / rest)
+- Five biomes (Caverns, Catacombs, Frostvault, Emberdepths, Abyss), each with its own palette, lighting tint, biased fauna, ambient hazard, a themed champion mini-boss, and musical key
+- Two render modes (toggle with `g`): the classic colored-glyph map, or a half-block pixel-art "sprite" view — a hero-centred camera with procedural per-archetype sprites, distinct item/feature icons, an idle bob, particles and floating damage, all drawn in any truecolor terminal with no asset files (zoom with `z`)
+- Three hero classes (Warrior / Rogue / Mage) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown (Warrior charge, Rogue blink-strike, Mage ice nova)
 - Elemental system (fire / ice / poison / lightning) with resistances, weaknesses and on-hit effects
 - Loot rarity and affixes, rings, amulets, scrolls, and class-restricted equipment
+- Set bonuses (matching affixes across gear slots grant scaling ATK/DEF/crit) and a rare Forge feature that spends gold to upgrade a gear piece (and can enchant toward completing a set)
+- A live panel showing the full loadout — weapon/armor with bonus & affix, ring, amulet, set bonus, potions, scrolls by type, and talents
+- Run mutators (Sanguinaire, Cupidite, Fragile, Pullulement, Champions) rolled per run that twist spawns, scaling and rewards
+- A persistent lifetime profile (runs, deaths, deepest floor, best score, total kills) shown on the pre-game menu
+- Monster behaviors beyond melee: ranged casters, healers that mend wounded allies, and skirmishers that flee when near death
 - Level-up talents, persistent relics unlocked through achievements
 - Unique floor bosses and a final boss, each telegraphing charge / volley / summon attacks the hero can dodge
 - Ranged casters that wind up and can be sidestepped

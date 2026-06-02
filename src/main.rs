@@ -6,6 +6,7 @@ mod fx;
 mod game;
 mod map;
 mod render;
+mod profile;
 mod rng;
 mod twitch;
 
@@ -108,7 +109,7 @@ const M_BOONS: [(&str, Boon); 4] = [
     ("Riche", Boon::Rich),
 ];
 
-fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool) -> io::Result<MenuResult> {
+fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: &profile::Profile) -> io::Result<MenuResult> {
     use std::fmt::Write as _;
     use std::io::Write as _;
     let mut sel = 0i32;
@@ -140,7 +141,7 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool) -> io::Re
         }
         buf.push('\u{255d}');
 
-        put(&mut buf, ox + 3, oy + 1, (255, 225, 130), "ROGUE  —  nouvelle exploration");
+        put(&mut buf, ox + 3, oy + 1, (255, 225, 130), "ABYSSAL  —  nouvelle exploration");
         put(&mut buf, ox + 3, oy + 2, c, &"\u{2500}".repeat((bw - 6) as usize));
 
         let values = [
@@ -157,6 +158,15 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool) -> io::Re
             put(&mut buf, ox + 24, y, (210, 220, 235), &format!("\u{2039} {:^14} \u{203a}", values[r]));
         }
 
+        if profile.runs > 0 {
+            put(
+                &mut buf,
+                ox + 3,
+                oy + bh - 5,
+                (170, 150, 110),
+                &format!("Profil: {} runs · etage max {} · score {} · {} kills", profile.runs, profile.best_floor, profile.best_score, profile.total_kills),
+            );
+        }
         put(&mut buf, ox + 3, oy + bh - 4, c, &"\u{2500}".repeat((bw - 6) as usize));
         put(&mut buf, ox + 3, oy + bh - 3, (150, 200, 150), "Entree: lancer    fleches: choisir/changer");
         let cont = if has_save { "c: continuer la sauvegarde    q: quitter" } else { "q: quitter" };
@@ -220,8 +230,9 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
     let (mut cols, mut rows, mut map_w, mut map_h) = dims(raw_c, raw_r);
 
     let has_save = std::path::Path::new(game::SAVE_PATH).exists();
+    let mut profile = profile::Profile::load();
     let mut setup: Option<Setup> = None;
-    let mut game = match menu(stdout, cols, rows, has_save)? {
+    let mut game = match menu(stdout, cols, rows, has_save, &profile)? {
         MenuResult::Quit => return Ok(()),
         MenuResult::Continue => Game::load().unwrap_or_else(|| Game::new(map_w, map_h, seed())),
         MenuResult::Start(s) => {
@@ -248,11 +259,15 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
 
     let mut speed = 1usize;
     let mut paused = false;
+    let mut sprite_mode = false;
+    let sprite_zooms = [3i32, 4, 6];
+    let mut zoom_idx = 1usize;
     let mut accumulator = 0.0f32;
     let mut last = Instant::now();
     let mut heartbeat_acc = 0.0f32;
     let mut shop_window = 0.0f32;
     let mut prev_merchant = false;
+    let mut was_dead = matches!(game.phase, game::Phase::Dead(_));
 
     loop {
         while event::poll(Duration::ZERO)? {
@@ -289,6 +304,14 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                         game.push_log(if audio.muted { "Son coupe." } else { "Son active." }.into(), (130, 235, 240));
                     }
                     KeyCode::Char('m') => game.cycle_style(),
+                    KeyCode::Char('g') => {
+                        sprite_mode = !sprite_mode;
+                        let _ = stdout.execute(Clear(ClearType::All));
+                    }
+                    KeyCode::Char('z') => {
+                        zoom_idx = (zoom_idx + 1) % sprite_zooms.len();
+                        let _ = stdout.execute(Clear(ClearType::All));
+                    }
                     KeyCode::Char('b') => game.spawn_test_merchant(),
                     KeyCode::Char('1') => game.set_style(Playstyle::Completionist),
                     KeyCode::Char('2') => game.set_style(Playstyle::Combatant),
@@ -424,10 +447,20 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
             heartbeat_acc = 0.0;
         }
         game.low_hp_pulse *= 0.85;
+        audio.set_biome(game.biome.style_id());
         audio.set_music_mode(game.music_mode());
         audio.tick();
+        game.anim_t = game.anim_t.wrapping_add(1);
+        if game.lunge.2 > 0 {
+            game.lunge.2 -= 1;
+        }
+        let dead_now = matches!(game.phase, game::Phase::Dead(_));
+        if dead_now && !was_dead {
+            profile.record_death(game.floor, game.last_score, game.hero.kills, game.hero.gold);
+        }
+        was_dead = dead_now;
 
-        render::draw(&game, cols, rows, paused, SPEEDS[speed].0, stdout);
+        render::draw(&game, cols, rows, paused, SPEEDS[speed].0, sprite_mode, sprite_zooms[zoom_idx], stdout);
 
         std::thread::sleep(Duration::from_millis(12));
         if struck {

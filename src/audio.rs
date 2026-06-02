@@ -291,11 +291,51 @@ enum Stem {
     Boss,
 }
 
-fn music_stem(stem: Stem) -> Vec<f32> {
-    let bpm = 96.0f32;
-    let beat = SR as f32 * 60.0 / bpm;
+struct Style {
+    key: i32,
+    minor: bool,
+    bpm: f32,
+    pad: Wave,
+    lead: Wave,
+    drums: u8,
+}
+
+const STYLES: [Style; 5] = [
+    Style { key: 0, minor: false, bpm: 96.0, pad: Wave::Tri, lead: Wave::Square, drums: 1 },
+    Style { key: -2, minor: true, bpm: 84.0, pad: Wave::Sine, lead: Wave::Tri, drums: 0 },
+    Style { key: 3, minor: false, bpm: 92.0, pad: Wave::Sine, lead: Wave::Tri, drums: 1 },
+    Style { key: -4, minor: true, bpm: 104.0, pad: Wave::Square, lead: Wave::Square, drums: 2 },
+    Style { key: -5, minor: true, bpm: 76.0, pad: Wave::Sine, lead: Wave::Square, drums: 1 },
+];
+
+const MAJOR_CHORDS: [[i32; 4]; 8] = [
+    [60, 64, 67, 71],
+    [55, 59, 62, 67],
+    [57, 60, 64, 67],
+    [53, 57, 60, 65],
+    [50, 53, 57, 60],
+    [55, 59, 62, 65],
+    [52, 55, 59, 62],
+    [57, 60, 64, 67],
+];
+const MAJOR_BASS: [i32; 8] = [36, 43, 45, 41, 38, 43, 40, 45];
+const MINOR_CHORDS: [[i32; 4]; 8] = [
+    [57, 60, 64, 69],
+    [53, 57, 60, 65],
+    [60, 64, 67, 72],
+    [55, 59, 62, 67],
+    [50, 53, 57, 62],
+    [57, 60, 64, 69],
+    [52, 56, 59, 64],
+    [57, 60, 64, 69],
+];
+const MINOR_BASS: [i32; 8] = [45, 41, 36, 43, 38, 45, 40, 45];
+
+fn music_stem(stem: Stem, sid: i32) -> Vec<f32> {
+    let st = &STYLES[(sid.max(0) as usize) % STYLES.len()];
+    let beat = SR as f32 * 60.0 / st.bpm;
     let eighth = beat / 2.0;
-    let bars = 4usize;
+    let bars = 8usize;
     let total = (beat * 4.0 * bars as f32) as usize;
     let mut buf = vec![0.0f32; total];
     let mut seed = match stem {
@@ -303,20 +343,20 @@ fn music_stem(stem: Stem) -> Vec<f32> {
         Stem::Combat => 0x9E37_79B9,
         Stem::Boss => 0x1B56_C4E9,
     };
+    let (chords_src, bass_src) = if st.minor { (&MINOR_CHORDS, &MINOR_BASS) } else { (&MAJOR_CHORDS, &MAJOR_BASS) };
 
-    let pads: [&[i32]; 4] = [&[60, 64, 67, 71], &[62, 67, 71, 74], &[57, 60, 64, 67], &[53, 57, 60, 64]];
-    let basses: [i32; 4] = [36, 43, 45, 41];
-
-    for (bar, chord) in pads.iter().enumerate() {
+    for bar in 0..bars {
+        let chord: [i32; 4] = chords_src[bar].map(|n| n + st.key);
+        let bassn = bass_src[bar] + st.key;
         let bar_start = (bar as f32 * 4.0 * beat) as usize;
         let bar_len = 4.0 * beat / SR as f32;
         match stem {
             Stem::Base => {
                 for &m in chord.iter() {
-                    add_voice(&mut buf, bar_start, hz(m), bar_len * 0.98, 0.06, Wave::Tri, 0.06, 0.2);
+                    add_voice(&mut buf, bar_start, hz(m), bar_len * 0.98, 0.06, st.pad, 0.06, 0.2);
                 }
-                add_voice(&mut buf, bar_start, hz(basses[bar]), beat * 2.0 / SR as f32, 0.2, Wave::Sine, 0.005, 0.06);
-                add_voice(&mut buf, bar_start + (beat * 2.0) as usize, hz(basses[bar]), beat * 2.0 / SR as f32, 0.2, Wave::Sine, 0.005, 0.06);
+                add_voice(&mut buf, bar_start, hz(bassn), beat * 2.0 / SR as f32, 0.2, Wave::Sine, 0.005, 0.06);
+                add_voice(&mut buf, bar_start + (beat * 2.0) as usize, hz(bassn), beat * 2.0 / SR as f32, 0.2, Wave::Sine, 0.005, 0.06);
                 for slot in 0..8 {
                     if slot % 2 == 1 {
                         add_hat(&mut buf, bar_start + (slot as f32 * eighth) as usize, 0.08, &mut seed);
@@ -324,6 +364,9 @@ fn music_stem(stem: Stem) -> Vec<f32> {
                 }
                 add_kick(&mut buf, bar_start, 0.55);
                 add_kick(&mut buf, bar_start + (beat * 2.0) as usize, 0.55);
+                if st.drums >= 1 {
+                    add_kick(&mut buf, bar_start + (beat * 2.0 + eighth * 1.5) as usize, 0.3);
+                }
                 add_snare(&mut buf, bar_start + beat as usize, 0.35, &mut seed);
                 add_snare(&mut buf, bar_start + (beat * 3.0) as usize, 0.35, &mut seed);
             }
@@ -332,14 +375,18 @@ fn music_stem(stem: Stem) -> Vec<f32> {
                 for slot in 0..8 {
                     let at = bar_start + (slot as f32 * eighth) as usize;
                     let m = chord[arp[slot] % chord.len()] + 12;
-                    add_voice(&mut buf, at, hz(m), eighth * 0.85 / SR as f32, 0.1, Wave::Square, 0.003, 0.04);
-                    add_hat(&mut buf, at, if slot % 2 == 1 { 0.12 } else { 0.07 }, &mut seed);
+                    add_voice(&mut buf, at, hz(m), eighth * 0.85 / SR as f32, 0.1, st.lead, 0.003, 0.04);
+                    let hat_vol = if st.drums >= 2 { 0.13 } else if slot % 2 == 1 { 0.12 } else { 0.07 };
+                    add_hat(&mut buf, at, hat_vol, &mut seed);
+                }
+                if (bar % 2) == 1 {
+                    add_voice(&mut buf, bar_start, hz(chord[3] + 12), beat / SR as f32, 0.09, st.lead, 0.01, 0.3);
                 }
                 add_kick(&mut buf, bar_start + (beat * 2.0 + eighth * 1.5) as usize, 0.4);
                 add_snare(&mut buf, bar_start + (beat * 3.0 + eighth) as usize, 0.18, &mut seed);
             }
             Stem::Boss => {
-                let root = basses[bar] - 12;
+                let root = bassn - 12;
                 add_voice(&mut buf, bar_start, hz(root), bar_len * 0.95, 0.16, Wave::Square, 0.02, 0.15);
                 add_voice(&mut buf, bar_start, hz(root + 6), bar_len * 0.5, 0.05, Wave::Square, 0.02, 0.2);
                 for b in 0..8 {
@@ -367,6 +414,7 @@ pub struct Audio {
     handle: Option<OutputStreamHandle>,
     music: Vec<StemSink>,
     music_level: f32,
+    voice: i32,
     volume: f32,
     pub muted: bool,
 }
@@ -375,6 +423,7 @@ impl Audio {
     pub fn new(ambient_on: bool, master_volume: f32, ambient_volume: f32) -> Self {
         let volume = master_volume.clamp(0.0, 2.0);
         let music_level = (ambient_volume * volume).clamp(0.0, 2.0);
+        let voice = 0i32;
         match OutputStream::try_default() {
             Ok((stream, handle)) => {
                 let mut music = Vec::new();
@@ -383,14 +432,28 @@ impl Audio {
                         if let Ok(sink) = Sink::try_new(&handle) {
                             let start = if i == 0 { music_level } else { 0.0 };
                             sink.set_volume(start);
-                            sink.append(SamplesBuffer::new(1, SR, music_stem(stem)).repeat_infinite());
+                            sink.append(SamplesBuffer::new(1, SR, music_stem(stem, voice)).repeat_infinite());
                             music.push(StemSink { sink, cur: start, target: start });
                         }
                     }
                 }
-                Audio { _stream: Some(stream), handle: Some(handle), music, music_level, volume, muted: false }
+                Audio { _stream: Some(stream), handle: Some(handle), music, music_level, voice, volume, muted: false }
             }
-            Err(_) => Audio { _stream: None, handle: None, music: Vec::new(), music_level, volume, muted: false },
+            Err(_) => Audio { _stream: None, handle: None, music: Vec::new(), music_level, voice, volume, muted: false },
+        }
+    }
+
+    pub fn set_biome(&mut self, style: i32) {
+        if self.voice == style || self.music.len() < 3 {
+            return;
+        }
+        self.voice = style;
+        let stems = [Stem::Base, Stem::Combat, Stem::Boss];
+        for (i, st) in self.music.iter_mut().enumerate() {
+            st.sink.clear();
+            st.sink.set_volume(st.cur);
+            st.sink.append(SamplesBuffer::new(1, SR, music_stem(stems[i], style)).repeat_infinite());
+            st.sink.play();
         }
     }
 
@@ -505,30 +568,33 @@ mod preview {
         }
         write_wav(&format!("{}/_all_sfx.wav", dir), &montage);
 
-        let base = music_stem(Stem::Base);
-        let combat = music_stem(Stem::Combat);
-        let boss = music_stem(Stem::Boss);
-        let mix = |layers: &[&Vec<f32>]| -> Vec<f32> {
-            let mut out = vec![0.0f32; base.len()];
-            for layer in layers {
-                for (o, v) in out.iter_mut().zip(layer.iter()) {
-                    *o += v;
+        let biomes = ["caverns", "catacombs", "frostvault", "emberdepths", "abyss"];
+        for (sid, bname) in biomes.iter().enumerate() {
+            let base = music_stem(Stem::Base, sid as i32);
+            let combat = music_stem(Stem::Combat, sid as i32);
+            let boss = music_stem(Stem::Boss, sid as i32);
+            let mix = |layers: &[&Vec<f32>]| -> Vec<f32> {
+                let mut out = vec![0.0f32; base.len()];
+                for layer in layers {
+                    for (o, v) in out.iter_mut().zip(layer.iter()) {
+                        *o += v;
+                    }
                 }
+                out.iter().map(|s| (s * 0.45).clamp(-1.0, 1.0)).collect()
+            };
+            let scenes = [
+                ("calm", mix(&[&base])),
+                ("combat", mix(&[&base, &combat])),
+                ("boss", mix(&[&base, &combat, &boss])),
+            ];
+            for (scene, loop_buf) in &scenes {
+                let mut x2 = Vec::new();
+                for _ in 0..2 {
+                    x2.extend_from_slice(loop_buf);
+                }
+                write_wav(&format!("{}/music_{}_{}.wav", dir, bname, scene), &x2);
             }
-            out.iter().map(|s| (s * 0.45).clamp(-1.0, 1.0)).collect()
-        };
-        let scenes = [
-            ("music_calm", mix(&[&base])),
-            ("music_combat", mix(&[&base, &combat])),
-            ("music_boss", mix(&[&base, &combat, &boss])),
-        ];
-        for (name, loop_buf) in &scenes {
-            let mut x3 = Vec::new();
-            for _ in 0..3 {
-                x3.extend_from_slice(loop_buf);
-            }
-            write_wav(&format!("{}/{}.wav", dir, name), &x3);
         }
-        assert!(!montage.is_empty() && !base.is_empty());
+        assert!(!montage.is_empty());
     }
 }

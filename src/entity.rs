@@ -307,6 +307,8 @@ pub struct Hero {
     pub amulet_bonus: i32,
     pub scrolls: Vec<ScrollKind>,
     pub talents: Vec<Talent>,
+    #[serde(default)]
+    pub ability_cd: i32,
 }
 
 impl Hero {
@@ -341,6 +343,7 @@ impl Hero {
             amulet_bonus: 0,
             scrolls: Vec::new(),
             talents: Vec::new(),
+            ability_cd: 0,
         }
     }
 
@@ -352,12 +355,38 @@ impl Hero {
         self.talents.iter().filter(|&&x| x == t).count()
     }
 
+    pub fn set_bonus(&self) -> i32 {
+        let slots = [self.weapon_affix, self.armor_affix, self.ring, self.amulet];
+        let mut best = 0;
+        for a in [Affix::Fire, Affix::Frost, Affix::Venom, Affix::Shock, Affix::Lifesteal, Affix::Keen, Affix::Regen, Affix::Thorns] {
+            let n = slots.iter().filter(|&&s| s == a).count() as i32;
+            if n > best {
+                best = n;
+            }
+        }
+        if best >= 2 {
+            best
+        } else {
+            0
+        }
+    }
+
+    pub fn set_affix(&self) -> Option<Affix> {
+        let slots = [self.weapon_affix, self.armor_affix, self.ring, self.amulet];
+        for a in [Affix::Fire, Affix::Frost, Affix::Venom, Affix::Shock, Affix::Lifesteal, Affix::Keen, Affix::Regen, Affix::Thorns] {
+            if slots.iter().filter(|&&s| s == a).count() >= 2 {
+                return Some(a);
+            }
+        }
+        None
+    }
+
     pub fn atk(&self) -> i32 {
-        self.might + self.weapon_bonus + self.ring_bonus
+        self.might + self.weapon_bonus + self.ring_bonus + self.set_bonus()
     }
 
     pub fn def(&self) -> i32 {
-        self.guard + self.armor_bonus + self.amulet_bonus + if self.shield > 0 { 6 } else { 0 }
+        self.guard + self.armor_bonus + self.amulet_bonus + self.set_bonus() + if self.shield > 0 { 6 } else { 0 }
     }
 
     pub fn has_affix(&self, a: Affix) -> bool {
@@ -416,6 +445,10 @@ pub struct Monster {
     pub cast_ty: i32,
     #[serde(default)]
     pub cast_cd: i32,
+    #[serde(default)]
+    pub flees: bool,
+    #[serde(default)]
+    pub heals: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -426,6 +459,7 @@ pub enum FeatureKind {
     Trap,
     Altar,
     Familiar,
+    Forge,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -480,6 +514,7 @@ const BESTIARY: &[MonsterKind] = &[
     MonsterKind { glyph: 'a', color: (210, 180, 90),  name: "archer",  hp: 9,  atk: 7,  def: 1, xp: 8,  gold: 10, min_floor: 2,  ranged: true,  element: Element::Physical },
     MonsterKind { glyph: 'o', color: (90, 160, 70),   name: "orc",     hp: 16, atk: 8,  def: 2, xp: 11, gold: 14, min_floor: 3,  ranged: false, element: Element::Physical },
     MonsterKind { glyph: 's', color: (190, 190, 210), name: "spectre", hp: 14, atk: 10, def: 1, xp: 13, gold: 10, min_floor: 4,  ranged: false, element: Element::Ice },
+    MonsterKind { glyph: 'h', color: (120, 235, 180), name: "pretre",  hp: 12, atk: 5,  def: 1, xp: 14, gold: 18, min_floor: 4,  ranged: false, element: Element::Physical },
     MonsterKind { glyph: 'w', color: (180, 120, 240), name: "sorcier", hp: 16, atk: 12, def: 1, xp: 16, gold: 22, min_floor: 4,  ranged: true,  element: Element::Fire },
     MonsterKind { glyph: 'O', color: (70, 130, 60),   name: "ogre",    hp: 30, atk: 12, def: 3, xp: 22, gold: 30, min_floor: 5,  ranged: false, element: Element::Poison },
     MonsterKind { glyph: 'T', color: (90, 200, 120),  name: "troll",   hp: 42, atk: 14, def: 4, xp: 34, gold: 40, min_floor: 6,  ranged: false, element: Element::Poison },
@@ -488,15 +523,7 @@ const BESTIARY: &[MonsterKind] = &[
 ];
 
 impl Monster {
-    pub fn roll(floor: i32, x: i32, y: i32, rng: &mut Rng) -> Monster {
-        let unlocked: Vec<&MonsterKind> = BESTIARY.iter().filter(|k| k.min_floor <= floor).collect();
-        let recent: Vec<&MonsterKind> = unlocked
-            .iter()
-            .copied()
-            .filter(|k| k.min_floor >= floor - 5)
-            .collect();
-        let pool = if recent.is_empty() { &unlocked } else { &recent };
-        let kind = pool[rng.below(pool.len())];
+    fn from_kind(kind: &MonsterKind, floor: i32, x: i32, y: i32) -> Monster {
         let depth = floor.max(1);
         Monster {
             x,
@@ -522,7 +549,37 @@ impl Monster {
             cast_tx: 0,
             cast_ty: 0,
             cast_cd: 0,
+            flees: matches!(kind.glyph, 'r' | 'a'),
+            heals: kind.glyph == 'h',
         }
+    }
+
+    fn pool(floor: i32) -> Vec<&'static MonsterKind> {
+        let unlocked: Vec<&MonsterKind> = BESTIARY.iter().filter(|k| k.min_floor <= floor).collect();
+        let recent: Vec<&MonsterKind> = unlocked.iter().copied().filter(|k| k.min_floor >= floor - 5).collect();
+        if recent.is_empty() { unlocked } else { recent }
+    }
+
+    pub fn roll(floor: i32, x: i32, y: i32, rng: &mut Rng) -> Monster {
+        let pool = Monster::pool(floor);
+        let kind = pool[rng.below(pool.len())];
+        Monster::from_kind(kind, floor, x, y)
+    }
+
+    pub fn roll_biased(floor: i32, x: i32, y: i32, rng: &mut Rng, prefer: &[char]) -> Monster {
+        let pool = Monster::pool(floor);
+        let favored: Vec<&MonsterKind> = pool.iter().copied().filter(|k| prefer.contains(&k.glyph)).collect();
+        let kind = if !favored.is_empty() && rng.chance(0.6) {
+            favored[rng.below(favored.len())]
+        } else {
+            pool[rng.below(pool.len())]
+        };
+        Monster::from_kind(kind, floor, x, y)
+    }
+
+    pub fn specific(glyph: char, floor: i32, x: i32, y: i32) -> Monster {
+        let kind = BESTIARY.iter().find(|k| k.glyph == glyph).unwrap_or(&BESTIARY[0]);
+        Monster::from_kind(kind, floor, x, y)
     }
 
     pub fn promote(&mut self) {
@@ -569,6 +626,8 @@ impl Monster {
             cast_tx: 0,
             cast_ty: 0,
             cast_cd: 0,
+            flees: false,
+            heals: false,
         }
     }
 
@@ -600,6 +659,8 @@ impl Monster {
             cast_tx: 0,
             cast_ty: 0,
             cast_cd: 0,
+            flees: false,
+            heals: false,
         }
     }
 
@@ -629,6 +690,8 @@ impl Monster {
             cast_tx: 0,
             cast_ty: 0,
             cast_cd: 0,
+            flees: false,
+            heals: false,
         }
     }
 }
