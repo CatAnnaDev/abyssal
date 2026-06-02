@@ -72,7 +72,7 @@ Progress autoloads on launch (`abyssal.save.json`).
 - Temporary buffs (rage, ward, regen) with HUD icons, gamble shrines (risk/reward) and blessing fountains
 - Familiars come in three flavors — striker, mender (heals you) and guardian — and level up as the hero does
 - Level-up talents, persistent relics unlocked through achievements
-- Unique floor bosses and a final boss, each telegraphing charge / volley / summon attacks the hero can dodge
+- Unique floor bosses and a final boss with phase-based movesets — a rotation of telegraphed charge / volley / summon / slam / eruption attacks, lingering hazard tiles the hero must avoid, and an enrage at half health
 - Ranged casters that wind up and can be sidestepped
 - Curse altars, shrines, fountains, mimic chests, familiars and per-floor events
 - Rare merchants, an endless abyss mode with a scoreboard, a bestiary and death cards

@@ -627,6 +627,12 @@ fn draw_sprite_map(game: &Game, mw: i32, mh: i32, sdx: i32, tint: (f32, f32, f32
                         *c = px_blend(*c, game.danger_color, 0.5);
                     }
                 }
+            } else if game.hazard.iter().any(|&(a, b, _)| a == wx && b == wy) {
+                for row in cell.iter_mut() {
+                    for c in row.iter_mut() {
+                        *c = px_blend(*c, (235, 110, 40), 0.55);
+                    }
+                }
             } else if game.cast_danger.iter().any(|&(a, b)| a == wx && b == wy) {
                 for row in cell.iter_mut() {
                     for c in row.iter_mut() {
@@ -796,6 +802,8 @@ fn cell_render(game: &Game, x: i32, y: i32, tint: (f32, f32, f32)) -> (char, Col
 
     let dcol = if game.danger.iter().any(|&(dx, dy)| dx == x && dy == y) {
         Some(game.danger_color)
+    } else if game.hazard.iter().any(|&(dx, dy, _)| dx == x && dy == y) {
+        Some((235, 110, 40))
     } else if game.cast_danger.iter().any(|&(dx, dy)| dx == x && dy == y) {
         Some((235, 140, 60))
     } else {

@@ -389,6 +389,10 @@ pub struct Game {
     #[serde(skip)]
     pub boss_pending: i32,
     #[serde(skip)]
+    pub boss_move: i32,
+    #[serde(skip)]
+    pub hazard: Vec<(i32, i32, i32)>,
+    #[serde(skip)]
     pub fx: Fx,
     #[serde(skip)]
     pub hero_struck: bool,
@@ -514,6 +518,8 @@ impl Game {
             cast_danger: Vec::new(),
             boss_wind: 0,
             boss_pending: 0,
+            boss_move: 0,
+            hazard: Vec::new(),
             fx: Fx::default(),
             hero_struck: false,
             merchant: None,
@@ -736,6 +742,7 @@ impl Game {
         self.boss_pending = 0;
         self.danger.clear();
         self.cast_danger.clear();
+        self.hazard.clear();
         self.floor_turns = 0;
         self.objective = Objective::None;
         self.objective_done = false;
@@ -962,6 +969,24 @@ impl Game {
             Biome::Emberdepths if self.rng.chance(0.045) => self.hero.burn = self.hero.burn.max(2),
             Biome::Catacombs if self.rng.chance(0.045) => self.hero.poison = self.hero.poison.max(2),
             _ => {}
+        }
+        if !self.hazard.is_empty() {
+            let (hx, hy) = (self.hero.x, self.hero.y);
+            let on_hazard = self.hazard.iter().any(|&(x, y, _)| x == hx && y == hy);
+            if on_hazard {
+                let d = 4 + self.floor;
+                self.hero.hp -= d;
+                self.fx.damage(hx, hy, d, true);
+                self.fx.add_shake(2);
+                if self.hero.hp <= 0 {
+                    self.hero.hp = 0;
+                    self.die("une eruption");
+                }
+            }
+            for h in self.hazard.iter_mut() {
+                h.2 -= 1;
+            }
+            self.hazard.retain(|&(_, _, t)| t > 0);
         }
         let mut dot = 0;
         if self.hero.burn > 0 {
@@ -2463,10 +2488,12 @@ impl Game {
                             match self.boss_pending {
                                 0 if self.monsters.len() < 40 => self.summon_minions(i),
                                 1 => self.boss_charge(i),
-                                _ => self.boss_volley(i),
+                                2 => self.boss_volley(i),
+                                3 => self.boss_slam(i),
+                                _ => self.boss_erupt(i),
                             }
                             self.danger.clear();
-                            self.monsters[i].summon_cd = 10;
+                            self.monsters[i].summon_cd = 6;
                             if matches!(self.phase, Phase::Dead(_)) {
                                 return;
                             }
@@ -2474,25 +2501,28 @@ impl Game {
                         continue;
                     } else if self.monsters[i].summon_cd > 0 {
                         self.monsters[i].summon_cd -= 1;
+                    } else if self.monsters[i].hp * 3 < self.monsters[i].max_hp && self.rng.chance(0.3) {
+                        self.boss_heal(i);
+                        self.monsters[i].summon_cd = 8;
                     } else {
-                        let pend = self.rng.below(4) as i32;
-                        if pend == 3 {
-                            self.boss_heal(i);
-                            self.monsters[i].summon_cd = 10;
-                        } else {
-                            self.boss_pending = pend;
-                            self.boss_wind = 3;
-                            self.set_danger(i, pend);
-                            let warn = match pend {
-                                0 => "INVOCATION imminente !",
-                                1 => "CHARGE imminente !",
-                                _ => "SALVE imminente !",
-                            };
-                            self.fx.label(mx, my, "!", (255, 80, 80));
-                            self.sfx.push(Sound::BossWarn);
-                            self.push_log(format!("Le boss prepare : {}", warn), (255, 140, 80));
-                            continue;
-                        }
+                        let phase2 = self.monsters[i].enraged;
+                        let rotation: &[i32] = if phase2 { &[1, 3, 2, 4, 2] } else { &[2, 0, 1, 3] };
+                        let pend = rotation[(self.boss_move as usize) % rotation.len()];
+                        self.boss_move = self.boss_move.wrapping_add(1);
+                        self.boss_pending = pend;
+                        self.boss_wind = if phase2 { 2 } else { 3 };
+                        self.set_danger(i, pend);
+                        let warn = match pend {
+                            0 => "INVOCATION",
+                            1 => "CHARGE",
+                            2 => "SALVE",
+                            3 => "FRACAS",
+                            _ => "ERUPTION",
+                        };
+                        self.fx.label(mx, my, "!", (255, 80, 80));
+                        self.sfx.push(Sound::BossWarn);
+                        self.push_log(format!("Le boss prepare : {} imminent !", warn), (255, 140, 80));
+                        continue;
                     }
                 }
             }
@@ -2651,14 +2681,69 @@ impl Game {
                     self.danger.push((hx + dx, hy + dy));
                 }
             }
-            _ => {
+            2 => {
                 self.danger_color = (235, 140, 60);
                 self.danger.push((hx, hy));
                 for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
                     self.danger.push((hx + dx, hy + dy));
                 }
             }
+            3 => {
+                self.danger_color = (235, 90, 70);
+                for dy in -1..=1 {
+                    for dx in -1..=1 {
+                        let (x, y) = (bx + dx, by + dy);
+                        if self.map.is_walkable(x, y) {
+                            self.danger.push((x, y));
+                        }
+                    }
+                }
+            }
+            _ => {
+                self.danger_color = (235, 120, 40);
+                self.danger.push((hx, hy));
+                for (dx, dy) in [(2, 0), (-2, 0), (0, 2), (0, -2), (1, 1), (-1, -1), (1, -1), (-1, 1)] {
+                    let (x, y) = (hx + dx, hy + dy);
+                    if self.map.is_walkable(x, y) {
+                        self.danger.push((x, y));
+                    }
+                }
+            }
         }
+    }
+
+    fn boss_slam(&mut self, i: usize) {
+        let (bx, by) = (self.monsters[i].x, self.monsters[i].y);
+        let color = self.monsters[i].color;
+        self.fx.burst(&mut self.rng, bx, by, color, 26, '\u{2737}');
+        self.fx.add_shake(7);
+        if self.hero_in_danger() {
+            let atk = self.monsters[i].atk * 7 / 4;
+            let (dmg, _) = resolve(atk, self.hero.def(), &mut self.rng, 0.1);
+            self.hero.hp -= dmg;
+            self.hero_struck = true;
+            self.fx.damage(self.hero.x, self.hero.y, dmg, true);
+            self.thorns_reflect(i);
+            self.push_log(format!("FRACAS du boss ! ({} degats)", dmg), BAD);
+            if self.hero.hp <= 0 {
+                self.hero.hp = 0;
+                let name = self.monsters[i].name.clone();
+                self.die(&name);
+            }
+        } else {
+            self.fx.label(self.hero.x, self.hero.y, "esquive!", (120, 230, 160));
+            self.push_log("Le heros echappe au fracas !".into(), GOOD);
+        }
+    }
+
+    fn boss_erupt(&mut self, _i: usize) {
+        let tiles: Vec<(i32, i32)> = self.danger.clone();
+        for (x, y) in tiles {
+            self.hazard.push((x, y, 5));
+            self.fx.burst(&mut self.rng, x, y, (235, 120, 40), 5, '\u{2737}');
+        }
+        self.fx.add_shake(4);
+        self.push_log("Le sol entre en eruption !".into(), (235, 130, 60));
     }
 
     fn detonate(&mut self, i: usize) {
@@ -2732,17 +2817,20 @@ impl Game {
         let (hx, hy) = (self.hero.x, self.hero.y);
         self.danger.iter().any(|&(x, y)| x == hx && y == hy)
             || self.cast_danger.iter().any(|&(x, y)| x == hx && y == hy)
+            || self.hazard.iter().any(|&(x, y, _)| x == hx && y == hy)
     }
 
     fn blocked_tiles(&self) -> Vec<(i32, i32)> {
         let mut v = self.danger.clone();
         v.extend_from_slice(&self.cast_danger);
+        v.extend(self.hazard.iter().map(|&(x, y, _)| (x, y)));
         v
     }
 
     fn tile_dangerous(&self, x: i32, y: i32) -> bool {
         self.danger.iter().any(|&(a, b)| a == x && b == y)
             || self.cast_danger.iter().any(|&(a, b)| a == x && b == y)
+            || self.hazard.iter().any(|&(a, b, _)| a == x && b == y)
     }
 
     fn boss_charge(&mut self, i: usize) {
