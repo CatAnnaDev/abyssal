@@ -542,6 +542,10 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                         game.save();
                         return Ok(());
                     }
+                    KeyCode::Char('d') if k.modifiers.contains(KeyModifiers::CONTROL) => {
+                        game.debug = !game.debug;
+                        let _ = stdout.execute(Clear(ClearType::All));
+                    }
                     KeyCode::Char('s') => game.save(),
                     KeyCode::Char('l') => {
                         if let Some(g) = Game::load() {

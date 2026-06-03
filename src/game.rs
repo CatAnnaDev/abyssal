@@ -623,6 +623,8 @@ pub struct Game {
     pub last_action: &'static str,
     #[serde(skip)]
     pub hitstop: i32,
+    #[serde(skip)]
+    pub debug: bool,
     pub style: Playstyle,
     pub class: HeroClass,
     #[serde(skip)]
@@ -780,6 +782,7 @@ impl Game {
             death_quip: String::new(),
             last_action: "spawn",
             hitstop: 0,
+            debug: false,
             style,
             class,
             flashes: Vec::new(),
@@ -1177,6 +1180,42 @@ impl Game {
         } else {
             MusicMode::Calm
         }
+    }
+
+    pub fn debug_goal(&self) -> Option<(i32, i32)> {
+        if let Some(t) = self.explore_target {
+            return Some(t);
+        }
+        if let Some(t) = self.nearest_seen_monster() {
+            return Some(t);
+        }
+        if self.map.is_explored(self.map.stairs.0, self.map.stairs.1) {
+            return Some(self.map.stairs);
+        }
+        None
+    }
+
+    pub fn debug_path(&self) -> Vec<(i32, i32)> {
+        let Some((gx, gy)) = self.debug_goal() else {
+            return Vec::new();
+        };
+        let blocked = self.blocked_tiles();
+        let mut path = Vec::new();
+        let (mut x, mut y) = (self.hero.x, self.hero.y);
+        for _ in 0..60 {
+            if x == gx && y == gy {
+                break;
+            }
+            match step_toward(&self.map, x, y, &blocked, |a, b| a == gx && b == gy) {
+                Some((dx, dy)) => {
+                    x += dx;
+                    y += dy;
+                    path.push((x, y));
+                }
+                None => break,
+            }
+        }
+        path
     }
 
     pub fn tag_monster(&mut self, user: &str) {
@@ -4363,5 +4402,6 @@ mod setup_opts {
         assert!(g2.mutators.is_empty(), "mutator_pref=1 should disable mutators");
     }
 }
+
 
 

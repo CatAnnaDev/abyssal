@@ -86,6 +86,9 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
     if game.fx.combo >= 3 {
         let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;255;200;70mCOMBO x{}\x1b[0m", MROW, MCOL + 1, game.fx.combo);
     }
+    if game.debug {
+        draw_debug(game, mw, mh, sdx, sprite, &mut buf);
+    }
     if game.fx.transition > 0 {
         draw_transition(game.fx.transition_floor, mw, mh, &mut buf);
     }
@@ -950,6 +953,58 @@ fn draw_transition(floor: i32, mw: i32, mh: i32, buf: &mut String) {
     }
     buf.push('\u{255d}');
     buf.push_str("\x1b[0m");
+}
+
+fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut String) {
+    use std::fmt::Write as _;
+    if !sprite {
+        for (x, y) in game.debug_path() {
+            if x >= 0 && y >= 0 && x < mw && y < mh {
+                put(buf, MCOL + sdx + x, MROW + y, (80, 230, 120), "\u{00b7}");
+            }
+        }
+        if let Some((gx, gy)) = game.debug_goal() {
+            if gx >= 0 && gy >= 0 && gx < mw && gy < mh {
+                put(buf, MCOL + sdx + gx, MROW + gy, (110, 255, 150), "\u{2573}");
+            }
+        }
+        for m in &game.monsters {
+            if m.x >= 0 && m.y >= 0 && m.x < mw && m.y < mh && game.map.is_explored(m.x, m.y) {
+                let (ch, col) = if m.boss {
+                    ('B', (255, 120, 120))
+                } else if m.cast_wind > 0 {
+                    ('c', (255, 180, 80))
+                } else if m.aggro {
+                    ('!', (255, 90, 90))
+                } else if m.flees {
+                    ('f', (120, 200, 255))
+                } else {
+                    ('z', (150, 150, 160))
+                };
+                let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;{};{};{}m{}", MROW + m.y, MCOL + sdx + m.x, col.0, col.1, col.2, ch);
+            }
+        }
+    }
+    let goal = game.debug_goal().map(|(x, y)| format!("{},{}", x, y)).unwrap_or_else(|| "-".into());
+    let bossc = game.monsters.iter().filter(|m| m.boss).count();
+    let aggro = game.monsters.iter().filter(|m| m.aggro).count();
+    let lines = [
+        "== DEBUG (ctrl+d) ==".to_string(),
+        format!("act:{}", game.last_action),
+        format!("style:{} goal:{}", game.style.label(), goal),
+        format!("intensity:{:.2} boss:{}", game.music_intensity(), bossc),
+        format!("floor:{} {} [{}]", game.floor, game.biome.label(), game.room_kind.label()),
+        format!("mob:{} aggro:{} ally:{}", game.monsters.len(), aggro, game.allies.len()),
+        format!("item:{} feat:{}", game.items.len(), game.features.len()),
+        format!("hp:{}/{} lvl:{} or:{}", game.hero.hp, game.hero.max_hp, game.hero.level, game.hero.gold),
+        format!("bwind:{} bpend:{} hstop:{}", game.boss_wind, game.boss_pending, game.hitstop),
+        format!("hero:{},{} disc:{}%", game.hero.x, game.hero.y, game.map.discovery_percent()),
+    ];
+    for (i, l) in lines.iter().enumerate() {
+        let y = MROW + 1 + i as i32;
+        let txt: String = l.chars().take((mw - 2).max(8) as usize).collect();
+        let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;10;12;18m\x1b[38;2;120;240;160m {:<28}\x1b[0m", y, MCOL + sdx + 1, txt);
+    }
 }
 
 fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
