@@ -60,6 +60,7 @@ The game plays itself. Input is optional:
 | `g` | toggle sprite view (half-block pixel-art) / classic glyph map |
 | `z` | cycle sprite-view zoom |
 | `k` | open / close the bestiary codex |
+| `h` | open / close the Hall of Souls (past heroes + active nemeses) |
 | `b` | (debug) spawn a test merchant |
 | `s` / `l` | save / load |
 | `n` | new run |

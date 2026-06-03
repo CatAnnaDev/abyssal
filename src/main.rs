@@ -586,6 +586,10 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                         game.show_codex = !game.show_codex;
                         let _ = stdout.execute(Clear(ClearType::All));
                     }
+                    KeyCode::Char('h') => {
+                        game.show_hall = !game.show_hall;
+                        let _ = stdout.execute(Clear(ClearType::All));
+                    }
                     KeyCode::Char('m') => game.cycle_style(),
                     KeyCode::Char('g') => {
                         sprite_mode = !sprite_mode;

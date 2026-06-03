@@ -98,6 +98,9 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
     if game.show_codex {
         draw_codex(game, cols, rows, &mut buf);
     }
+    if game.show_hall {
+        draw_hall(game, cols, rows, &mut buf);
+    }
 
     buf.push_str("\x1b[0m");
     let _ = out.write_all(buf.as_bytes());
@@ -167,7 +170,7 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
     let (bottom, bcol) = match game.thoughts.last() {
         Some(t) => (format!(" \u{201c}{}\u{201d}  (o:options) ", t), (150, 200, 225)),
         None => (
-            " espace:pause  +/-:vitesse  m:mindset  a:son  g:sprite  z:zoom  k:bestiaire  b:marchand  s/l/n  q:quitter ".to_string(),
+            " espace:pause  +/-:vitesse  m:mindset  a:son  g:sprite  z:zoom  k:bestiaire  h:hall  b:marchand  s/l/n  q:quitter ".to_string(),
             (130, 130, 150),
         ),
     };
@@ -360,6 +363,53 @@ fn draw_codex(game: &Game, cols: i32, rows: i32, buf: &mut String) {
             put(buf, ox + 2, r, (95, 95, 105), &fit(&format!("\u{2592} ??? (etage {}+)", minf), bw - 4));
         }
         r += 1;
+    }
+}
+
+fn draw_hall(game: &Game, cols: i32, rows: i32, buf: &mut String) {
+    let ghosts = game.graveyard();
+    let nemeses = game.known_nemeses();
+    let bw = 56.min((cols - 4).max(24));
+    let body = ghosts.len() as i32 + nemeses.len() as i32 + 6;
+    let bh = body.clamp(10, (rows - 2).max(10));
+    let ox = (cols - bw) / 2;
+    let oy = (rows - bh) / 2;
+    let blank: String = " ".repeat(bw as usize);
+    for y in oy..oy + bh {
+        put(buf, ox, y, (0, 0, 0), &blank);
+    }
+    draw_box(buf, ox, oy, bw, bh, "HALL DES AMES  (h: fermer)", (165, 160, 190));
+    let mut r = oy + 1;
+    let last = oy + bh - 1;
+    put(buf, ox + 2, r, (200, 195, 215), &fit(&format!("\u{271d} Cimetiere ({} ames)", ghosts.len()), bw - 4));
+    r += 1;
+    if ghosts.is_empty() {
+        put(buf, ox + 2, r, (120, 120, 130), &fit("aucune ame tombee... pour l'instant.", bw - 4));
+        r += 1;
+    } else {
+        for g in ghosts.iter().rev() {
+            if r >= last - 2 {
+                break;
+            }
+            put(buf, ox + 2, r, (190, 195, 210), &fit(&format!("{} {} · {} · etage {} · {} or", g.name, g.origin, g.class, g.floor, g.gold), bw - 4));
+            r += 1;
+        }
+    }
+    if r < last - 1 {
+        r += 1;
+        put(buf, ox + 2, r, (225, 130, 200), &fit(&format!("\u{2620} Nemesis actives ({})", nemeses.len()), bw - 4));
+        r += 1;
+        if nemeses.is_empty() {
+            put(buf, ox + 2, r, (120, 120, 130), &fit("aucune rancune en cours.", bw - 4));
+        } else {
+            for n in nemeses {
+                if r >= last {
+                    break;
+                }
+                put(buf, ox + 2, r, (225, 140, 205), &fit(&format!("{} (rang {}, {} morts inflige)", n.name, n.rank, n.hero_kills), bw - 4));
+                r += 1;
+            }
+        }
     }
 }
 

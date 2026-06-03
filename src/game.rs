@@ -713,6 +713,8 @@ pub struct Game {
     #[serde(skip)]
     pub show_codex: bool,
     #[serde(skip)]
+    pub show_hall: bool,
+    #[serde(skip)]
     prev_tile: (i32, i32),
     #[serde(skip)]
     turn_start_tile: (i32, i32),
@@ -860,6 +862,7 @@ impl Game {
             lunge: (0, 0, 0),
             chaining: false,
             show_codex: false,
+            show_hall: false,
             prev_tile: (-1, -1),
             turn_start_tile: (-1, -1),
             pursue_merchant: false,
@@ -1229,6 +1232,14 @@ impl Game {
     pub fn seed_lore(&mut self, ghosts: Vec<crate::lore::Ghost>, nemeses: Vec<crate::lore::Nemesis>) {
         self.ghost_pool = ghosts.into_iter().filter(|g| g.name != self.identity.name).collect();
         self.nemesis_pool = nemeses;
+    }
+
+    pub fn graveyard(&self) -> &[crate::lore::Ghost] {
+        &self.ghost_pool
+    }
+
+    pub fn known_nemeses(&self) -> &[crate::lore::Nemesis] {
+        &self.nemesis_pool
     }
 
     pub fn make_ghost(&self) -> crate::lore::Ghost {
@@ -1802,6 +1813,24 @@ impl Game {
         self.fx.burst(&mut self.rng, hx, hy, (140, 220, 255), 18, '\u{2744}');
         self.fx.label(hx, hy, "GEL DE ZONE", (140, 220, 255));
         self.push_log("Parchemin : gel de zone !".into(), (140, 220, 255));
+    }
+
+    fn trap_teleport(&mut self) {
+        let mut tries = 0;
+        while tries < 200 {
+            tries += 1;
+            let x = self.rng.between(0, self.map.width);
+            let y = self.rng.between(0, self.map.height);
+            if self.map.is_walkable(x, y) && self.monster_at(x, y).is_none() && (x != self.hero.x || y != self.hero.y) {
+                self.hero.x = x;
+                self.hero.y = y;
+                let fr = self.fov_radius();
+                self.map.compute_fov(x, y, fr);
+                self.fx.burst(&mut self.rng, x, y, (180, 160, 255), 12, '\u{2736}');
+                self.fx.label(x, y, "OU SUIS-JE ?", (180, 160, 255));
+                return;
+            }
+        }
     }
 
     fn cast_teleport(&mut self) {
@@ -3467,22 +3496,42 @@ impl Game {
                 self.push_log(format!("{} ({}), perdu dans le donjon, vous rejoint et combattra a vos cotes !", nm, rl), (255, 224, 150));
                 self.unlock("compagnon", "Compagnon - une ame sauvee");
             }
-            FeatureKind::Trap => {
-                let dmg = 4 + self.floor * 2;
-                self.hero.hp -= dmg;
-                self.fx.damage(hx, hy, dmg, true);
-                self.fx.add_shake(5);
-                self.fx.burst(&mut self.rng, hx, hy, (220, 90, 70), 10, '\u{2716}');
-                self.push_log(format!("PIEGE ! Vous subissez {} degats.", dmg), BAD);
-                if self.hero.hp <= 0 {
-                    self.hero.hp = 0;
-                    self.die("un piege");
-                } else if self.rng.chance(0.3) {
-                    self.hero.stun = 2;
-                    self.fx.label(hx, hy, "ETOURDI", (235, 220, 120));
-                    self.push_log("Le choc vous etourdit.".into(), WARN);
+            FeatureKind::Trap => match self.rng.below(10) {
+                6 | 7 => {
+                    self.fx.burst(&mut self.rng, hx, hy, (180, 160, 255), 10, '\u{2736}');
+                    self.fx.label(hx, hy, "PIEGE-FAILLE", (180, 160, 255));
+                    self.push_log("Piege de faille : le sol vous happe ailleurs !".into(), (180, 160, 255));
+                    self.trap_teleport();
                 }
-            }
+                8 | 9 => {
+                    let mut woken = 0;
+                    for m in self.monsters.iter_mut() {
+                        if !m.aggro && (m.x - hx).abs() + (m.y - hy).abs() <= 11 {
+                            m.aggro = true;
+                            woken += 1;
+                        }
+                    }
+                    self.fx.add_shake(4);
+                    self.fx.label(hx, hy, "ALARME", (235, 180, 90));
+                    self.push_log(format!("PIEGE D'ALARME ! {} creatures reveillees.", woken), WARN);
+                }
+                _ => {
+                    let dmg = 4 + self.floor * 2;
+                    self.hero.hp -= dmg;
+                    self.fx.damage(hx, hy, dmg, true);
+                    self.fx.add_shake(5);
+                    self.fx.burst(&mut self.rng, hx, hy, (220, 90, 70), 10, '\u{2716}');
+                    self.push_log(format!("PIEGE ! Vous subissez {} degats.", dmg), BAD);
+                    if self.hero.hp <= 0 {
+                        self.hero.hp = 0;
+                        self.die("un piege");
+                    } else if self.rng.chance(0.3) {
+                        self.hero.stun = 2;
+                        self.fx.label(hx, hy, "ETOURDI", (235, 220, 120));
+                        self.push_log("Le choc vous etourdit.".into(), WARN);
+                    }
+                }
+            },
             FeatureKind::Grave => {
                 self.fx.burst(&mut self.rng, hx, hy, (185, 190, 205), 12, '\u{271d}');
                 self.fx.label(hx, hy, "TOMBE", (200, 205, 220));
