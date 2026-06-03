@@ -2497,6 +2497,11 @@ impl Game {
     }
 
     pub fn save(&mut self) {
+        if self.boss_rush {
+            let _ = std::fs::remove_file(SAVE_PATH);
+            self.push_log("Boss Rush : aucune sauvegarde, tout ou rien — quitter abandonne la run.".into(), (255, 120, 90));
+            return;
+        }
         match serde_json::to_string(self) {
             Ok(json) => match std::fs::write(SAVE_PATH, json) {
                 Ok(()) => self.push_log(format!("Partie sauvegardee ({}).", SAVE_PATH), (120, 220, 230)),
@@ -2509,6 +2514,10 @@ impl Game {
     pub fn load() -> Option<Game> {
         let data = std::fs::read_to_string(SAVE_PATH).ok()?;
         let mut game: Game = serde_json::from_str(&data).ok()?;
+        if game.boss_rush {
+            let _ = std::fs::remove_file(SAVE_PATH);
+            return None;
+        }
         game.last_action = "charge";
         game.push_log("Partie chargee depuis la sauvegarde.".into(), (120, 220, 230));
         Some(game)

@@ -107,6 +107,29 @@ Progress autoloads on launch (`abyssal.save.json`).
 - Procedural 8/16-bit chiptune, all generated at runtime with no audio files: synthesized square/triangle/noise SFX for hits, crits, kills, loot, level-ups, boss tells and death, plus an **adaptive** chill-pop backing track — a base groove (seventh-chord progression, soft bass, pad and drums) that layers in a driving arpeggio when enemies are near and a tense theme when a boss is alive, crossfading smoothly with the action
 - Optional Twitch chat integration: viewers vote on the hero's mindset and merchant purchases (fully configurable, off by default)
 
+## Possible builds
+
+A "build" is the combination of everything you can set up and grow over a run. Counting the independent axes:
+
+| Axis | Options |
+| --- | --- |
+| Class | 17 |
+| Playstyle (mode) | 6 |
+| Difficulty | 4 |
+| Starting boon | 4 |
+| Variant (Normal / Boss Rush) | 2 |
+| Weapon affix (incl. none) | 9 |
+| Armor affix (incl. none) | 3 |
+| Ring affix (incl. none) | 9 |
+| Amulet affix (incl. none) | 3 |
+| Talent combinations (8 talents, one of each max) | 2⁸ = 256 |
+| Relic combinations (8 relics) | 2⁸ = 256 |
+
+Pre-game setup alone: 17 × 6 × 4 × 4 × 2 = **3,264** starting configurations.
+In-run build identity (affixes × talents × relics): 9 × 3 × 9 × 3 × 256 × 256 ≈ **47.8 million**.
+
+Multiplied together that is roughly **156 billion** theoretical builds (≈ 1.56 × 10¹¹) — and that is *before* counting the 5 weapon families × 6 tiers, 4 armor families × 5 tiers, 3 familiar types and 3 companion roles, which push the real variety far higher.
+
 ## Config
 
 `abyssal.config.json` is created on first run. Fields:
@@ -117,7 +140,7 @@ Progress autoloads on launch (`abyssal.save.json`).
 
 ## Saves & files
 
-- `abyssal.save.json` — the current run; autoloads on launch, written on save (`s`) and quit
+- `abyssal.save.json` — the current run; autoloads on launch, written on save (`s`) and quit. Boss Rush runs are never saved — it is all-or-nothing, so quitting one abandons it and it can't be continued
 - `abyssal.profile.json` — the persistent lifetime profile (runs, deaths, best floor/score, total kills, ascension tier) that drives meta unlocks
 - `abyssal.config.json` — the config above
 

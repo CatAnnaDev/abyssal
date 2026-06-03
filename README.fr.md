@@ -107,6 +107,29 @@ La progression se charge automatiquement au lancement (`abyssal.save.json`).
 - Chiptune 8/16-bit procédural, entièrement généré au runtime sans fichier audio : SFX synthétisés (carré/triangle/bruit) pour les coups, critiques, kills, butin, niveaux, télégraphes de boss et mort, plus une musique de fond chill-pop **adaptative** — une base (progression d'accords de septième, basse douce, nappe et batterie) qui ajoute un arpège quand des ennemis approchent et un thème tendu quand un boss est en vie, en fondu avec l'action
 - Intégration Twitch optionnelle : les viewers votent l'état d'esprit du héros et les achats au marchand (entièrement configurable, désactivée par défaut)
 
+## Builds possibles
+
+Un « build », c'est la combinaison de tout ce que tu peux configurer puis faire évoluer pendant une run. En comptant les axes indépendants :
+
+| Axe | Options |
+| --- | --- |
+| Classe | 17 |
+| État d'esprit (mode) | 6 |
+| Difficulté | 4 |
+| Trait de départ | 4 |
+| Variante (Normal / Boss Rush) | 2 |
+| Affixe d'arme (aucun inclus) | 9 |
+| Affixe d'armure (aucun inclus) | 3 |
+| Affixe d'anneau (aucun inclus) | 9 |
+| Affixe d'amulette (aucun inclus) | 3 |
+| Combinaisons de talents (8 talents, 1 de chaque max) | 2⁸ = 256 |
+| Combinaisons de reliques (8 reliques) | 2⁸ = 256 |
+
+Configuration d'avant-partie seule : 17 × 6 × 4 × 4 × 2 = **3 264** départs possibles.
+Identité de build en run (affixes × talents × reliques) : 9 × 3 × 9 × 3 × 256 × 256 ≈ **47,8 millions**.
+
+Le tout multiplié donne environ **156 milliards** de builds théoriques (≈ 1,56 × 10¹¹) — et c'est *avant* de compter les 5 familles d'armes × 6 paliers, 4 familles d'armures × 5 paliers, 3 types de familiers et 3 rôles de compagnons, qui font exploser la variété réelle bien plus haut.
+
 ## Config
 
 `abyssal.config.json` est créé au premier lancement. Champs :
@@ -117,7 +140,7 @@ La progression se charge automatiquement au lancement (`abyssal.save.json`).
 
 ## Sauvegardes & fichiers
 
-- `abyssal.save.json` — la run en cours ; chargée au lancement, écrite à la sauvegarde (`s`) et à la sortie
+- `abyssal.save.json` — la run en cours ; chargée au lancement, écrite à la sauvegarde (`s`) et à la sortie. Les runs Boss Rush ne sont jamais sauvegardées — c'est tout ou rien, quitter abandonne la run et on ne peut pas la continuer
 - `abyssal.profile.json` — le profil persistant à vie (runs, morts, étage/score max, kills, palier d'ascension) qui pilote les déblocages méta
 - `abyssal.config.json` — la config ci-dessus
 
