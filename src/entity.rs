@@ -88,6 +88,48 @@ pub enum HeroClass {
     Warlock,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Ability {
+    Charge,
+    Blink,
+    Nova,
+    Smite,
+    Raise,
+    Volley,
+    Furie,
+}
+
+pub struct ClassDef {
+    pub class: HeroClass,
+    pub label: &'static str,
+    pub crit: f32,
+    pub cleave: i32,
+    pub bolt: i32,
+    pub bleeds: bool,
+    pub raises: bool,
+    pub weapon: WeaponClass,
+    pub armor: ArmorClass,
+    pub d_hp: i32,
+    pub d_might: i32,
+    pub d_guard: i32,
+    pub ability: Ability,
+}
+
+pub const CLASSES: &[ClassDef] = &[
+    ClassDef { class: HeroClass::Warrior,      label: "Guerrier",      crit: 0.10, cleave: 2,   bolt: 999, bleeds: false, raises: false, weapon: WeaponClass::Heavy, armor: ArmorClass::Plate,   d_hp: 14, d_might: 0, d_guard: 2, ability: Ability::Charge },
+    ClassDef { class: HeroClass::Rogue,        label: "Voleur",        crit: 0.28, cleave: 999, bolt: 6,   bleeds: true,  raises: false, weapon: WeaponClass::Light, armor: ArmorClass::Leather, d_hp: 0,  d_might: 3, d_guard: 0, ability: Ability::Blink },
+    ClassDef { class: HeroClass::Mage,         label: "Mage",          crit: 0.14, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Cloth,   d_hp: 2,  d_might: 6, d_guard: 0, ability: Ability::Nova },
+    ClassDef { class: HeroClass::Paladin,      label: "Paladin",       crit: 0.12, cleave: 3,   bolt: 999, bleeds: false, raises: false, weapon: WeaponClass::Heavy, armor: ArmorClass::Plate,   d_hp: 20, d_might: 1, d_guard: 3, ability: Ability::Smite },
+    ClassDef { class: HeroClass::Necromancer,  label: "Necromancien",  crit: 0.13, cleave: 999, bolt: 1,   bleeds: false, raises: true,  weapon: WeaponClass::Staff, armor: ArmorClass::Cloth,   d_hp: 8,  d_might: 3, d_guard: 0, ability: Ability::Raise },
+    ClassDef { class: HeroClass::Ranger,       label: "Rodeur",        crit: 0.20, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Bow,   armor: ArmorClass::Leather, d_hp: 4,  d_might: 3, d_guard: 0, ability: Ability::Volley },
+    ClassDef { class: HeroClass::Berserker,    label: "Berserker",     crit: 0.18, cleave: 2,   bolt: 999, bleeds: true,  raises: false, weapon: WeaponClass::Heavy, armor: ArmorClass::Leather, d_hp: 8,  d_might: 5, d_guard: 0, ability: Ability::Furie },
+    ClassDef { class: HeroClass::Elementalist, label: "Elementaliste", crit: 0.15, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Cloth,   d_hp: 0,  d_might: 5, d_guard: 0, ability: Ability::Nova },
+    ClassDef { class: HeroClass::Monk,         label: "Moine",         crit: 0.26, cleave: 2,   bolt: 999, bleeds: true,  raises: false, weapon: WeaponClass::Fist,  armor: ArmorClass::Leather, d_hp: 10, d_might: 4, d_guard: 1, ability: Ability::Blink },
+    ClassDef { class: HeroClass::Druid,        label: "Druide",        crit: 0.14, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Leather, d_hp: 10, d_might: 4, d_guard: 0, ability: Ability::Smite },
+    ClassDef { class: HeroClass::Templar,      label: "Templier",      crit: 0.12, cleave: 3,   bolt: 999, bleeds: false, raises: false, weapon: WeaponClass::Heavy, armor: ArmorClass::Mail,    d_hp: 18, d_might: 1, d_guard: 3, ability: Ability::Charge },
+    ClassDef { class: HeroClass::Warlock,      label: "Occultiste",    crit: 0.16, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Cloth,   d_hp: 4,  d_might: 6, d_guard: 0, ability: Ability::Nova },
+];
+
 impl HeroClass {
     pub const ALL: [HeroClass; 12] = [
         HeroClass::Warrior,
@@ -104,21 +146,12 @@ impl HeroClass {
         HeroClass::Warlock,
     ];
 
+    pub fn def(self) -> &'static ClassDef {
+        &CLASSES[self as usize]
+    }
+
     pub fn label(self) -> &'static str {
-        match self {
-            HeroClass::Warrior => "Guerrier",
-            HeroClass::Rogue => "Voleur",
-            HeroClass::Mage => "Mage",
-            HeroClass::Paladin => "Paladin",
-            HeroClass::Necromancer => "Necromancien",
-            HeroClass::Ranger => "Rodeur",
-            HeroClass::Berserker => "Berserker",
-            HeroClass::Elementalist => "Elementaliste",
-            HeroClass::Monk => "Moine",
-            HeroClass::Druid => "Druide",
-            HeroClass::Templar => "Templier",
-            HeroClass::Warlock => "Occultiste",
-        }
+        self.def().label
     }
 
     pub fn pick(rng: &mut Rng) -> HeroClass {
@@ -126,142 +159,44 @@ impl HeroClass {
     }
 
     pub fn crit_chance(self) -> f32 {
-        match self {
-            HeroClass::Warrior => 0.10,
-            HeroClass::Rogue => 0.28,
-            HeroClass::Mage => 0.14,
-            HeroClass::Paladin => 0.12,
-            HeroClass::Necromancer => 0.13,
-            HeroClass::Ranger => 0.20,
-            HeroClass::Berserker => 0.18,
-            HeroClass::Elementalist => 0.15,
-            HeroClass::Monk => 0.26,
-            HeroClass::Druid => 0.14,
-            HeroClass::Templar => 0.12,
-            HeroClass::Warlock => 0.16,
-        }
+        self.def().crit
     }
 
     pub fn cleave_level(self) -> i32 {
-        match self {
-            HeroClass::Warrior => 2,
-            HeroClass::Paladin => 3,
-            HeroClass::Berserker => 2,
-            HeroClass::Templar => 3,
-            HeroClass::Monk => 2,
-            _ => 999,
-        }
+        self.def().cleave
     }
 
     pub fn bolt_level(self) -> i32 {
-        match self {
-            HeroClass::Mage => 1,
-            HeroClass::Necromancer => 1,
-            HeroClass::Ranger => 1,
-            HeroClass::Elementalist => 1,
-            HeroClass::Druid => 1,
-            HeroClass::Warlock => 1,
-            HeroClass::Rogue => 6,
-            _ => 999,
-        }
+        self.def().bolt
     }
 
     pub fn bleeds(self) -> bool {
-        matches!(self, HeroClass::Rogue | HeroClass::Berserker | HeroClass::Monk)
+        self.def().bleeds
     }
 
     pub fn raises_dead(self) -> bool {
-        matches!(self, HeroClass::Necromancer)
+        self.def().raises
     }
 
     pub fn weapon_class(self) -> WeaponClass {
-        match self {
-            HeroClass::Warrior => WeaponClass::Heavy,
-            HeroClass::Rogue => WeaponClass::Light,
-            HeroClass::Mage => WeaponClass::Staff,
-            HeroClass::Paladin => WeaponClass::Heavy,
-            HeroClass::Necromancer => WeaponClass::Staff,
-            HeroClass::Ranger => WeaponClass::Bow,
-            HeroClass::Berserker => WeaponClass::Heavy,
-            HeroClass::Elementalist => WeaponClass::Staff,
-            HeroClass::Monk => WeaponClass::Fist,
-            HeroClass::Druid => WeaponClass::Staff,
-            HeroClass::Templar => WeaponClass::Heavy,
-            HeroClass::Warlock => WeaponClass::Staff,
-        }
+        self.def().weapon
     }
 
     pub fn armor_class(self) -> ArmorClass {
-        match self {
-            HeroClass::Warrior => ArmorClass::Plate,
-            HeroClass::Rogue => ArmorClass::Leather,
-            HeroClass::Mage => ArmorClass::Cloth,
-            HeroClass::Paladin => ArmorClass::Plate,
-            HeroClass::Necromancer => ArmorClass::Cloth,
-            HeroClass::Ranger => ArmorClass::Leather,
-            HeroClass::Berserker => ArmorClass::Leather,
-            HeroClass::Elementalist => ArmorClass::Cloth,
-            HeroClass::Monk => ArmorClass::Leather,
-            HeroClass::Druid => ArmorClass::Leather,
-            HeroClass::Templar => ArmorClass::Mail,
-            HeroClass::Warlock => ArmorClass::Cloth,
-        }
+        self.def().armor
+    }
+
+    pub fn ability(self) -> Ability {
+        self.def().ability
     }
 
     pub fn apply(self, h: &mut Hero) {
-        match self {
-            HeroClass::Warrior => {
-                h.max_hp += 14;
-                h.guard += 2;
-            }
-            HeroClass::Rogue => {
-                h.might += 3;
-            }
-            HeroClass::Mage => {
-                h.might += 6;
-                h.max_hp += 2;
-            }
-            HeroClass::Paladin => {
-                h.max_hp += 20;
-                h.guard += 3;
-                h.might += 1;
-            }
-            HeroClass::Necromancer => {
-                h.might += 3;
-                h.max_hp += 8;
-            }
-            HeroClass::Ranger => {
-                h.might += 3;
-                h.max_hp += 4;
-            }
-            HeroClass::Berserker => {
-                h.might += 5;
-                h.max_hp += 8;
-            }
-            HeroClass::Elementalist => {
-                h.might += 5;
-            }
-            HeroClass::Monk => {
-                h.might += 4;
-                h.max_hp += 10;
-                h.guard += 1;
-            }
-            HeroClass::Druid => {
-                h.might += 4;
-                h.max_hp += 10;
-            }
-            HeroClass::Templar => {
-                h.max_hp += 18;
-                h.guard += 3;
-                h.might += 1;
-            }
-            HeroClass::Warlock => {
-                h.might += 6;
-                h.max_hp += 4;
-            }
-        }
-        h.weapon = weapons_for(self.weapon_class())[0].0.into();
-        h.armor = armors_for(self.armor_class())[0].0.into();
+        let d = self.def();
+        h.max_hp += d.d_hp;
+        h.might += d.d_might;
+        h.guard += d.d_guard;
+        h.weapon = weapons_for(d.weapon)[0].0.into();
+        h.armor = armors_for(d.armor)[0].0.into();
         h.hp = h.max_hp;
     }
 }

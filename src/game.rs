@@ -1,6 +1,6 @@
 use crate::ai::{nearest_goal, step_toward};
 use crate::audio::Sound;
-use crate::entity::{ally_role_label, Affix, Ally, Color, Element, Feature, FeatureKind, Hero, HeroClass, Item, ItemKind, Merchant, Monster, Pet, PetKind, Relic, ScrollKind, Talent, ALLY_HUNTER, ALLY_MEDIC};
+use crate::entity::{ally_role_label, Ability, Affix, Ally, Color, Element, Feature, FeatureKind, Hero, HeroClass, Item, ItemKind, Merchant, Monster, Pet, PetKind, Relic, ScrollKind, Talent, ALLY_HUNTER, ALLY_MEDIC};
 use crate::fx::{Fx, Particle};
 use crate::map::{Map, Tile};
 use crate::rng::Rng;
@@ -50,97 +50,186 @@ pub enum Biome {
     Forge,
 }
 
+pub struct BiomeDef {
+    pub biome: Biome,
+    pub label: &'static str,
+    pub tint: (f32, f32, f32),
+    pub element: Option<Element>,
+    pub map_style: i32,
+    pub music_style: i32,
+    pub fauna: &'static [char],
+    pub lore: &'static str,
+    pub champion: (char, &'static str, Element),
+    pub weight_peak: i32,
+    pub weight_center: i32,
+    pub weight_min: i32,
+    pub palette: ((Color, Color), (Color, Color)),
+    pub ambient: (char, Color, f32),
+}
+
+pub const BIOMES: &[BiomeDef] = &[
+    BiomeDef {
+        biome: Biome::Caverns,
+        label: "Cavernes",
+        tint: (1.05, 1.0, 0.9),
+        element: None,
+        map_style: 0,
+        music_style: 0,
+        fauna: &['r', 'g', 'k', 'o', 'b', 'W'],
+        lore: "L'air sent la terre humide et le minerai.",
+        champion: ('o', "Roi-Gobelin des Cavernes", Element::Physical),
+        weight_peak: 20,
+        weight_center: 0,
+        weight_min: 2,
+        palette: (((150, 134, 112), (78, 67, 54)), ((64, 61, 74), (26, 25, 32))),
+        ambient: ('\u{00b7}', (120, 110, 95), 0.05),
+    },
+    BiomeDef {
+        biome: Biome::Catacombs,
+        label: "Catacombes",
+        tint: (0.86, 1.05, 0.9),
+        element: Some(Element::Poison),
+        map_style: 1,
+        music_style: 1,
+        fauna: &['k', 's', 'h', 'T', 'G', 'N', 'j'],
+        lore: "Des ossements craquent sous vos pas.",
+        champion: ('s', "Liche des Catacombes", Element::Poison),
+        weight_peak: 16,
+        weight_center: 5,
+        weight_min: 2,
+        palette: (((124, 132, 112), (58, 66, 50)), ((60, 66, 56), (22, 28, 22))),
+        ambient: ('\u{00b7}', (120, 150, 110), 0.0),
+    },
+    BiomeDef {
+        biome: Biome::Frostvault,
+        label: "Glacier",
+        tint: (0.82, 0.96, 1.22),
+        element: Some(Element::Ice),
+        map_style: 2,
+        music_style: 2,
+        fauna: &['s', 'a', 'k', 'g', 'm', 'M'],
+        lore: "Un froid mordant fige votre souffle.",
+        champion: ('s', "Seigneur de Givre", Element::Ice),
+        weight_peak: 13,
+        weight_center: 11,
+        weight_min: 1,
+        palette: (((152, 172, 202), (60, 80, 104)), ((70, 86, 104), (26, 33, 44))),
+        ambient: ('*', (210, 225, 245), 0.12),
+    },
+    BiomeDef {
+        biome: Biome::Emberdepths,
+        label: "Tref-fonds",
+        tint: (1.22, 0.84, 0.66),
+        element: Some(Element::Fire),
+        map_style: 3,
+        music_style: 3,
+        fauna: &['w', 'D', 'o', 'i', 'e', 'z'],
+        lore: "La chaleur fait onduler l'air, le sol gronde.",
+        champion: ('w', "Archimage de Braise", Element::Fire),
+        weight_peak: 13,
+        weight_center: 16,
+        weight_min: 1,
+        palette: (((162, 112, 86), (88, 52, 40)), ((80, 58, 54), (32, 23, 21))),
+        ambient: ('\u{2218}', (240, 150, 70), -0.10),
+    },
+    BiomeDef {
+        biome: Biome::Abyss,
+        label: "Abime",
+        tint: (1.04, 0.8, 1.2),
+        element: Some(Element::Lightning),
+        map_style: 4,
+        music_style: 4,
+        fauna: &['D', 'Y', 'x', 'A', 'Q', 'B'],
+        lore: "Le vide murmure des choses sans nom.",
+        champion: ('D', "Heraut de l'Abime", Element::Lightning),
+        weight_peak: 100,
+        weight_center: 106,
+        weight_min: 1,
+        palette: (((142, 110, 162), (70, 56, 88)), ((66, 58, 82), (28, 24, 40))),
+        ambient: ('\u{00b7}', (175, 125, 215), 0.0),
+    },
+    BiomeDef {
+        biome: Biome::Fungal,
+        label: "Jardins Fongiques",
+        tint: (0.82, 1.18, 0.92),
+        element: Some(Element::Poison),
+        map_style: 0,
+        music_style: 1,
+        fauna: &['j', 'v', 'k', 'G', 'c', 'n'],
+        lore: "Des spores luminescentes flottent dans une moiteur sucree.",
+        champion: ('G', "Coeur-Spore Ancien", Element::Poison),
+        weight_peak: 11,
+        weight_center: 8,
+        weight_min: 1,
+        palette: (((110, 158, 118), (48, 78, 56)), ((52, 72, 58), (22, 34, 26))),
+        ambient: ('\u{00b0}', (140, 230, 150), -0.06),
+    },
+    BiomeDef {
+        biome: Biome::Forge,
+        label: "Forge en Ruine",
+        tint: (1.2, 0.96, 0.74),
+        element: Some(Element::Fire),
+        map_style: 2,
+        music_style: 3,
+        fauna: &['P', 'o', 'i', 'e', 'z', 'O'],
+        lore: "Des enclumes froides et des fourneaux morts jonchent la ruine.",
+        champion: ('P', "Golem de Forge", Element::Fire),
+        weight_peak: 12,
+        weight_center: 14,
+        weight_min: 1,
+        palette: (((168, 130, 96), (92, 64, 42)), ((78, 62, 52), (32, 26, 22))),
+        ambient: ('\u{2218}', (235, 160, 90), -0.08),
+    },
+];
+
 impl Biome {
+    pub fn def(self) -> &'static BiomeDef {
+        &BIOMES[self as usize]
+    }
+
     pub fn label(self) -> &'static str {
-        match self {
-            Biome::Caverns => "Cavernes",
-            Biome::Catacombs => "Catacombes",
-            Biome::Frostvault => "Glacier",
-            Biome::Emberdepths => "Tref-fonds",
-            Biome::Abyss => "Abime",
-            Biome::Fungal => "Jardins Fongiques",
-            Biome::Forge => "Forge en Ruine",
-        }
+        self.def().label
     }
 
     pub fn tint(self) -> (f32, f32, f32) {
-        match self {
-            Biome::Caverns => (1.05, 1.0, 0.9),
-            Biome::Catacombs => (0.86, 1.05, 0.9),
-            Biome::Frostvault => (0.82, 0.96, 1.22),
-            Biome::Emberdepths => (1.22, 0.84, 0.66),
-            Biome::Abyss => (1.04, 0.8, 1.2),
-            Biome::Fungal => (0.82, 1.18, 0.92),
-            Biome::Forge => (1.2, 0.96, 0.74),
-        }
+        self.def().tint
     }
 
     pub fn element(self) -> Option<Element> {
-        match self {
-            Biome::Caverns => None,
-            Biome::Catacombs => Some(Element::Poison),
-            Biome::Frostvault => Some(Element::Ice),
-            Biome::Emberdepths => Some(Element::Fire),
-            Biome::Abyss => Some(Element::Lightning),
-            Biome::Fungal => Some(Element::Poison),
-            Biome::Forge => Some(Element::Fire),
-        }
+        self.def().element
     }
 
     pub fn style_id(self) -> i32 {
-        match self {
-            Biome::Caverns => 0,
-            Biome::Catacombs => 1,
-            Biome::Frostvault => 2,
-            Biome::Emberdepths => 3,
-            Biome::Abyss => 4,
-            Biome::Fungal => 0,
-            Biome::Forge => 2,
-        }
+        self.def().map_style
     }
 
     pub fn music_id(self) -> i32 {
-        match self {
-            Biome::Fungal => 1,
-            Biome::Forge => 3,
-            other => other.style_id(),
-        }
+        self.def().music_style
     }
 
     pub fn fauna(self) -> &'static [char] {
-        match self {
-            Biome::Caverns => &['r', 'g', 'k', 'o', 'b', 'W'],
-            Biome::Catacombs => &['k', 's', 'h', 'T', 'G', 'N', 'j'],
-            Biome::Frostvault => &['s', 'a', 'k', 'g', 'm', 'M'],
-            Biome::Emberdepths => &['w', 'D', 'o', 'i', 'e', 'z'],
-            Biome::Abyss => &['D', 'Y', 'x', 'A', 'Q', 'B'],
-            Biome::Fungal => &['j', 'v', 'k', 'G', 'c', 'n'],
-            Biome::Forge => &['P', 'o', 'i', 'e', 'z', 'O'],
-        }
+        self.def().fauna
     }
 
     pub fn lore(self) -> &'static str {
-        match self {
-            Biome::Caverns => "L'air sent la terre humide et le minerai.",
-            Biome::Catacombs => "Des ossements craquent sous vos pas.",
-            Biome::Frostvault => "Un froid mordant fige votre souffle.",
-            Biome::Emberdepths => "La chaleur fait onduler l'air, le sol gronde.",
-            Biome::Abyss => "Le vide murmure des choses sans nom.",
-            Biome::Fungal => "Des spores luminescentes flottent dans une moiteur sucree.",
-            Biome::Forge => "Des enclumes froides et des fourneaux morts jonchent la ruine.",
-        }
+        self.def().lore
     }
 
     pub fn champion(self) -> (char, &'static str, Element) {
-        match self {
-            Biome::Caverns => ('o', "Roi-Gobelin des Cavernes", Element::Physical),
-            Biome::Catacombs => ('s', "Liche des Catacombes", Element::Poison),
-            Biome::Frostvault => ('s', "Seigneur de Givre", Element::Ice),
-            Biome::Emberdepths => ('w', "Archimage de Braise", Element::Fire),
-            Biome::Abyss => ('D', "Heraut de l'Abime", Element::Lightning),
-            Biome::Fungal => ('G', "Coeur-Spore Ancien", Element::Poison),
-            Biome::Forge => ('P', "Golem de Forge", Element::Fire),
-        }
+        self.def().champion
+    }
+
+    pub fn palette(self) -> ((Color, Color), (Color, Color)) {
+        self.def().palette
+    }
+
+    pub fn ambient(self) -> (char, Color, f32) {
+        self.def().ambient
+    }
+
+    pub fn weight_at(self, floor: i32) -> i32 {
+        let d = self.def();
+        (d.weight_peak - (floor - d.weight_center).abs()).max(d.weight_min)
     }
 }
 
@@ -230,6 +319,8 @@ impl Objective {
         }
     }
 }
+
+pub const DIFFICULTIES: &[(&str, f32)] = &[("Facile", 0.7), ("Normal", 1.0), ("Difficile", 1.4), ("Cauchemar", 1.85)];
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum Boon {
@@ -932,15 +1023,7 @@ impl Game {
         if !self.map.is_visible(x, y) {
             return;
         }
-        let (glyph, color, vy) = match self.biome {
-            Biome::Caverns => ('\u{00b7}', (120, 110, 95), 0.05),
-            Biome::Catacombs => ('\u{00b7}', (120, 150, 110), 0.0),
-            Biome::Frostvault => ('*', (210, 225, 245), 0.12),
-            Biome::Emberdepths => ('\u{2218}', (240, 150, 70), -0.10),
-            Biome::Abyss => ('\u{00b7}', (175, 125, 215), 0.0),
-            Biome::Fungal => ('\u{00b0}', (140, 230, 150), -0.06),
-            Biome::Forge => ('\u{2218}', (235, 160, 90), -0.08),
-        };
+        let (glyph, color, vy) = self.biome.ambient();
         self.fx.particles.push(Particle {
             x: x as f32,
             y: y as f32,
@@ -1531,19 +1614,14 @@ impl Game {
         if self.hero.ability_cd > 0 {
             return false;
         }
-        match self.class {
-            HeroClass::Warrior => self.ability_charge(),
-            HeroClass::Rogue => self.ability_blink(),
-            HeroClass::Mage => self.ability_nova(),
-            HeroClass::Paladin => self.ability_smite(),
-            HeroClass::Necromancer => self.ability_raise(),
-            HeroClass::Ranger => self.ability_volley(),
-            HeroClass::Berserker => self.ability_furie(),
-            HeroClass::Elementalist => self.ability_nova(),
-            HeroClass::Monk => self.ability_blink(),
-            HeroClass::Druid => self.ability_smite(),
-            HeroClass::Templar => self.ability_charge(),
-            HeroClass::Warlock => self.ability_nova(),
+        match self.class.ability() {
+            Ability::Charge => self.ability_charge(),
+            Ability::Blink => self.ability_blink(),
+            Ability::Nova => self.ability_nova(),
+            Ability::Smite => self.ability_smite(),
+            Ability::Raise => self.ability_raise(),
+            Ability::Volley => self.ability_volley(),
+            Ability::Furie => self.ability_furie(),
         }
     }
 
@@ -3431,21 +3509,12 @@ impl Game {
 
     fn roll_biome(&mut self) -> Biome {
         let f = self.floor;
-        let weights: [(Biome, i32); 7] = [
-            (Biome::Caverns, (20 - f).max(2)),
-            (Biome::Catacombs, (16 - (f - 5).abs()).max(2)),
-            (Biome::Frostvault, (13 - (f - 11).abs()).max(1)),
-            (Biome::Emberdepths, (13 - (f - 16).abs()).max(1)),
-            (Biome::Abyss, (f - 6).max(1)),
-            (Biome::Fungal, (11 - (f - 8).abs()).max(1)),
-            (Biome::Forge, (12 - (f - 14).abs()).max(1)),
-        ];
-        let total: i32 = weights.iter().map(|(_, w)| w).sum();
+        let total: i32 = BIOMES.iter().map(|d| d.biome.weight_at(f)).sum();
         let mut roll = self.rng.below(total.max(1) as usize) as i32;
-        for (b, w) in weights {
-            roll -= w;
+        for d in BIOMES {
+            roll -= d.biome.weight_at(f);
             if roll < 0 {
-                return b;
+                return d.biome;
             }
         }
         Biome::Caverns
@@ -3671,6 +3740,20 @@ mod tests {
             crate::render::draw(&game, 80 + super::super_panel(), 30, false, "1x", false, 4, &mut sink);
         }
         assert!(game.best_floor >= 1);
+    }
+
+    #[test]
+    fn content_tables_aligned() {
+        use crate::entity::CLASSES;
+        assert_eq!(CLASSES.len(), HeroClass::ALL.len());
+        for (i, c) in HeroClass::ALL.iter().enumerate() {
+            assert!(CLASSES[i].class == *c, "CLASSES desync at {}", i);
+            assert!(c.def().class == *c);
+        }
+        assert_eq!(BIOMES.len(), 7);
+        for (i, d) in BIOMES.iter().enumerate() {
+            assert!(d.biome as usize == i, "BIOMES desync at {}", i);
+        }
     }
 }
 

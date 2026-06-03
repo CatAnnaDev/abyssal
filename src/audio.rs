@@ -23,6 +23,29 @@ pub enum Sound {
     Heartbeat,
 }
 
+impl Sound {
+    #[allow(dead_code)]
+    pub const ALL: &'static [(&'static str, Sound)] = &[
+        ("hit", Sound::Hit),
+        ("crit", Sound::Crit),
+        ("kill", Sound::Kill),
+        ("hurt", Sound::Hurt),
+        ("gold", Sound::Gold),
+        ("item", Sound::Item),
+        ("quaff", Sound::Quaff),
+        ("levelup", Sound::LevelUp),
+        ("talent", Sound::Talent),
+        ("descend", Sound::Descend),
+        ("bolt", Sound::Bolt),
+        ("scroll", Sound::Scroll),
+        ("bosswarn", Sound::BossWarn),
+        ("bosshit", Sound::BossHit),
+        ("death", Sound::Death),
+        ("trade", Sound::Trade),
+        ("heartbeat", Sound::Heartbeat),
+    ];
+}
+
 const SR: u32 = 44100;
 
 #[derive(Clone, Copy)]
@@ -544,28 +567,10 @@ mod preview {
         let dir = "/tmp/abyssal_sfx";
         let _ = fs::remove_dir_all(dir);
         fs::create_dir_all(dir).unwrap();
-        let all = [
-            ("hit", Sound::Hit),
-            ("crit", Sound::Crit),
-            ("kill", Sound::Kill),
-            ("hurt", Sound::Hurt),
-            ("gold", Sound::Gold),
-            ("item", Sound::Item),
-            ("quaff", Sound::Quaff),
-            ("levelup", Sound::LevelUp),
-            ("talent", Sound::Talent),
-            ("descend", Sound::Descend),
-            ("bolt", Sound::Bolt),
-            ("scroll", Sound::Scroll),
-            ("bosswarn", Sound::BossWarn),
-            ("bosshit", Sound::BossHit),
-            ("death", Sound::Death),
-            ("trade", Sound::Trade),
-            ("heartbeat", Sound::Heartbeat),
-        ];
+        let all = Sound::ALL;
         let mut montage: Vec<f32> = Vec::new();
         let gap = vec![0.0f32; (SR as f32 * 0.22) as usize];
-        for (name, s) in all {
+        for &(name, s) in all {
             let buf = render(s);
             write_wav(&format!("{}/{}.wav", dir, name), &buf);
             montage.extend_from_slice(&buf);

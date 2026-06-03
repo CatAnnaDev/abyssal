@@ -141,6 +141,10 @@ Tout est généré et rendu au runtime — aucun fichier d'art, d'audio ou de do
 - `audio.rs` — un mini synthé chiptune (carré/triangle/sinus/bruit + ADSR) qui alimente `rodio` ; SFX et musique adaptative en couches calculés en échantillons bruts
 - `profile.rs` / `config.rs` / `twitch.rs` / `rng.rs` — persistance, config, lecteur IRC Twitch anonyme, PRNG xorshift
 
+## Étendre le jeu
+
+Le contenu est piloté par des données : classes, biomes, difficultés et sons vivent chacun dans une table unique, donc en ajouter un se fait en quelques lignes au même endroit. Voir [ARCHITECTURE.md](ARCHITECTURE.md) pour le pas-à-pas.
+
 ## Licence / crédits
 
 Projet personnel de [CatAnnaDev](https://github.com/CatAnnaDev). Fait en Rust avec `crossterm`, `rodio` et `serde`.

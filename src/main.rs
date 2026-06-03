@@ -90,27 +90,19 @@ enum MenuResult {
     Quit,
 }
 
-const M_CLASSES: [(&str, Option<HeroClass>); 13] = [
-    ("Aleatoire", None),
-    ("Guerrier", Some(HeroClass::Warrior)),
-    ("Voleur", Some(HeroClass::Rogue)),
-    ("Mage", Some(HeroClass::Mage)),
-    ("Paladin", Some(HeroClass::Paladin)),
-    ("Necromancien", Some(HeroClass::Necromancer)),
-    ("Rodeur", Some(HeroClass::Ranger)),
-    ("Berserker", Some(HeroClass::Berserker)),
-    ("Elementaliste", Some(HeroClass::Elementalist)),
-    ("Moine", Some(HeroClass::Monk)),
-    ("Druide", Some(HeroClass::Druid)),
-    ("Templier", Some(HeroClass::Templar)),
-    ("Occultiste", Some(HeroClass::Warlock)),
-];
+fn class_choices() -> Vec<(&'static str, Option<HeroClass>)> {
+    let mut v: Vec<(&'static str, Option<HeroClass>)> = vec![("Aleatoire", None)];
+    for c in entity::CLASSES {
+        v.push((c.label, Some(c.class)));
+    }
+    v
+}
 const M_MODES: [(&str, Playstyle); 3] = [
     ("Completionniste", Playstyle::Completionist),
     ("Combattant", Playstyle::Combatant),
     ("Rusher", Playstyle::Rusher),
 ];
-const M_DIFFS: [(&str, f32); 4] = [("Facile", 0.7), ("Normal", 1.0), ("Difficile", 1.4), ("Cauchemar", 1.85)];
+const M_DIFFS: &[(&str, f32)] = game::DIFFICULTIES;
 const M_BOONS: [(&str, Boon); 4] = [
     ("Aucun", Boon::None),
     ("Robuste", Boon::Tough),
@@ -124,6 +116,7 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
     let mut sel = 0i32;
     let mut idx = [0usize, 1, 1, 0];
     let labels = ["Classe", "Mode de jeu", "Difficulte", "Trait de depart"];
+    let m_classes = class_choices();
     loop {
         let mut buf = String::new();
         buf.push_str("\x1b[2J\x1b[H");
@@ -154,7 +147,7 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
         put(&mut buf, ox + 3, oy + 2, c, &"\u{2500}".repeat((bw - 6) as usize));
 
         let values = [
-            M_CLASSES[idx[0]].0,
+            m_classes[idx[0]].0,
             M_MODES[idx[1]].0,
             M_DIFFS[idx[2]].0,
             M_BOONS[idx[3]].0,
@@ -200,16 +193,16 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
                     KeyCode::Up => sel = (sel + 3) % 4,
                     KeyCode::Down => sel = (sel + 1) % 4,
                     KeyCode::Left => {
-                        let len = [M_CLASSES.len(), M_MODES.len(), M_DIFFS.len(), M_BOONS.len()][sel as usize];
+                        let len = [m_classes.len(), M_MODES.len(), M_DIFFS.len(), M_BOONS.len()][sel as usize];
                         idx[sel as usize] = (idx[sel as usize] + len - 1) % len;
                     }
                     KeyCode::Right => {
-                        let len = [M_CLASSES.len(), M_MODES.len(), M_DIFFS.len(), M_BOONS.len()][sel as usize];
+                        let len = [m_classes.len(), M_MODES.len(), M_DIFFS.len(), M_BOONS.len()][sel as usize];
                         idx[sel as usize] = (idx[sel as usize] + 1) % len;
                     }
                     KeyCode::Enter => {
                         return Ok(MenuResult::Start(Setup {
-                            class: M_CLASSES[idx[0]].1,
+                            class: m_classes[idx[0]].1,
                             style: M_MODES[idx[1]].1,
                             diff_mult: M_DIFFS[idx[2]].1,
                             diff_label: M_DIFFS[idx[2]].0.to_string(),
