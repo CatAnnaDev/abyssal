@@ -513,8 +513,8 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
     let mut speed = setup.as_ref().map_or(1, |s| s.speed_idx.min(SPEEDS.len() - 1));
     let mut paused = false;
     let mut sprite_mode = setup.as_ref().map_or(false, |s| s.sprite);
-    let sprite_zooms = [3i32, 4, 6];
-    let mut zoom_idx = 1usize;
+    let sprite_zooms = [2i32, 3, 4, 6, 8, 12];
+    let mut zoom_idx = 2usize;
     let mut accumulator = 0.0f32;
     let mut last = Instant::now();
     let mut heartbeat_acc = 0.0f32;

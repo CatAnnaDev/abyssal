@@ -75,7 +75,7 @@ Progress autoloads on launch (`abyssal.save.json`).
 - **Branching descents** — at each stairway the AI weighs 2–3 paths (treasure / challenge / warren / rest), heading for a Rest branch when wounded.
 - **Rift rooms** — rare purple "parallel world" floors packed with elites and loot, a guaranteed relic on entry, and an over-leveled "Guardian of the Rift".
 - **Features & events** — curse altars, shrines, blessing fountains, mimic chests, a rare Forge, gamble shrines, and per-floor events.
-- **Two render modes** (`g`) — classic colored glyphs, or a half-block pixel-art sprite camera with procedural sprites, particles and floating damage (zoom with `z`).
+- **Two render modes** (`g`) — classic colored glyphs, or a half-block pixel-art sprite camera with detailed 8×8 procedural sprites (outlines + shading), particles and floating damage, and a wide zoom range from far-out to close-up (`z`).
 
 ### Heroes, classes & gear
 - **Twenty classes** (Warrior, Rogue, Mage, Paladin, Necromancer, Ranger, Berserker, Elementalist, Monk, Druid, Templar, Warlock, Shaman, Valkyrie, Spellblade, Sentinel, Reaper, Spectre, Maelstrom, Lich) — each with its own weapon/armor, crit, cleave/bolts and a cooldown ability.

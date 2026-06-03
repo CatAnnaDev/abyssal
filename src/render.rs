@@ -454,23 +454,24 @@ fn px_blend(base: Color, over: Color, a: f32) -> Color {
     )
 }
 
-fn overlay_sprite(cell: &mut [[Color; 4]; 4], pat: &[&str; 4], color: Color, ox: i32, oy: i32) {
+fn overlay_sprite(cell: &mut [[Color; 8]; 8], pat: &[&str; 8], color: Color, ox: i32, oy: i32) {
     for (sy, row) in pat.iter().enumerate() {
         for (sx, ch) in row.chars().enumerate() {
-            if sx >= 4 {
+            if sx >= 8 {
                 break;
             }
             let c = match ch {
                 'X' => color,
-                '.' => px_dark(color, 0.65),
-                '*' => px_lite(color, 0.45),
-                'o' => (24, 20, 26),
-                'v' => (235, 235, 235),
+                '.' => px_dark(color, 0.6),
+                ':' => px_dark(color, 0.8),
+                '*' => px_lite(color, 0.4),
+                'o' => (20, 17, 24),
+                'v' => (245, 245, 250),
                 _ => continue,
             };
             let tx = sx as i32 + ox;
             let ty = sy as i32 + oy;
-            if (0..4).contains(&tx) && (0..4).contains(&ty) {
+            if (0..8).contains(&tx) && (0..8).contains(&ty) {
                 cell[ty as usize][tx as usize] = c;
             }
         }
@@ -505,37 +506,37 @@ fn feature_color(kind: FeatureKind) -> Color {
     }
 }
 
-const SPR_HERO: [&str; 4] = [" ** ", " XX ", "XXXX", "X  X"];
-const SPR_CREATURE: [&str; 4] = [" XX ", "XXXX", "XooX", "X  X"];
-const SPR_BOSS: [&str; 4] = ["XXXX", "XooX", "XXXX", " XX "];
-const SPR_ITEM: [&str; 4] = [" X  ", "XXX ", " X  ", "    "];
-const SPR_MERCHANT: [&str; 4] = [" XX ", "XXXX", "X  X", "X  X"];
-const SPR_VERMIN: [&str; 4] = ["    ", "oXXo", "XXXX", "X  X"];
-const SPR_ARCHER: [&str; 4] = [" XX*", "XXX*", "Xoo*", "X X*"];
-const SPR_CASTER: [&str; 4] = [" *  ", " ** ", "XXXX", "XooX"];
-const SPR_BRUTE: [&str; 4] = ["XXXX", "XooX", "XXXX", "XXXX"];
-const SPR_DEMON: [&str; 4] = ["*XX*", "XXXX", "XooX", "X  X"];
-const SPR_DRAGON: [&str; 4] = ["*XX*", "XXXX", "XooX", "*XX*"];
-const SPR_MIMIC: [&str; 4] = ["XXXX", "XvvX", "XXXX", "X  X"];
-const SPR_FINAL: [&str; 4] = ["*vv*", "vXXv", "XooX", "vXXv"];
-const SPR_BOMB: [&str; 4] = [" *  ", "XXXX", "XXXX", " XX "];
-const SPR_BAT: [&str; 4] = ["*  *", "XvvX", " XX ", "    "];
-const SPR_BLOB: [&str; 4] = [" .. ", "XooX", "XXXX", " XX "];
-const SPR_FLAME: [&str; 4] = ["  * ", " ** ", " XX ", "XXXX"];
-const SPR_WINGED: [&str; 4] = ["*XX*", "vXXv", "XooX", " XX "];
-const SPR_COIN: [&str; 4] = [" XX ", "X*vX", "Xv*X", " XX "];
-const SPR_POTION: [&str; 4] = [" .. ", " XX ", "X*XX", "XXXX"];
-const SPR_BLADE: [&str; 4] = ["  .v", " .X ", ".X. ", "*.  "];
-const SPR_ARMOR: [&str; 4] = [" XX ", "X..X", "X..X", "XXXX"];
-const SPR_RING: [&str; 4] = ["    ", " vv ", "v  v", " vv "];
-const SPR_AMULET: [&str; 4] = [" v  ", "v X ", " X v", "  v "];
-const SPR_SCROLL: [&str; 4] = ["XXXX", "X..X", "XXXX", " .. "];
-const SPR_CHEST: [&str; 4] = ["XXXX", "X**X", "XvvX", "XXXX"];
-const SPR_TRAP: [&str; 4] = ["v v ", "XXXX", "v v ", "    "];
+const SPR_HERO: [&str; 8] = ["  o**o  ", " oX**Xo ", " oXvvXo ", " oXXXXo ", "oXXXXXXo", "o:XXXX:o", "  X  X  ", "  o  o  "];
+const SPR_CREATURE: [&str; 8] = [" o    o ", "oXo  oXo", "oXXXXXXo", "XvXXXXvX", "oXXXXXXo", "oXX..XXo", " oX  Xo ", "  o  o  "];
+const SPR_BOSS: [&str; 8] = ["o  XX  o", "oXXXXXXo", "XvX..XvX", "oXXXXXXo", "oXX..XXo", "oXXXXXXo", "oXo  oXo", " o    o "];
+const SPR_ITEM: [&str; 8] = ["        ", "   vv   ", "  *XX*  ", " *XXXX* ", " *XXXX* ", "  *XX*  ", "   ::   ", "        "];
+const SPR_MERCHANT: [&str; 8] = ["  oooo  ", " o*XX*o ", " oXvvXo ", " oXXXXo ", "oX*XX*Xo", "oXXXXXXo", " oX  Xo ", " o:  :o "];
+const SPR_VERMIN: [&str; 8] = ["        ", "o      o", "oXo  oXo", "oXXXXXXo", "XvXXXXvX", "oXX..XXo", " oXXXXo ", "o o  o o"];
+const SPR_ARCHER: [&str; 8] = ["  o*o  v", " oXvXo v", " oXXXo v", "oXXXXo v", "oXXXXo v", " XX XX v", " o   o v", " o   o  "];
+const SPR_CASTER: [&str; 8] = ["   v    ", "  *X*   ", " o**o   ", " oXvXo  ", "oXXXXo  ", "oX**Xo  ", "oXXXXXo ", " oXXXo  "];
+const SPR_BRUTE: [&str; 8] = ["oXXXXXXo", "XvXXXXvX", "XXX..XXX", "oXXXXXXo", "oXXXXXXo", "oXX..XXo", "oXo  oXo", "o o  o o"];
+const SPR_DEMON: [&str; 8] = ["v      v", "oXo  oXo", "oXXXXXXo", "XvX..XvX", "oXXXXXXo", "oX*..*Xo", " oXXXXo ", " o:  :o "];
+const SPR_DRAGON: [&str; 8] = ["*o    o*", "*Xo  oX*", "*XXXXXX*", "vXX..XXv", "oXXXXXXo", "*XXXXXX*", "*oXXXXo*", " *o  o* "];
+const SPR_MIMIC: [&str; 8] = ["oXXXXXXo", "X*XXXX*X", "oXXXXXXo", "ovvvvvvo", "oXvXvXvo", "oXXXXXXo", "oXo  oXo", "o      o"];
+const SPR_FINAL: [&str; 8] = ["v o  o v", "oXXXXXXo", "Xv.XX.vX", "oXXXXXXo", "o*XXXX*o", "oXX..XXo", "voXXXXov", " o o o  "];
+const SPR_BOMB: [&str; 8] = ["     v  ", "    *   ", "  oooo  ", " oXXXXo ", "oXX**XXo", "oXXXXXXo", " oXXXXo ", "  oooo  "];
+const SPR_BAT: [&str; 8] = ["        ", "o      o", "oXo  oXo", "oXXvvXXo", " XXXXXX ", "  oXXo  ", "   oo   ", "        "];
+const SPR_BLOB: [&str; 8] = ["        ", "  oooo  ", " o*XX*o ", "oXvXXvXo", "oXXXXXXo", "oXX..XXo", " oXXXXo ", "o oooo o"];
+const SPR_FLAME: [&str; 8] = ["   v    ", "  *v*   ", "  *X*   ", " *XXX*  ", " *XXX*  ", "*XXXXX* ", "*XX:XX* ", " *XXX*  "];
+const SPR_WINGED: [&str; 8] = ["* o  o *", "*oXXXXo*", "vXX..XXv", "oXXXXXXo", "*oXXXXo*", " *XXXX* ", "  *  *  ", "  o  o  "];
+const SPR_COIN: [&str; 8] = ["        ", "  oooo  ", " o*vv*o ", "oXvXXvXo", "oXvXXvXo", " o*vv*o ", "  oooo  ", "        "];
+const SPR_POTION: [&str; 8] = ["   oo   ", "   ::   ", "  o::o  ", "  oXXo  ", " oX**Xo ", " oXvvXo ", " oXXXXo ", "  oooo  "];
+const SPR_BLADE: [&str; 8] = ["      ov", "     oXv", "    oXo ", "   oXo  ", "  oXo   ", " *Xo    ", "*Xoo    ", "oo      "];
+const SPR_ARMOR: [&str; 8] = [" oooooo ", "oX*vv*Xo", "oXvXXvXo", "oXXXXXXo", "oX:..:Xo", "oXXXXXXo", " oXXXXo ", "  oooo  "];
+const SPR_RING: [&str; 8] = ["        ", "  *vv*  ", " vo  ov ", " vo  ov ", " vo  ov ", "  *vv*  ", "        ", "        "];
+const SPR_AMULET: [&str; 8] = ["  *vv*  ", " v    v ", "  v  v  ", "   vv   ", "  oXXo  ", " oXvvXo ", "  oXXo  ", "   oo   "];
+const SPR_SCROLL: [&str; 8] = [" oooooo ", "oX::::Xo", "oX....Xo", "oX::::Xo", "oX....Xo", "oX::::Xo", " oooooo ", "        "];
+const SPR_CHEST: [&str; 8] = [" oooooo ", "oX****Xo", "oXvvvvXo", "oXXXXXXo", "oX*vv*Xo", "oXXXXXXo", "oXX..XXo", " oooooo "];
+const SPR_TRAP: [&str; 8] = ["        ", " v v v v", " X X X X", "oXoXoXoX", "oXXXXXXo", "oooooooo", "        ", "        "];
 
-const SPR_EYE: [&str; 4] = [" XX ", "X**X", "X**X", " XX "];
+const SPR_EYE: [&str; 8] = ["        ", "  oooo  ", " o****o ", "o*XvvX*o", "o*vXXv*o", " o****o ", "  oooo  ", "        "];
 
-fn item_sprite(glyph: char) -> &'static [&'static str; 4] {
+fn item_sprite(glyph: char) -> &'static [&'static str; 8] {
     match glyph {
         '$' => &SPR_COIN,
         '!' => &SPR_POTION,
@@ -550,7 +551,7 @@ fn item_sprite(glyph: char) -> &'static [&'static str; 4] {
     }
 }
 
-fn feature_sprite(kind: FeatureKind) -> &'static [&'static str; 4] {
+fn feature_sprite(kind: FeatureKind) -> &'static [&'static str; 8] {
     match kind {
         FeatureKind::Chest => &SPR_CHEST,
         FeatureKind::Trap => &SPR_TRAP,
@@ -560,7 +561,7 @@ fn feature_sprite(kind: FeatureKind) -> &'static [&'static str; 4] {
     }
 }
 
-fn monster_sprite(m: &crate::entity::Monster) -> &'static [&'static str; 4] {
+fn monster_sprite(m: &crate::entity::Monster) -> &'static [&'static str; 8] {
     if m.boss {
         return if m.glyph == '\u{2638}' { &SPR_FINAL } else { &SPR_BOSS };
     }
@@ -583,7 +584,7 @@ fn monster_sprite(m: &crate::entity::Monster) -> &'static [&'static str; 4] {
 }
 
 fn sprite_cam(game: &Game, mw: i32, mh: i32, zoom: i32) -> (i32, i32, i32) {
-    let t = zoom.clamp(2, 8);
+    let t = zoom.clamp(2, 16);
     let camw = (mw / t).max(1);
     let camh = (mh * 2 / t).max(1);
     let cx0 = (game.hero.x - camw / 2).clamp(0, (game.map.width - camw).max(0));
@@ -650,22 +651,28 @@ fn draw_sprite_map(game: &Game, mw: i32, mh: i32, sdx: i32, tint: (f32, f32, f32
                 0.42
             };
             let tile = game.map.tile(wx, wy);
-            let mut cell = [[bgfill; 4]; 4];
-            for sy in 0..4usize {
-                for sx in 0..4usize {
+            let mut cell = [[bgfill; 8]; 8];
+            for sy in 0..8usize {
+                for sx in 0..8usize {
                     let base = match tile {
                         Tile::Wall => {
                             if sy == 0 {
                                 wall_fg
-                            } else if sy == 3 {
-                                px_dark(wall_bg, 0.78)
+                            } else if sy == 1 {
+                                px_lite(wall_fg, 0.12)
+                            } else if sy >= 6 {
+                                px_dark(wall_bg, 0.74)
+                            } else if (wx * 5 + sx as i32) % 4 == 0 && sy == 3 {
+                                px_dark(wall_bg, 0.88)
                             } else {
                                 wall_bg
                             }
                         }
                         Tile::Floor => {
-                            if (wx * 7 + wy * 13 + sx as i32 * 3 + sy as i32 * 5) & 7 == 0 {
+                            if (wx * 7 + wy * 13 + sx as i32 * 3 + sy as i32 * 5) % 23 == 0 {
                                 floor_fg
+                            } else if (wx * 11 + wy * 5 + sx as i32 + sy as i32 * 2) % 17 == 0 {
+                                px_lite(floor_bg, 0.1)
                             } else {
                                 floor_bg
                             }
@@ -676,8 +683,15 @@ fn draw_sprite_map(game: &Game, mw: i32, mh: i32, sdx: i32, tint: (f32, f32, f32
                 }
             }
             if tile == Tile::StairsDown {
-                for &(ax, ay) in &[(1usize, 0usize), (2, 1), (1, 2), (0, 1), (1, 1)] {
-                    cell[ay][ax] = shade((255, 240, 140), light.max(0.8), (1.0, 1.0, 1.0));
+                for sy in 0..8usize {
+                    for sx in 0..8usize {
+                        let edge = sx == 0 || sx == 7 || sy == 0 || sy == 7;
+                        let step = (sy / 2 + 1) as i32;
+                        let on = !edge && (sx as i32) >= 4 - step && (sx as i32) <= 3 + step;
+                        if on {
+                            cell[sy][sx] = shade((255, 238, 140), light.max(0.8), (1.0, 1.0, 1.0));
+                        }
+                    }
                 }
             }
             if game.danger.iter().any(|&(a, b)| a == wx && b == wy) {
@@ -733,8 +747,8 @@ fn draw_sprite_map(game: &Game, mw: i32, mh: i32, sdx: i32, tint: (f32, f32, f32
                     let fx = ox + px;
                     let fy = oy + py;
                     if fx < pw && fy < ph {
-                        let sx = (px * 4 / t).min(3);
-                        let sy = (py * 4 / t).min(3);
+                        let sx = (px * 8 / t).min(7);
+                        let sy = (py * 8 / t).min(7);
                         fb[(fy * pw + fx) as usize] = cell[sy as usize][sx as usize];
                     }
                 }

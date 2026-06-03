@@ -75,7 +75,7 @@ La progression se charge automatiquement au lancement (`abyssal.save.json`).
 - **Descentes ramifiées** — à chaque escalier l'IA pèse 2–3 voies (trésor / défi / nuée / repos), et fonce vers une salle de repos si elle est blessée.
 - **Salles Faille** — étages « monde parallèle » violets, gorgés d'élites et de butin, relique garantie à l'entrée et un « Gardien de la Faille » surpuissant.
 - **Features & événements** — autels de malédiction, sanctuaires, fontaines, coffres mimic, une Forge rare, sanctuaires de pari, et événements d'étage.
-- **Deux modes de rendu** (`g`) — glyphes colorés classiques, ou une caméra sprite pixel-art en demi-blocs avec particules et dégâts flottants (zoom `z`).
+- **Deux modes de rendu** (`g`) — glyphes colorés classiques, ou une caméra sprite pixel-art en demi-blocs avec des sprites procéduraux 8×8 détaillés (contours + ombrage), particules et dégâts flottants, et une large plage de zoom (du dézoom large au gros plan, touche `z`).
 
 ### Héros, classes & équipement
 - **Vingt classes** (Guerrier, Voleur, Mage, Paladin, Nécromancien, Rôdeur, Berserker, Élémentaliste, Moine, Druide, Templier, Occultiste, Chaman, Valkyrie, Lame-Sort, Sentinelle, Faucheur, Spectre, Maelstrom, Liche) — chacune avec arme/armure, crit, cleave/bolts et une capacité en cooldown.
