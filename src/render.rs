@@ -957,53 +957,105 @@ fn draw_transition(floor: i32, mw: i32, mh: i32, buf: &mut String) {
 
 fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut String) {
     use std::fmt::Write as _;
+    let h = &game.hero;
     if !sprite {
-        for (x, y) in game.debug_path() {
+        let mark = |buf: &mut String, x: i32, y: i32, col: Color, ch: char| {
             if x >= 0 && y >= 0 && x < mw && y < mh {
-                put(buf, MCOL + sdx + x, MROW + y, (80, 230, 120), "\u{00b7}");
+                let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;{};{};{}m{}", MROW + y, MCOL + sdx + x, col.0, col.1, col.2, ch);
             }
+        };
+        let (sx, sy) = game.map.stairs;
+        mark(buf, sx, sy, (255, 240, 140), '>');
+        for &(x, y) in &game.cast_danger {
+            mark(buf, x, y, (255, 150, 60), '!');
+        }
+        for &(x, y, _) in &game.hazard {
+            mark(buf, x, y, (235, 110, 40), 'H');
+        }
+        for (x, y) in game.debug_path() {
+            mark(buf, x, y, (80, 230, 120), '\u{00b7}');
         }
         if let Some((gx, gy)) = game.debug_goal() {
-            if gx >= 0 && gy >= 0 && gx < mw && gy < mh {
-                put(buf, MCOL + sdx + gx, MROW + gy, (110, 255, 150), "\u{2573}");
-            }
+            mark(buf, gx, gy, (110, 255, 150), '\u{2573}');
         }
         for m in &game.monsters {
-            if m.x >= 0 && m.y >= 0 && m.x < mw && m.y < mh && game.map.is_explored(m.x, m.y) {
-                let (ch, col) = if m.boss {
-                    ('B', (255, 120, 120))
-                } else if m.cast_wind > 0 {
-                    ('c', (255, 180, 80))
-                } else if m.aggro {
-                    ('!', (255, 90, 90))
-                } else if m.flees {
-                    ('f', (120, 200, 255))
-                } else {
-                    ('z', (150, 150, 160))
-                };
-                let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;{};{};{}m{}", MROW + m.y, MCOL + sdx + m.x, col.0, col.1, col.2, ch);
+            if !game.map.is_explored(m.x, m.y) {
+                continue;
+            }
+            let (ch, col) = if m.boss {
+                ('B', (255, 120, 120))
+            } else if m.cast_wind > 0 {
+                ('c', (255, 180, 80))
+            } else if m.aggro {
+                ('!', (255, 90, 90))
+            } else if m.flees {
+                ('f', (120, 200, 255))
+            } else {
+                ('z', (150, 150, 160))
+            };
+            mark(buf, m.x, m.y, col, ch);
+            if m.cast_wind > 0 {
+                mark(buf, m.cast_tx, m.cast_ty, (255, 90, 60), '\u{00d7}');
             }
         }
     }
     let goal = game.debug_goal().map(|(x, y)| format!("{},{}", x, y)).unwrap_or_else(|| "-".into());
     let bossc = game.monsters.iter().filter(|m| m.boss).count();
     let aggro = game.monsters.iter().filter(|m| m.aggro).count();
-    let lines = [
+    let mode = match game.music_mode() {
+        crate::audio::MusicMode::Calm => "calm",
+        crate::audio::MusicMode::Combat => "combat",
+        crate::audio::MusicMode::Boss => "boss",
+    };
+    let evt = if game.event.label().is_empty() { "calme" } else { game.event.label() };
+    let muts: Vec<&str> = game.mutators.iter().map(|m| m.label()).collect();
+    let relics: Vec<&str> = h.relics.iter().map(|r| r.short()).collect();
+    let tals: Vec<&str> = h.talents.iter().map(|t| t.label().split(' ').next().unwrap_or("")).collect();
+    let near = game
+        .monsters
+        .iter()
+        .filter(|m| game.map.is_visible(m.x, m.y))
+        .min_by_key(|m| (m.x - h.x).abs() + (m.y - h.y).abs());
+    let nstr = match near {
+        Some(m) => format!("{} hp{}/{} a{} d{} {} d{}", m.name, m.hp, m.max_hp, m.atk, m.def, m.element.label(), (m.x - h.x).abs().max((m.y - h.y).abs())),
+        None => "-".into(),
+    };
+    let pet = game.pet.as_ref().map(|p| format!("{} l{} {}/{}", p.name, p.level, p.hp, p.max_hp)).unwrap_or_else(|| "-".into());
+    let obj = if game.objective == crate::game::Objective::None { "-".to_string() } else { game.objective.desc(game.objective_target) };
+    let we = h.weapon_element();
+    let lines = vec![
         "== DEBUG (ctrl+d) ==".to_string(),
-        format!("act:{}", game.last_action),
-        format!("style:{} goal:{}", game.style.label(), goal),
-        format!("intensity:{:.2} boss:{}", game.music_intensity(), bossc),
+        format!("act:{}  goal:{}", game.last_action, goal),
+        format!("style:{}  rush:{} w{}", game.style.label(), game.boss_rush, game.boss_wave),
+        format!("music:{} int:{:.2} boss:{}", mode, game.music_intensity(), bossc),
         format!("floor:{} {} [{}]", game.floor, game.biome.label(), game.room_kind.label()),
+        format!("event:{} diffx{:.2} asc:{}", evt, game.diff_mult, game.ascension),
+        format!("obj:{}", obj),
+        format!("mut:{}", if muts.is_empty() { "-".into() } else { muts.join(",") }),
         format!("mob:{} aggro:{} ally:{}", game.monsters.len(), aggro, game.allies.len()),
-        format!("item:{} feat:{}", game.items.len(), game.features.len()),
-        format!("hp:{}/{} lvl:{} or:{}", game.hero.hp, game.hero.max_hp, game.hero.level, game.hero.gold),
+        format!("item:{} feat:{} dng:{}/{}/{}", game.items.len(), game.features.len(), game.danger.len(), game.cast_danger.len(), game.hazard.len()),
+        format!("hp:{}/{} lvl{} xp{}/{}", h.hp, h.max_hp, h.level, h.xp, h.xp_next),
+        format!("atk:{} def:{} crit:{}%", h.atk(), h.def(), (game.class.crit_chance() * 100.0) as i32),
+        format!("wpn:{} +{} {} [{}]", fit(&h.weapon, 8), h.weapon_bonus, h.weapon_affix.label(), we.label()),
+        format!("arm:{} +{} {}", fit(&h.armor, 8), h.armor_bonus, h.armor_affix.label()),
+        format!("set:{} ring:{} amu:{}", h.set_bonus(), h.ring.label(), h.amulet.label()),
+        format!("relics:{}", if relics.is_empty() { "-".into() } else { relics.join(",") }),
+        format!("tal:{}", if tals.is_empty() { "-".into() } else { tals.join(",") }),
+        format!("st b{} p{} ra{} sh{} rg{}", h.burn, h.poison, h.rage, h.shield, h.regen),
+        format!("cd bolt{} abil{} pot{} scr{}", h.bolt_cd, h.ability_cd, h.potions, h.scrolls.len()),
+        format!("pet:{}", pet),
+        format!("near:{}", nstr),
         format!("bwind:{} bpend:{} hstop:{}", game.boss_wind, game.boss_pending, game.hitstop),
-        format!("hero:{},{} disc:{}%", game.hero.x, game.hero.y, game.map.discovery_percent()),
+        format!("pos:{},{} ft:{}", h.x, h.y, game.floor_turns),
+        format!("kills:{} runs:{} disc:{}%", game.total_kills, game.runs, game.map.discovery_percent()),
     ];
+    let maxw = (mw - 2).clamp(8, 38) as usize;
     for (i, l) in lines.iter().enumerate() {
-        let y = MROW + 1 + i as i32;
-        let txt: String = l.chars().take((mw - 2).max(8) as usize).collect();
-        let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;10;12;18m\x1b[38;2;120;240;160m {:<28}\x1b[0m", y, MCOL + sdx + 1, txt);
+        if i as i32 + 1 >= mh {
+            break;
+        }
+        let txt: String = l.chars().take(maxw).collect();
+        let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;10;12;18m\x1b[38;2;120;240;160m {:<width$}\x1b[0m", MROW + 1 + i as i32, MCOL + sdx + 1, txt, width = maxw);
     }
 }
 
