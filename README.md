@@ -69,46 +69,46 @@ Progress autoloads on launch (`abyssal.save.json`).
 
 ## Features
 
-- Advanced procedural world generation (v2): each biome uses its own algorithm — cellular-automata caves (Caverns), dense BSP-style crypts (Catacombs), wide great halls (Frostvault), rooms fused with organic cave blobs (Emberdepths), and a loop-heavy labyrinth (Abyss) — with round rooms, pillared halls, guaranteed full connectivity, extra loops, and stairs placed at the farthest reachable point for pacing
-- Branching descents: at every stairway the AI weighs 2–3 paths by mindset (and heads for a Rest branch when wounded), each leading to a biome and a room type (treasure / challenge / warren / rest)
-- Rift rooms — a rare parallel-world floor (a purple-tinted "Faille") packed with elites and loot: more monsters with a sharply higher elite rate, extra items and chests, and a guaranteed relic on entry; high risk, high reward
-- Eleven biomes (Caverns, Catacombs, Frostvault, Emberdepths, Abyss, Fungal Gardens, Ruined Forge, Sunken Sanctuary, Obsidian Hive, Caldera, Crystal Gallery), each with its own palette, lighting tint, biased fauna, ambient hazard, a themed champion mini-boss, a cosmetic terrain-decor layer (moss, water, bones, cracks, ice, embers, void motes) and musical key
-- Two render modes (toggle with `g`): the classic colored-glyph map, or a half-block pixel-art "sprite" view — a hero-centred camera with procedural per-archetype sprites, distinct item/feature icons, an idle bob, particles and floating damage, all drawn in any truecolor terminal with no asset files (zoom with `z`)
-- Twenty hero classes (Warrior / Rogue / Mage / Paladin / Necromancer / Ranger / Berserker / Elementalist / Monk / Druid / Templar / Warlock / Shaman / Valkyrie / Spellblade / Sentinel / Reaper / Spectre / Maelstrom / Lich) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown
-- Six AI playstyles (modes) that reshape how the hero behaves: completionist (explore everything), fighter (seek combat), rusher (dive for stairs), looter (grab treasure, dodge fights), cautious (heal, disengage, retreat to stairs when threatened) and hunter (chase every monster, race boss to boss)
-- Boss Rush variant (menu option): floors 1-9 are normal so you can gear up, then floor 10 becomes an endless arena — you never descend again, and the instant a boss dies a stronger one surges in. An escalating wave counter drives the difficulty and the score; it's all-or-nothing (no saving)
-- Eight talents rolled on level-up — berserk crit, lifesteal, +max HP, cleave, chain lightning, regen, scout (+vision) and steel skin (-incoming damage)
-- Five weapon families (light / heavy / staff / martial fists / bows) and four armor families (cloth / leather / plate / mail), each with six (weapons) or five (armor) tiers from starter gear up to legendary endgame pieces
-- Rare lost human companions: every so often a survivor is found stranded deep in the dungeon and joins you — a named, persistent ally with a role (guard / huntress / medic), distinct behavior (tanking, ranged shots, healing you), who follows across floors, levels up alongside the hero, and fights at your side until it falls (up to two at once)
-- Combat depth: weapon procs (bleeding wounds, armor-sundering hits) on top of the elemental affixes, plus universal crit-bleed and low-HP execute finishers
-- Spectral abilities: Vortex (yanks every nearby monster around you), Possession (turns a monster against its own kind as an ally) and Phase (blink through walls) — wielded by the Maelstrom, Lich and Spectre classes
-- Cinematic combat: hit-stop briefly freezes the action on crits, kills and boss hits so the bursts, floating numbers and shatter/lightning effects are actually visible even at high speed; bosses and elites are far tankier for longer, epic showdowns
-- Rift world-bosses: the rare parallel-world floors are stalked by an over-leveled "Guardian of the Rift" on top of the elite swarm
-- A bestiary of ~45 monster kinds across the depth range, each with its glyph, element, behavior and a procedural sprite
-- Summoned allies: the Necromancer raises slain monsters as temporary undead that fight alongside the hero (a reusable allied-unit system)
-- Unique relics dropped by bosses and champions with special effects (lifesteal on kill, ghostly dodge, chain-lightning procs, burning hits, +max HP, raise-the-dead for any class, low-HP frenzy damage, greed for extra gold/potions)
-- Rare single-use ancient relics found as loot: the Ancient Eye (dispels the whole floor's fog of war at once, through walls and distance), the Hourglass (freezes every non-boss monster on the floor) and the Chalice of Life (full heal, cleanse, and +12 permanent max HP)
-- Four scroll types the AI reads situationally: fireball (AoE), freeze (crowd control), teleport (escape) and chain lightning (arcs between several foes)
-- Atmosphere: per-biome lore lines, boss intros, and ambient particles (embers, snow, fog) drifting through the lit area
-- Elemental synergies: shatter frozen foes for bonus damage, lightning that arcs to a nearby enemy, and poison that spreads between adjacent monsters
-- Elemental system (fire / ice / poison / lightning) with offensive weaknesses, on-hit effects, and defensive armor affinities (your gear's element resists matching attacks and is weak to its opposite)
-- A bestiary/codex (toggle `k`) listing discovered monsters with their element, behavior and depth
-- Ascension / NG+: reaching deeper floors permanently raises your ascension tier, stacking enemy scaling and a score multiplier on future runs
-- Loot rarity and affixes, rings, amulets, scrolls, and class-restricted equipment
-- Set bonuses (matching affixes across gear slots grant scaling ATK/DEF/crit) and a rare Forge feature that spends gold to upgrade a gear piece (and can enchant toward completing a set)
-- A live panel showing the full loadout — weapon/armor with bonus & affix, ring, amulet, set bonus, potions, scrolls by type, and talents
-- Run mutators (Sanguinaire, Cupidite, Fragile, Pullulement, Champions, Titans, Soif de Sang, Frenesie) rolled per run that twist spawns, scaling and rewards
-- A persistent lifetime profile (runs, deaths, deepest floor, best score, total kills) shown on the menu, with milestones that unlock permanent starting bonuses (+ATK, +HP, extra potions, a starting talent)
-- Monster behaviors beyond melee: ranged casters, healers that mend wounded allies, skirmishers that flee when near death, summoners, exploding kamikazes, and bosses that enrage below half health
-- Temporary buffs (rage, ward, regen) with HUD icons, gamble shrines (risk/reward) and blessing fountains
-- Familiars come in three flavors — striker, mender (heals you) and guardian — and level up as the hero does
-- Level-up talents, persistent relics unlocked through achievements
-- Unique floor bosses and a final boss with phase-based movesets — a rotation of telegraphed charge / volley / summon / slam / eruption attacks, lingering hazard tiles the hero must avoid, and an enrage at half health
-- Ranged casters that wind up and can be sidestepped
-- Curse altars, shrines, fountains, mimic chests, familiars and per-floor events
-- Rare merchants, an endless abyss mode with a scoreboard, a bestiary and death cards
-- Procedural 8/16-bit chiptune, all generated at runtime with no audio files: synthesized square/triangle/noise SFX for hits, crits, kills, loot, level-ups, boss tells and death, plus an **adaptive** chill-pop backing track that reacts live to the action — chill while exploring, then the **tempo ramps up smoothly as an enemy gets closer** and a driving arpeggio fades in; combat is faster and tenser and a boss pushes it to its most intense, all by shifting BPM/tempo and layering rather than hard-cutting tracks
-- Optional Twitch chat integration: viewers vote on the hero's mindset and merchant purchases, shown in a live on-screen panel (channel, live mindset-vote bars, top chatters); all Twitch options are adjustable in the in-game options menu
+### World & exploration
+- **World generation v2** — each biome uses its own algorithm: cellular-automata caves, dense BSP crypts, wide great halls, room+cave hybrids and loop-heavy labyrinths, with round rooms, pillared halls, guaranteed connectivity and stairs placed far away for pacing.
+- **Eleven biomes** (Caverns, Catacombs, Frostvault, Emberdepths, Abyss, Fungal Gardens, Ruined Forge, Sunken Sanctuary, Obsidian Hive, Caldera, Crystal Gallery) — each with its own palette, lighting tint, fauna, ambient hazard, a themed champion, a ground-decor layer and musical key.
+- **Branching descents** — at each stairway the AI weighs 2–3 paths (treasure / challenge / warren / rest), heading for a Rest branch when wounded.
+- **Rift rooms** — rare purple "parallel world" floors packed with elites and loot, a guaranteed relic on entry, and an over-leveled "Guardian of the Rift".
+- **Features & events** — curse altars, shrines, blessing fountains, mimic chests, a rare Forge, gamble shrines, and per-floor events.
+- **Two render modes** (`g`) — classic colored glyphs, or a half-block pixel-art sprite camera with procedural sprites, particles and floating damage (zoom with `z`).
+
+### Heroes, classes & gear
+- **Twenty classes** (Warrior, Rogue, Mage, Paladin, Necromancer, Ranger, Berserker, Elementalist, Monk, Druid, Templar, Warlock, Shaman, Valkyrie, Spellblade, Sentinel, Reaper, Spectre, Maelstrom, Lich) — each with its own weapon/armor, crit, cleave/bolts and a cooldown ability.
+- **Active abilities** — charge, blink-strike, ice/elemental nova, smite-heal, raise-dead, arrow volley, whirlwind, plus **spectral** ones: Vortex (pull every nearby monster to you), Possession (turn a monster into an ally) and Phase (blink through walls).
+- **Gear** — 5 weapon families (light / heavy / staff / fists / bows) and 4 armor families (cloth / leather / plate / mail), each with 5–6 tiers; rings, amulets, scrolls, rarity and affixes, set bonuses, and a live loadout panel.
+- **Relics** — unique drops (lifesteal, ghostly dodge, chain lightning, burning hits, +max HP, raise-dead, low-HP frenzy, greed) and rare single-use ancient relics (Ancient Eye reveals the whole floor through walls, Hourglass freezes every non-boss, Chalice of Life full-heals and grants +max HP).
+- **Eight level-up talents** — berserk crit, lifesteal, +max HP, cleave, chain lightning, regen, scout (+vision), steel skin (−incoming damage).
+
+### Combat
+- **Cinematic combat** — hit-stop briefly freezes the action on crits, kills and boss hits so the effects are visible even at high speed; bosses and elites are tanky for longer, epic showdowns.
+- **Depth** — weapon procs (bleed, armor-sunder) on top of the elemental affixes, universal crit-bleed and low-HP execute finishers.
+- **Elemental system** (fire / ice / poison / lightning) — offensive weaknesses, on-hit effects, armor resistances, and synergies (shatter frozen foes, arcing lightning, spreading poison).
+- **~45 monster kinds** with distinct behaviors (ranged casters, healers, fleeing skirmishers, summoners, kamikazes, enraging bosses) and a codex (`k`); floor bosses and a final boss with telegraphed phase-based movesets.
+
+### Allies
+- **Lost human companions** — rare survivors who join you with a role (guard / huntress / medic), follow across floors, level up and fight at your side (up to two).
+- **Familiars** — striker, mender (heals you) or guardian, leveling up with the hero.
+- **Summoned allies** — the Necromancer/Lich raise or possess foes into temporary fighters.
+
+### Modes & meta
+- **Six AI playstyles** — completionist, fighter, rusher, looter, cautious, hunter — each reshaping the hero's behavior.
+- **Boss Rush variant** — floors 1–9 to gear up, then floor 10 becomes an endless arena: a stronger boss surges in the instant one dies (no descent, no saving), wave counter driving difficulty and score.
+- **Run mutators** (Sanguinaire, Cupidite, Fragile, Pullulement, Champions, Titans, Soif de Sang, Frenesie) that twist spawns, scaling and rewards.
+- **Ascension / NG+** and a persistent lifetime profile with milestones that unlock permanent starting bonuses.
+
+### Audio
+- **Procedural 8/16-bit chiptune**, generated at runtime with no audio files: synthesized SFX, plus an **adaptive** chill-pop track that reacts live — the **tempo ramps up smoothly as enemies approach** and a driving arpeggio fades in, peaking in combat and against bosses, all by shifting tempo and layering rather than hard-cutting tracks.
+
+### Twitch (optional)
+- Viewers vote on the hero's mindset and merchant purchases, shown in a live on-screen **panel** (channel, mindset-vote bars, top chatters, a feed of recent actions).
+- **Viewer pseudos land on mobs** — an active chatter "adopts" a monster, whose name floats above it on the map.
+- The **merchant shows a clear "VOTE NOW" call-to-action** with a countdown while the vote window is open.
+- All Twitch options are adjustable from the in-game options menu.
 
 ## Possible builds
 
@@ -116,7 +116,7 @@ A "build" is the combination of everything you can set up and grow over a run. C
 
 | Axis | Options |
 | --- | --- |
-| Class | 17 |
+| Class | 20 |
 | Playstyle (mode) | 6 |
 | Difficulty | 4 |
 | Starting boon | 4 |
@@ -128,10 +128,10 @@ A "build" is the combination of everything you can set up and grow over a run. C
 | Talent combinations (8 talents, one of each max) | 2⁸ = 256 |
 | Relic combinations (8 relics) | 2⁸ = 256 |
 
-Pre-game setup alone: 17 × 6 × 4 × 4 × 2 = **3,264** starting configurations.
+Pre-game setup alone: 20 × 6 × 4 × 4 × 2 = **3,840** starting configurations.
 In-run build identity (affixes × talents × relics): 9 × 3 × 9 × 3 × 256 × 256 ≈ **47.8 million**.
 
-Multiplied together that is roughly **156 billion** theoretical builds (≈ 1.56 × 10¹¹) — and that is *before* counting the 5 weapon families × 6 tiers, 4 armor families × 5 tiers, 3 familiar types and 3 companion roles, which push the real variety far higher.
+Multiplied together that is roughly **180 billion** theoretical builds (≈ 1.8 × 10¹¹) — and that is *before* counting the 5 weapon families × 6 tiers, 4 armor families × 5 tiers, 3 familiar types and 3 companion roles, which push the real variety far higher.
 
 ## Config
 

@@ -69,46 +69,46 @@ La progression se charge automatiquement au lancement (`abyssal.save.json`).
 
 ## Fonctionnalités
 
-- Génération de monde procédurale avancée (v2) : chaque biome a son propre algorithme — grottes en automate cellulaire (Cavernes), cryptes denses façon BSP (Catacombes), grandes halles larges (Glacier), salles fusionnées à des poches de grottes organiques (Tréfonds) et un labyrinthe truffé de boucles (Abîme) — avec salles rondes, halls à piliers, connectivité totale garantie, boucles supplémentaires, et l'escalier placé au point praticable le plus éloigné pour le rythme
-- Descentes ramifiées : à chaque escalier l'IA pèse 2–3 voies selon son état d'esprit (et fonce vers une salle de repos si elle est blessée), chacune menant à un biome et un type de salle (trésor / défi / nuée / repos)
-- Salles Faille — un étage de monde parallèle rare (une « Faille » teintée de violet) gorgé d'élites et de butin : plus de monstres avec un taux d'élite très élevé, objets et coffres supplémentaires, et une relique garantie à l'entrée ; gros risque, grosse récompense
-- Onze biomes (Cavernes, Catacombes, Glacier, Tréfonds, Abîme, Jardins Fongiques, Forge en Ruine, Sanctuaire Englouti, Ruche d'Obsidienne, Caldeira, Galerie Cristalline), chacun avec sa palette, sa teinte d'éclairage, sa faune biaisée, un danger ambiant, un champion thématique, une couche de décor au sol (mousse, eau, ossements, fissures, glace, braises, motes du vide) et sa tonalité musicale
-- Deux modes de rendu (touche `g`) : la carte en glyphes colorés classique, ou une vue « sprite » pixel-art en demi-blocs — caméra centrée sur le héros, sprites procéduraux par archétype, icônes d'objets distinctes, petit balancement, particules et dégâts flottants, le tout dans n'importe quel terminal truecolor sans fichier (zoom avec `z`)
-- Vingt classes de héros (Guerrier / Voleur / Mage / Paladin / Nécromancien / Rôdeur / Berserker / Élémentaliste / Moine / Druide / Templier / Occultiste / Chaman / Valkyrie / Lame-Sort / Sentinelle / Faucheur / Spectre / Maelstrom / Liche), armes/armures/crit/cleave/bolts distincts, plus une capacité active déclenchée par l'IA en cooldown
-- Six états d'esprit (modes) qui changent le comportement du héros : complétionniste (tout explorer), combattant (chercher le combat), rusher (foncer vers l'escalier), pilleur (rafler le butin, éviter les combats), prudent (se soigner, se replier vers l'escalier en cas de danger) et traqueur (pourchasser chaque monstre, enchaîner les boss)
-- Variante Boss Rush (option du menu) : les étages 1 à 9 sont normaux pour se stuffer, puis l'étage 10 devient une arène sans fin — on ne descend plus, et dès qu'un boss meurt un plus fort surgit aussitôt. Un compteur de vagues croissant pilote la difficulté et le score ; c'est tout ou rien (aucune sauvegarde)
-- Huit talents tirés à la montée de niveau — crit berserk, vol de vie, +PV max, cleave, chaîne d'éclairs, régénération, éclaireur (+vision) et peau d'acier (-dégâts subis)
-- Cinq familles d'armes (légère / lourde / magique / poings martiaux / arcs) et quatre familles d'armures (tissu / cuir / plaque / mailles), chacune avec six paliers (armes) ou cinq (armures), du matériel de départ jusqu'aux pièces légendaires de fin de partie
-- Compagnons humains perdus et rares : de temps en temps un survivant est retrouvé échoué au fond du donjon et vous rejoint — un allié nommé et persistant avec un rôle (garde / archère / guérisseur), un comportement propre (encaisser, tirer à distance, vous soigner), qui vous suit d'étage en étage, monte en niveau avec le héros et combat jusqu'à ce qu'il tombe (jusqu'à deux à la fois)
-- Profondeur de combat : procs d'arme (plaies saignantes, coups brise-garde) en plus des affixes élémentaires, plus saignement universel sur critique et exécution des ennemis à bas PV
-- Capacités spectrales : Vortex (attire à toi tous les monstres proches), Possession (retourne un monstre contre les siens comme allié) et Phase (téléportation à travers les murs) — portées par les classes Maelstrom, Liche et Spectre
-- Combat cinématique : un hit-stop fige brièvement l'action sur les critiques, les kills et les coups de boss pour qu'on voie vraiment les éclats, les chiffres flottants et les effets (shatter, foudre) même à haute vitesse ; boss et élites bien plus coriaces pour des affrontements plus longs et épiques
-- World-boss des Failles : les rares étages du monde parallèle sont hantés par un « Gardien de la Faille » surpuissant en plus de la nuée d'élites
-- Un bestiaire d'environ 45 monstres sur toute la profondeur, chacun avec son glyphe, son élément, son comportement et un sprite procédural
-- Alliés invoqués : le Nécromancien relève les monstres tués en morts-vivants temporaires qui combattent à ses côtés (système d'unités alliées réutilisable)
-- Reliques uniques lâchées par les boss et champions, à effets spéciaux (vol de vie aux kills, esquive spectrale, éclairs en chaîne, coups enflammés, +PV max, levée des morts pour toute classe, furie à bas PV, cupidité pour plus d'or/potions)
-- Reliques antiques rares à usage unique trouvées en butin : l'Œil Antique (dissipe d'un coup tout le brouillard de l'étage, à travers murs et distance), le Sablier du Temps (fige tous les monstres non-boss de l'étage) et le Calice de Vie (soins complets, purge des maux, +12 PV max permanents)
-- Quatre types de parchemins lus selon la situation : boule de feu (zone), gel (contrôle), téléportation (fuite) et chaîne d'éclairs (rebondit entre plusieurs ennemis)
-- Ambiance : phrases de lore par biome, intros de boss, et particules d'ambiance (braises, neige, brume) qui flottent dans la zone éclairée
-- Synergies élémentaires : « shatter » des ennemis gelés pour des dégâts bonus, foudre qui rebondit sur un ennemi proche, poison qui se propage entre monstres adjacents
-- Système élémentaire (feu / glace / poison / foudre) avec faiblesses offensives, effets au contact, et affinités défensives de l'armure (l'élément de ton équipement résiste à l'élément correspondant et est faible à son opposé)
-- Codex / bestiaire (touche `k`) listant les monstres découverts avec leur élément, comportement et profondeur
-- Ascension / NG+ : atteindre des étages profonds monte un palier d'ascension permanent, qui empile le scaling ennemi et un multiplicateur de score sur les runs suivantes
-- Rareté de butin et affixes, anneaux, amulettes, parchemins, équipement restreint par classe
-- Bonus de set (affixes identiques sur plusieurs emplacements → ATQ/DEF/crit qui scalent) et une Forge rare qui dépense de l'or pour améliorer une pièce (et peut enchanter vers un set)
-- Un panneau en direct montrant tout l'équipement — arme/armure avec bonus & affixe, anneau, amulette, bonus de set, potions, parchemins par type, et talents
-- Mutateurs de run (Sanguinaire, Cupidité, Fragile, Pullulement, Champions, Titans, Soif de Sang, Frénésie) tirés à chaque run, qui modifient spawns, scaling et récompenses
-- Un profil persistant à vie (runs, morts, étage max, meilleur score, kills, ascension) affiché au menu, avec des jalons qui débloquent des bonus de départ permanents (+ATQ, +PV, potions, talent de départ)
-- Comportements de monstres au-delà du corps-à-corps : lanceurs à distance, soigneurs qui rapiècent leurs alliés, fuyards quand ils sont presque morts, invocateurs, kamikazes explosifs, et boss qui s'enragent sous la moitié de leurs PV
-- Buffs temporaires (rage, bouclier, régén) avec icônes, sanctuaires de pari (risque/récompense) et fontaines de bénédiction
-- Familiers de trois types — fauve, esprit (te soigne) et golem — qui montent en niveau avec le héros
-- Talents au niveau supérieur, reliques persistantes débloquées par succès
-- Boss d'étage uniques et un boss final à movesets par phases — rotation d'attaques télégraphiées (charge / salve / invocation / fracas / éruption), zones de danger persistantes à éviter, et enrage à mi-vie
-- Effet de PV bas : vignettage rouge pulsé et battement de cœur qui accélère quand la vie chute
-- Autels de malédiction, sanctuaires, fontaines, coffres mimic, familiers et événements d'étage
-- Marchands rares, mode abîme infini avec tableau des scores, bestiaire et cartes de mort
-- Chiptune 8/16-bit procédural, entièrement généré au runtime sans fichier audio : SFX synthétisés (carré/triangle/bruit) pour les coups, critiques, kills, butin, niveaux, télégraphes de boss et mort, plus une musique de fond chill-pop **adaptative** qui réagit en direct à l'action — chill en exploration, puis le **tempo monte progressivement à mesure qu'un ennemi se rapproche** et un arpège entraînant se fond dedans ; le combat est plus rapide et tendu et un boss la pousse à son intensité maximale, le tout en jouant sur le BPM/tempo et le layering plutôt qu'en coupant brutalement les pistes
-- Intégration Twitch optionnelle : les viewers votent l'état d'esprit du héros et les achats au marchand, affichés dans un panneau à l'écran (canal, barres de votes en direct, top du chat) ; toutes les options Twitch sont réglables dans le menu d'options en jeu
+### Monde & exploration
+- **Génération de monde v2** — chaque biome a son propre algorithme : grottes en automate cellulaire, cryptes BSP denses, grandes halles, hybrides salles+grottes et labyrinthes à boucles, avec salles rondes, halls à piliers, connectivité garantie et escalier placé loin pour le rythme.
+- **Onze biomes** (Cavernes, Catacombes, Glacier, Tréfonds, Abîme, Jardins Fongiques, Forge en Ruine, Sanctuaire Englouti, Ruche d'Obsidienne, Caldeira, Galerie Cristalline) — chacun avec palette, teinte, faune, danger ambiant, champion, couche de décor au sol et tonalité musicale.
+- **Descentes ramifiées** — à chaque escalier l'IA pèse 2–3 voies (trésor / défi / nuée / repos), et fonce vers une salle de repos si elle est blessée.
+- **Salles Faille** — étages « monde parallèle » violets, gorgés d'élites et de butin, relique garantie à l'entrée et un « Gardien de la Faille » surpuissant.
+- **Features & événements** — autels de malédiction, sanctuaires, fontaines, coffres mimic, une Forge rare, sanctuaires de pari, et événements d'étage.
+- **Deux modes de rendu** (`g`) — glyphes colorés classiques, ou une caméra sprite pixel-art en demi-blocs avec particules et dégâts flottants (zoom `z`).
+
+### Héros, classes & équipement
+- **Vingt classes** (Guerrier, Voleur, Mage, Paladin, Nécromancien, Rôdeur, Berserker, Élémentaliste, Moine, Druide, Templier, Occultiste, Chaman, Valkyrie, Lame-Sort, Sentinelle, Faucheur, Spectre, Maelstrom, Liche) — chacune avec arme/armure, crit, cleave/bolts et une capacité en cooldown.
+- **Capacités actives** — charge, assaut-éclair, nova de glace/élémentaire, châtiment-soin, levée des morts, volée de flèches, furie, plus les **spectrales** : Vortex (attire à toi tous les monstres proches), Possession (transforme un monstre en allié) et Phase (téléportation à travers les murs).
+- **Équipement** — 5 familles d'armes (légère / lourde / magique / poings / arcs) et 4 d'armures (tissu / cuir / plaque / mailles), 5–6 paliers chacune ; anneaux, amulettes, parchemins, rareté et affixes, bonus de set, et un panneau d'équipement en direct.
+- **Reliques** — drops uniques (vol de vie, esquive spectrale, chaîne d'éclairs, coups enflammés, +PV max, levée des morts, furie à bas PV, cupidité) et reliques antiques à usage unique (Œil Antique révèle tout l'étage à travers les murs, Sablier fige les non-boss, Calice de Vie soigne et donne +PV max).
+- **Huit talents** de montée de niveau — crit berserk, vol de vie, +PV max, cleave, chaîne d'éclairs, régén, éclaireur (+vision), peau d'acier (−dégâts subis).
+
+### Combat
+- **Combat cinématique** — un hit-stop fige brièvement l'action sur critiques, kills et coups de boss pour qu'on voie les effets même à haute vitesse ; boss et élites coriaces pour des affrontements plus longs et épiques.
+- **Profondeur** — procs d'arme (saignement, brise-garde) en plus des affixes élémentaires, saignement universel sur critique et exécution des ennemis à bas PV.
+- **Système élémentaire** (feu / glace / poison / foudre) — faiblesses offensives, effets au contact, résistances d'armure, et synergies (shatter des gelés, foudre qui rebondit, poison qui se propage).
+- **~45 monstres** aux comportements variés (lanceurs, soigneurs, fuyards, invocateurs, kamikazes, boss qui s'enragent) et un codex (`k`) ; boss d'étage et boss final à movesets télégraphiés par phases.
+
+### Alliés
+- **Compagnons humains perdus** — survivants rares qui vous rejoignent avec un rôle (garde / archère / guérisseur), vous suivent d'étage en étage, montent en niveau et combattent (jusqu'à deux).
+- **Familiers** — fauve, esprit (te soigne) ou golem, qui montent en niveau avec le héros.
+- **Alliés invoqués** — le Nécromancien/la Liche relèvent ou asservissent les ennemis en combattants temporaires.
+
+### Modes & méta
+- **Six états d'esprit** — complétionniste, combattant, rusher, pilleur, prudent, traqueur — chacun changeant le comportement du héros.
+- **Variante Boss Rush** — étages 1–9 pour se stuffer, puis l'étage 10 devient une arène sans fin : un boss plus fort surgit dès qu'un meurt (pas de descente, pas de sauvegarde), un compteur de vagues pilotant difficulté et score.
+- **Mutateurs de run** (Sanguinaire, Cupidité, Fragile, Pullulement, Champions, Titans, Soif de Sang, Frénésie) qui modifient spawns, scaling et récompenses.
+- **Ascension / NG+** et un profil persistant à vie avec des jalons qui débloquent des bonus de départ permanents.
+
+### Audio
+- **Chiptune 8/16-bit procédural**, généré au runtime sans fichier audio : SFX synthétisés, plus une musique chill-pop **adaptative** qui réagit en direct — le **tempo monte progressivement quand les ennemis approchent** et un arpège entraînant se fond dedans, culminant en combat et contre les boss, le tout en jouant sur le tempo et le layering plutôt qu'en coupant les pistes.
+
+### Twitch (optionnel)
+- Les viewers votent l'état d'esprit du héros et les achats au marchand, affichés dans un **panneau** en direct (canal, barres de votes, top du chat, fil des actions récentes).
+- **Les pseudos des viewers apparaissent sur les mobs** — un chatteur actif « adopte » un monstre dont le nom flotte au-dessus de lui sur la carte.
+- Le **marchand affiche un appel clair « VOTEZ MAINTENANT »** avec un décompte pendant la fenêtre de vote.
+- Toutes les options Twitch sont réglables dans le menu d'options en jeu.
 
 ## Builds possibles
 
@@ -116,7 +116,7 @@ Un « build », c'est la combinaison de tout ce que tu peux configurer puis fair
 
 | Axe | Options |
 | --- | --- |
-| Classe | 17 |
+| Classe | 20 |
 | État d'esprit (mode) | 6 |
 | Difficulté | 4 |
 | Trait de départ | 4 |
