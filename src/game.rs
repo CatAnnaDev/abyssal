@@ -1173,6 +1173,34 @@ impl Game {
         }
     }
 
+    pub fn music_intensity(&self) -> f32 {
+        if matches!(self.phase, Phase::Dead(_)) {
+            return 0.0;
+        }
+        if self.monsters.iter().any(|m| m.boss) {
+            return 1.0;
+        }
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let nearest = self
+            .monsters
+            .iter()
+            .filter(|m| self.map.is_visible(m.x, m.y))
+            .map(|m| (m.x - hx).abs().max((m.y - hy).abs()))
+            .min();
+        let base: f32 = match nearest {
+            Some(d) if d <= 1 => 0.9,
+            Some(d) if d <= 3 => 0.7,
+            Some(d) if d <= 6 => 0.5,
+            Some(d) if d <= 11 => 0.3,
+            _ => 0.0,
+        };
+        if self.hero_struck {
+            base.max(0.9)
+        } else {
+            base
+        }
+    }
+
     fn spawn_ambient(&mut self) {
         let x = self.hero.x + self.rng.between(-9, 10);
         let y = self.hero.y + self.rng.between(-6, 7);

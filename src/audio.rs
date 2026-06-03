@@ -439,6 +439,9 @@ pub struct Audio {
     music_level: f32,
     voice: i32,
     volume: f32,
+    speed_cur: f32,
+    speed_target: f32,
+    intensity: f32,
     pub muted: bool,
 }
 
@@ -460,9 +463,9 @@ impl Audio {
                         }
                     }
                 }
-                Audio { _stream: Some(stream), handle: Some(handle), music, music_level, voice, volume, muted: false }
+                Audio { _stream: Some(stream), handle: Some(handle), music, music_level, voice, volume, speed_cur: 1.0, speed_target: 1.0, intensity: 0.0, muted: false }
             }
-            Err(_) => Audio { _stream: None, handle: None, music: Vec::new(), music_level, voice, volume, muted: false },
+            Err(_) => Audio { _stream: None, handle: None, music: Vec::new(), music_level, voice, volume, speed_cur: 1.0, speed_target: 1.0, intensity: 0.0, muted: false },
         }
     }
 
@@ -505,8 +508,14 @@ impl Audio {
         }
         let lvl = self.music_level;
         self.music[0].target = lvl;
-        self.music[1].target = if mode != MusicMode::Calm { lvl } else { 0.0 };
+        let combat_layer = if mode != MusicMode::Calm { 1.0 } else { (self.intensity * 0.9).min(0.6) };
+        self.music[1].target = lvl * combat_layer;
         self.music[2].target = if mode == MusicMode::Boss { lvl } else { 0.0 };
+    }
+
+    pub fn set_intensity(&mut self, t: f32) {
+        self.intensity = t.clamp(0.0, 1.0);
+        self.speed_target = 1.0 + self.intensity * 0.28;
     }
 
     pub fn tick(&mut self) {
@@ -523,6 +532,17 @@ impl Audio {
                 st.cur -= step;
             }
             st.sink.set_volume(st.cur);
+        }
+        let sstep = 0.012;
+        if (self.speed_cur - self.speed_target).abs() <= sstep {
+            self.speed_cur = self.speed_target;
+        } else if self.speed_cur < self.speed_target {
+            self.speed_cur += sstep;
+        } else {
+            self.speed_cur -= sstep;
+        }
+        for st in self.music.iter() {
+            st.sink.set_speed(self.speed_cur);
         }
     }
 

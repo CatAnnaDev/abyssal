@@ -107,7 +107,7 @@ La progression se charge automatiquement au lancement (`abyssal.save.json`).
 - Effet de PV bas : vignettage rouge pulsé et battement de cœur qui accélère quand la vie chute
 - Autels de malédiction, sanctuaires, fontaines, coffres mimic, familiers et événements d'étage
 - Marchands rares, mode abîme infini avec tableau des scores, bestiaire et cartes de mort
-- Chiptune 8/16-bit procédural, entièrement généré au runtime sans fichier audio : SFX synthétisés (carré/triangle/bruit) pour les coups, critiques, kills, butin, niveaux, télégraphes de boss et mort, plus une musique de fond chill-pop **adaptative** — une base (progression d'accords de septième, basse douce, nappe et batterie) qui ajoute un arpège quand des ennemis approchent et un thème tendu quand un boss est en vie, en fondu avec l'action
+- Chiptune 8/16-bit procédural, entièrement généré au runtime sans fichier audio : SFX synthétisés (carré/triangle/bruit) pour les coups, critiques, kills, butin, niveaux, télégraphes de boss et mort, plus une musique de fond chill-pop **adaptative** qui réagit en direct à l'action — chill en exploration, puis le **tempo monte progressivement à mesure qu'un ennemi se rapproche** et un arpège entraînant se fond dedans ; le combat est plus rapide et tendu et un boss la pousse à son intensité maximale, le tout en jouant sur le BPM/tempo et le layering plutôt qu'en coupant brutalement les pistes
 - Intégration Twitch optionnelle : les viewers votent l'état d'esprit du héros et les achats au marchand, affichés dans un panneau à l'écran (canal, barres de votes en direct, top du chat) ; toutes les options Twitch sont réglables dans le menu d'options en jeu
 
 ## Builds possibles
