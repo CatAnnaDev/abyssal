@@ -8,19 +8,24 @@ pub const MROW: i32 = 2;
 pub const MCOL: i32 = 2;
 const FRAME: Color = (95, 95, 120);
 
-pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, sprite: bool, zoom: i32, out: &mut impl Write) {
-    let mut buf = String::with_capacity((cols * rows) as usize * 7);
-    buf.push_str("\x1b[H");
-
-    let mw = game.map.width;
-    let mh = game.map.height;
-    let tint = if game.room_kind == crate::game::RoomKind::Rift {
+pub fn frame_tint(game: &Game) -> (f32, f32, f32) {
+    if game.room_kind == crate::game::RoomKind::Rift {
         (1.15, 0.7, 1.25)
     } else if game.event == FloorEvent::Inferno {
         (1.22, 0.82, 0.66)
     } else {
         game.biome.tint()
-    };
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, sprite: bool, zoom: i32, skip_map: bool, out: &mut impl Write) {
+    let mut buf = String::with_capacity((cols * rows) as usize * 7);
+    buf.push_str("\x1b[H");
+
+    let mw = game.map.width;
+    let mh = game.map.height;
+    let tint = frame_tint(game);
     let sdx = game.fx.shake_offset();
     let lights: Vec<(f32, f32, Color)> = game.fx.projectiles.iter().map(|p| (p.x, p.y, p.color)).collect();
     let vignette = if matches!(game.phase, Phase::Playing) {
@@ -39,6 +44,9 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
         draw_fx_sprite(game, mw, mh, sdx, zoom, &mut buf);
     } else {
         for y in 0..mh {
+            if skip_map {
+                break;
+            }
             let _ = write!(buf, "\x1b[{};{}H\x1b[0m", MROW + y, MCOL);
             for _ in 0..sdx {
                 buf.push(' ');
@@ -953,7 +961,7 @@ fn shade(c: Color, light: f32, tint: (f32, f32, f32)) -> Color {
     (r, g, b)
 }
 
-fn cell_render(game: &Game, x: i32, y: i32, tint: (f32, f32, f32)) -> (char, Color, Color) {
+pub fn cell_render(game: &Game, x: i32, y: i32, tint: (f32, f32, f32)) -> (char, Color, Color) {
     let visible = game.map.is_visible(x, y);
     let explored = game.map.is_explored(x, y);
     if !visible && !explored {

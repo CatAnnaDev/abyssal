@@ -926,7 +926,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         }
         was_dead = dead_now;
 
-        render::draw(&game, cols, rows, paused, SPEEDS[speed].0, sprite_mode, sprite_zooms[zoom_idx], stdout);
+        render::draw(&game, cols, rows, paused, SPEEDS[speed].0, sprite_mode, sprite_zooms[zoom_idx], false, stdout);
 
         if cfg.obs_overlay && last_obs.elapsed() >= Duration::from_millis(250) {
             write_obs(&game);

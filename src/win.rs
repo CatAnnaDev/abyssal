@@ -142,57 +142,151 @@ fn parse_grid(s: &str, cols: usize, rows: usize) -> Vec<Cell> {
     grid
 }
 
+fn put_glyph(fb: &mut [u32], w: usize, h: usize, cx: usize, cy: usize, ch: char, fg: (u8, u8, u8), bg: Option<(u8, u8, u8)>) {
+    let g = glyph(ch);
+    let fgp = rgb(fg);
+    for (ry, row) in g.iter().enumerate() {
+        let py = cy * 8 + ry;
+        if py >= h {
+            break;
+        }
+        for col in 0..8 {
+            let px = cx * 8 + col;
+            if px >= w {
+                break;
+            }
+            let on = row & (1 << col) != 0;
+            if on {
+                fb[py * w + px] = fgp;
+            } else if let Some(b) = bg {
+                fb[py * w + px] = rgb(b);
+            }
+        }
+    }
+}
+
+fn tile_pixels(tile: crate::map::Tile, fg: (u8, u8, u8), bg: (u8, u8, u8), cell: &mut [(u8, u8, u8); 64]) {
+    use crate::map::Tile;
+    for p in cell.iter_mut() {
+        *p = bg;
+    }
+    match tile {
+        Tile::Wall => {
+            let mortar = (((bg.0 as u16 + fg.0 as u16) / 2) as u8, ((bg.1 as u16 + fg.1 as u16) / 2) as u8, ((bg.2 as u16 + fg.2 as u16) / 2) as u8);
+            for y in 0..8 {
+                for x in 0..8 {
+                    let brick = if (y / 4) % 2 == 0 { x } else { (x + 4) % 8 };
+                    let edge = y % 4 == 0 || brick == 0;
+                    cell[y * 8 + x] = if edge { mortar } else { fg };
+                }
+            }
+        }
+        Tile::StairsDown => {
+            for y in 0..8 {
+                for x in 0..8 {
+                    if x >= y {
+                        cell[y * 8 + x] = fg;
+                    }
+                }
+            }
+        }
+        Tile::Floor => {}
+    }
+}
+
+fn draw_pixel_world(game: &Game, fb: &mut [u32], w: usize, h: usize, cols: i32, rows: i32) {
+    let tint = render::frame_tint(game);
+    let mw = game.map.width;
+    let mh = game.map.height;
+    let sdx = game.fx.shake_offset();
+    for wy in 0..mh {
+        for wx in 0..mw {
+            let cx = (render::MCOL + wx + sdx) as usize;
+            let cy = (render::MROW + wy) as usize;
+            if cx + 1 > cols as usize || cy + 1 > rows as usize {
+                continue;
+            }
+            let (_, fg, bg) = render::cell_render(game, wx, wy, tint);
+            let mut cell = [(0u8, 0u8, 0u8); 64];
+            tile_pixels(game.map.tile(wx, wy), fg, bg, &mut cell);
+            for sy in 0..8 {
+                for sx in 0..8 {
+                    let px = cx * 8 + sx;
+                    let py = cy * 8 + sy;
+                    if px < w && py < h {
+                        fb[py * w + px] = rgb(cell[sy * 8 + sx]);
+                    }
+                }
+            }
+            if let Some((pat, color)) = render::world_sprite(game, wx, wy) {
+                for (sy, line) in pat.iter().enumerate() {
+                    for (sx, ch) in line.chars().enumerate() {
+                        if sx >= 8 {
+                            break;
+                        }
+                        if let Some(p) = sprite_px(ch, color) {
+                            let px = cx * 8 + sx;
+                            let py = cy * 8 + sy;
+                            if px < w && py < h {
+                                fb[py * w + px] = rgb(p);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for p in &game.fx.particles {
+        let px = ((render::MCOL + sdx) as f32 * 8.0 + (p.x + 0.5) * 8.0) as i32;
+        let py = (render::MROW as f32 * 8.0 + (p.y + 0.5) * 8.0) as i32;
+        for dy in 0..2 {
+            for dx in 0..2 {
+                let (x, y) = (px + dx, py + dy);
+                if x >= 0 && y >= 0 && (x as usize) < w && (y as usize) < h {
+                    fb[y as usize * w + x as usize] = rgb(p.color);
+                }
+            }
+        }
+    }
+    for p in &game.fx.projectiles {
+        let px = ((render::MCOL + sdx) as f32 * 8.0 + (p.x + 0.5) * 8.0) as i32;
+        let py = (render::MROW as f32 * 8.0 + (p.y + 0.5) * 8.0) as i32;
+        for dy in -1..3 {
+            for dx in -1..3 {
+                let (x, y) = (px + dx, py + dy);
+                if x >= 0 && y >= 0 && (x as usize) < w && (y as usize) < h {
+                    fb[y as usize * w + x as usize] = rgb(p.color);
+                }
+            }
+        }
+    }
+}
+
 pub fn render_frame(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str) -> Vec<u32> {
+    let overlay = game.show_codex || game.show_hall || matches!(game.phase, game::Phase::Dead(_));
     let mut out: Vec<u8> = Vec::new();
-    render::draw(game, cols, rows, paused, speed_label, false, 4, &mut out);
+    render::draw(game, cols, rows, paused, speed_label, false, 4, !overlay, &mut out);
     let text = String::from_utf8_lossy(&out);
     let grid = parse_grid(&text, cols as usize, rows as usize);
 
     let w = cols as usize * 8;
     let h = rows as usize * 8;
     let mut fb = vec![0u32; w * h];
+
+    if !overlay {
+        draw_pixel_world(game, &mut fb, w, h, cols, rows);
+    }
+
     for cy in 0..rows as usize {
         for cx in 0..cols as usize {
             let cell = &grid[cy * cols as usize + cx];
-            let g = glyph(cell.ch);
-            let fgp = rgb(cell.fg);
-            let bgp = rgb(cell.bg);
-            for (ry, row) in g.iter().enumerate() {
-                let py = cy * 8 + ry;
-                let base = py * w + cx * 8;
-                for col in 0..8 {
-                    let on = row & (1 << col) != 0;
-                    fb[base + col] = if on { fgp } else { bgp };
+            if !overlay {
+                if cell.ch == ' ' {
+                    continue;
                 }
-            }
-        }
-    }
-
-    let mw = game.map.width;
-    let mh = game.map.height;
-    for wy in 0..mh {
-        for wx in 0..mw {
-            let Some((pat, color)) = render::world_sprite(game, wx, wy) else {
-                continue;
-            };
-            let cx = (render::MCOL + wx) as usize;
-            let cy = (render::MROW + wy) as usize;
-            if cx >= cols as usize || cy >= rows as usize {
-                continue;
-            }
-            for (sy, line) in pat.iter().enumerate() {
-                for (sx, ch) in line.chars().enumerate() {
-                    if sx >= 8 {
-                        break;
-                    }
-                    if let Some(p) = sprite_px(ch, color) {
-                        let px = cx * 8 + sx;
-                        let py = cy * 8 + sy;
-                        if px < w && py < h {
-                            fb[py * w + px] = rgb(p);
-                        }
-                    }
-                }
+                put_glyph(&mut fb, w, h, cx, cy, cell.ch, cell.fg, None);
+            } else {
+                put_glyph(&mut fb, w, h, cx, cy, cell.ch, cell.fg, Some(cell.bg));
             }
         }
     }

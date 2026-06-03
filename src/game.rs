@@ -4863,7 +4863,7 @@ mod tests {
             }
             assert!(game.map.in_bounds(game.hero.x, game.hero.y));
             sink.clear();
-            crate::render::draw(&game, 80 + super::super_panel(), 30, false, "1x", false, 4, &mut sink);
+            crate::render::draw(&game, 80 + super::super_panel(), 30, false, "1x", false, 4, false, &mut sink);
         }
         assert!(game.best_floor >= 1);
     }
