@@ -1325,7 +1325,7 @@ impl Game {
                 if boss_near {
                     "Le boss est à moi.".to_string()
                 } else {
-                    "Une proie repérée — je fonds dessus.".to_string()
+                    "Une proie repérée — je fonce dessus.".to_string()
                 }
             }
             "butin" => match self.identity.trait_kind {
