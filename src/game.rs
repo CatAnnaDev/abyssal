@@ -1275,11 +1275,26 @@ impl Game {
         if self.floor >= 20 {
             self.award_feat("speleologue");
         }
+        if self.floor >= 30 {
+            self.award_feat("abime_30");
+        }
+        if self.hero.level >= 20 {
+            self.award_feat("erudite");
+        }
         if self.hero.gold >= 500 {
             self.award_feat("nabab");
         }
+        if self.hero.gold >= 2000 {
+            self.award_feat("fortune");
+        }
         if self.hero.relics.len() >= 4 {
             self.award_feat("collectionneur");
+        }
+        if self.hero.relics.len() >= 6 {
+            self.award_feat("maitre_runes");
+        }
+        if self.hero.set_bonus() >= 4 {
+            self.award_feat("ensemble");
         }
         if self.ascension >= 1 {
             self.award_feat("ame_ascendante");
@@ -2895,6 +2910,7 @@ impl Game {
                 }
             } else if m.elite {
                 self.push_log(format!("Elite vaincu : {} ! (+{} XP)", name, m.xp_reward), GOOD);
+                self.award_feat("tueuse_elite");
             }
             if !m.owner.is_empty() {
                 self.push_log(format!("Le {} de {} est terrasse !", name, m.owner), (220, 130, 200));
