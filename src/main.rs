@@ -777,6 +777,9 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         }
         let dead_now = matches!(game.phase, game::Phase::Dead(_));
         if dead_now && !was_dead {
+            if let Some(name) = game.nemesis_promoted.take() {
+                profile.promote_nemesis(&name);
+            }
             profile.record_ghost(game.make_ghost());
             profile.record_death(game.floor, game.last_score, game.hero.kills, game.hero.gold);
         }

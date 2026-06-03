@@ -30,17 +30,6 @@ impl Trait {
         }
     }
 
-    pub fn blurb(self) -> &'static str {
-        match self {
-            Trait::Brave => "tient sa ligne",
-            Trait::Greedy => "ne laisse aucun or",
-            Trait::Coward => "fuit tot",
-            Trait::Reckless => "frappe jusqu'au bout",
-            Trait::Curious => "fouille tout",
-            Trait::Vengeful => "n'oublie aucune dette",
-        }
-    }
-
     pub fn flee_threshold_fifths(self) -> i32 {
         match self {
             Trait::Coward => 2,

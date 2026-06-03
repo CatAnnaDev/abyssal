@@ -251,7 +251,7 @@ fn draw_panel(game: &Game, cols: i32, rows: i32, mw: i32, buf: &mut String) {
     let mut r = 3;
     put(buf, ix, r, (235, 210, 140), &fit(&format!("{} · {}", game.identity.name, game.class.label()), iw));
     r += 1;
-    put(buf, ix, r, (180, 180, 195), &fit(&format!("niv {} · {} {}", h.level, game.identity.trait_kind.label(), game.identity.origin), iw));
+    put(buf, ix, r, (180, 180, 195), &fit(&format!("niv {} {} · {}", h.level, titre(h.level), game.identity.trait_kind.label()), iw));
     r += 1;
     bar(buf, ix, r, iw, h.hp, h.max_hp, (90, 210, 110), "PV");
     r += 1;

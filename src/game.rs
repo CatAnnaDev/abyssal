@@ -638,6 +638,8 @@ pub struct Game {
     #[serde(skip)]
     pub nemesis_defeated: Vec<String>,
     #[serde(skip)]
+    pub nemesis_promoted: Option<String>,
+    #[serde(skip)]
     earned_feats: Vec<String>,
     #[serde(skip)]
     pub feats_pending: Vec<String>,
@@ -827,6 +829,7 @@ impl Game {
             grave_ghost: None,
             nemesis_add: Vec::new(),
             nemesis_defeated: Vec::new(),
+            nemesis_promoted: None,
             earned_feats: Vec::new(),
             feats_pending: Vec::new(),
             last_action: "spawn",
@@ -1314,37 +1317,37 @@ impl Game {
         let foes = self.monsters.iter().filter(|m| self.map.is_visible(m.x, m.y)).count();
         let boss_near = self.monsters.iter().any(|m| m.boss && self.map.is_visible(m.x, m.y));
         let line = match self.last_action {
-            "etourdi" => "La tete tourne... je ne peux pas bouger.".to_string(),
-            "esquive" => "Cette attaque, je la sens venir — je m'ecarte.".to_string(),
-            "fuite" | "repli" => format!("Trop amoche ({}%), je decroche.", hp_pct),
-            "potion" => "Une gorgee, vite, avant le prochain coup.".to_string(),
+            "etourdi" => "La tête tourne... je ne peux pas bouger.".to_string(),
+            "esquive" => "Cette attaque, je la sens venir — je m'écarte.".to_string(),
+            "fuite" | "repli" => format!("Trop amoché ({}%), je décroche.", hp_pct),
+            "potion" => "Une gorgée, vite, avant le prochain coup.".to_string(),
             "chasse" | "traque" | "traque escalier" => {
                 if boss_near {
-                    "Le boss est a moi.".to_string()
+                    "Le boss est à moi.".to_string()
                 } else {
-                    "Une proie reperee — je fonds dessus.".to_string()
+                    "Une proie repérée — je fonds dessus.".to_string()
                 }
             }
             "butin" => match self.identity.trait_kind {
                 crate::lore::Trait::Greedy => "De l'or. Hors de question de le laisser.".to_string(),
-                _ => "Ca brille, je vais voir.".to_string(),
+                _ => "Ça brille, je vais voir.".to_string(),
             },
-            "combat" | "cleave" => format!("Au corps a corps. {} en vue.", foes.max(1)),
-            "charge" | "assaut" => "Je charge avant qu'il ne soit pret.".to_string(),
-            "nova" | "boule de feu" | "gel" | "chaine d'eclairs" | "eclair" => "Je libere l'energie accumulee.".to_string(),
+            "combat" | "cleave" => format!("Au corps à corps. {} en vue.", foes.max(1)),
+            "charge" | "assaut" => "Je charge avant qu'il ne soit prêt.".to_string(),
+            "nova" | "boule de feu" | "gel" | "chaine d'eclairs" | "eclair" => "Je libère l'énergie accumulée.".to_string(),
             "vortex" => "Tous ici. Maintenant.".to_string(),
-            "possession" => "Tu te battras pour moi, desormais.".to_string(),
+            "possession" => "Tu te battras pour moi, désormais.".to_string(),
             "phase" => "Les murs ne me retiennent pas.".to_string(),
-            "volee" => "Une volee de fleches pour ouvrir.".to_string(),
+            "volee" => "Une volée de flèches pour ouvrir.".to_string(),
             "furie" => "La rage prend le dessus.".to_string(),
-            "levee" => "Releve-toi et sers-moi.".to_string(),
-            "chatiment" => "Au nom de ce qui reste de lumiere.".to_string(),
-            "descente" | "rush escalier" => format!("Rien a tirer ici. Plus bas. (etage {})", self.floor + 1),
-            "arene" => "L'arene ne se tait jamais. Encore un.".to_string(),
+            "levee" => "Relève-toi et sers-moi.".to_string(),
+            "chatiment" => "Au nom de ce qui reste de lumière.".to_string(),
+            "descente" | "rush escalier" => format!("Rien à tirer ici. Plus bas. (étage {})", self.floor + 1),
+            "arene" => "L'arène ne se tait jamais. Encore un.".to_string(),
             "attente" => "Je guette, l'oreille tendue.".to_string(),
             _ => match self.identity.trait_kind {
-                crate::lore::Trait::Curious => "Qu'y a-t-il derriere celle-la ?".to_string(),
-                crate::lore::Trait::Coward if foes > 0 => "Restons a distance.".to_string(),
+                crate::lore::Trait::Curious => "Qu'y a-t-il derrière celle-là ?".to_string(),
+                crate::lore::Trait::Coward if foes > 0 => "Restons à distance.".to_string(),
                 _ => "J'avance dans le noir.".to_string(),
             },
         };
@@ -4405,6 +4408,10 @@ impl Game {
         self.high_scores.sort_by(|a, b| b.cmp(a));
         self.high_scores.truncate(5);
         self.last_cause = cause.to_string();
+        if self.nemesis_pool.iter().any(|n| n.name == cause) {
+            self.nemesis_promoted = Some(cause.to_string());
+            self.push_log(format!("{} savoure sa vengeance...", cause), (235, 120, 200));
+        }
         self.death_quip = death_quip(cause, &mut self.rng);
         self.obituary = crate::lore::obituary(&self.identity, self.class.label(), cause, self.floor, self.hero.kills, self.hero.level, &mut self.rng);
         self.push_log(self.death_quip.clone(), (235, 180, 90));
