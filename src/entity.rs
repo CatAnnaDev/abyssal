@@ -93,6 +93,9 @@ pub enum HeroClass {
     Spellblade,
     Sentinel,
     Reaper,
+    Spectre,
+    Maelstrom,
+    Lich,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -104,6 +107,26 @@ pub enum Ability {
     Raise,
     Volley,
     Furie,
+    Vortex,
+    Possess,
+    Phase,
+}
+
+impl Ability {
+    pub fn label(self) -> &'static str {
+        match self {
+            Ability::Charge => "charge",
+            Ability::Blink => "assaut-eclair",
+            Ability::Nova => "nova elementaire",
+            Ability::Smite => "chatiment-soin",
+            Ability::Raise => "levee des morts",
+            Ability::Volley => "volee de fleches",
+            Ability::Furie => "furie tournoyante",
+            Ability::Vortex => "vortex (attire tout)",
+            Ability::Possess => "possession",
+            Ability::Phase => "phase (tp murs)",
+        }
+    }
 }
 
 pub struct ClassDef {
@@ -120,6 +143,21 @@ pub struct ClassDef {
     pub d_might: i32,
     pub d_guard: i32,
     pub ability: Ability,
+}
+
+impl ClassDef {
+    pub fn describe(&self) -> String {
+        format!(
+            "arme {}, armure {} · +{}PV +{}ATQ +{}DEF · crit {}% · {}",
+            self.weapon.label(),
+            self.armor.label(),
+            self.d_hp,
+            self.d_might,
+            self.d_guard,
+            (self.crit * 100.0) as i32,
+            self.ability.label()
+        )
+    }
 }
 
 pub const CLASSES: &[ClassDef] = &[
@@ -140,10 +178,13 @@ pub const CLASSES: &[ClassDef] = &[
     ClassDef { class: HeroClass::Spellblade,   label: "Lame-Sort",     crit: 0.20, cleave: 999, bolt: 1,   bleeds: true,  raises: false, weapon: WeaponClass::Light, armor: ArmorClass::Cloth,   d_hp: 4,  d_might: 5, d_guard: 0, ability: Ability::Blink },
     ClassDef { class: HeroClass::Sentinel,     label: "Sentinelle",    crit: 0.16, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Bow,   armor: ArmorClass::Mail,    d_hp: 12, d_might: 3, d_guard: 2, ability: Ability::Volley },
     ClassDef { class: HeroClass::Reaper,       label: "Faucheur",      crit: 0.22, cleave: 2,   bolt: 999, bleeds: true,  raises: false, weapon: WeaponClass::Light, armor: ArmorClass::Leather, d_hp: 6,  d_might: 5, d_guard: 0, ability: Ability::Furie },
+    ClassDef { class: HeroClass::Spectre,      label: "Spectre",       crit: 0.20, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Cloth,   d_hp: 4,  d_might: 5, d_guard: 0, ability: Ability::Phase },
+    ClassDef { class: HeroClass::Maelstrom,    label: "Maelstrom",     crit: 0.16, cleave: 3,   bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Leather, d_hp: 8,  d_might: 5, d_guard: 0, ability: Ability::Vortex },
+    ClassDef { class: HeroClass::Lich,         label: "Liche",         crit: 0.14, cleave: 999, bolt: 1,   bleeds: false, raises: true,  weapon: WeaponClass::Staff, armor: ArmorClass::Cloth,   d_hp: 8,  d_might: 4, d_guard: 0, ability: Ability::Possess },
 ];
 
 impl HeroClass {
-    pub const ALL: [HeroClass; 17] = [
+    pub const ALL: [HeroClass; 20] = [
         HeroClass::Warrior,
         HeroClass::Rogue,
         HeroClass::Mage,
@@ -161,6 +202,9 @@ impl HeroClass {
         HeroClass::Spellblade,
         HeroClass::Sentinel,
         HeroClass::Reaper,
+        HeroClass::Spectre,
+        HeroClass::Maelstrom,
+        HeroClass::Lich,
     ];
 
     pub fn def(self) -> &'static ClassDef {
@@ -966,7 +1010,7 @@ impl Monster {
 
     pub fn promote(&mut self) {
         self.elite = true;
-        self.hp = self.hp * 2 + 10;
+        self.hp = self.hp * 5 / 2 + 20;
         self.max_hp = self.hp;
         self.atk += self.atk / 2 + 2;
         self.def += 1;
@@ -983,7 +1027,7 @@ impl Monster {
     pub fn boss(floor: i32, x: i32, y: i32) -> Monster {
         let tier = ((floor / 5 - 1).max(0) as usize) % BOSSES.len();
         let (name, glyph, color) = BOSSES[tier];
-        let hp = 45 + floor * 10;
+        let hp = 80 + floor * 18;
         Monster {
             x,
             y,
@@ -1020,7 +1064,7 @@ impl Monster {
     pub fn final_boss(floor: i32, x: i32, y: i32) -> Monster {
         let names = ["Seigneur de l'Abime", "Avatar du Chaos", "Tyran Eternel"];
         let name = names[((floor / 25 - 1).max(0) as usize) % names.len()];
-        let hp = 220 + floor * 22;
+        let hp = 360 + floor * 36;
         Monster {
             x,
             y,

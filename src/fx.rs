@@ -97,7 +97,7 @@ impl Fx {
         } else {
             (format!("{}", amount), (255, 120, 110))
         };
-        self.floats.push(FloatText { x: x as f32, y: y as f32 - 0.4, text, color, age: 0, ttl: 7 });
+        self.floats.push(FloatText { x: x as f32, y: y as f32 - 0.4, text, color, age: 0, ttl: 12 });
     }
 
     pub fn damage_el(&mut self, x: i32, y: i32, amount: i32, crit: bool, base: Color) {
@@ -107,11 +107,11 @@ impl Fx {
         } else {
             base
         };
-        self.floats.push(FloatText { x: x as f32, y: y as f32 - 0.4, text, color, age: 0, ttl: 7 });
+        self.floats.push(FloatText { x: x as f32, y: y as f32 - 0.4, text, color, age: 0, ttl: 12 });
     }
 
     pub fn label(&mut self, x: i32, y: i32, text: &str, color: Color) {
-        self.floats.push(FloatText { x: x as f32, y: y as f32 - 0.4, text: text.to_string(), color, age: 0, ttl: 9 });
+        self.floats.push(FloatText { x: x as f32, y: y as f32 - 0.4, text: text.to_string(), color, age: 0, ttl: 16 });
     }
 
     pub fn burst(&mut self, rng: &mut Rng, x: i32, y: i32, color: Color, count: i32, glyph: char) {

@@ -621,6 +621,8 @@ pub struct Game {
     pub death_quip: String,
     #[serde(skip)]
     pub last_action: &'static str,
+    #[serde(skip)]
+    pub hitstop: i32,
     pub style: Playstyle,
     pub class: HeroClass,
     #[serde(skip)]
@@ -769,6 +771,7 @@ impl Game {
             last_cause: String::new(),
             death_quip: String::new(),
             last_action: "spawn",
+            hitstop: 0,
             style,
             class,
             flashes: Vec::new(),
@@ -1180,6 +1183,17 @@ impl Game {
             color,
             ttl: self.rng.between(8, 16),
         });
+    }
+
+    pub fn cosmetic_tick(&mut self) {
+        self.fx.tick();
+        self.flashes.retain_mut(|f| {
+            f.3 -= 1;
+            f.3 > 0
+        });
+        if self.hitstop > 0 {
+            self.hitstop -= 1;
+        }
     }
 
     pub fn update(&mut self) {
@@ -1889,7 +1903,109 @@ impl Game {
             Ability::Raise => self.ability_raise(),
             Ability::Volley => self.ability_volley(),
             Ability::Furie => self.ability_furie(),
+            Ability::Vortex => self.ability_vortex(),
+            Ability::Possess => self.ability_possess(),
+            Ability::Phase => self.ability_phase(),
         }
+    }
+
+    fn ability_vortex(&mut self) -> bool {
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let targets: Vec<usize> = self
+            .monsters
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| !m.boss && self.map.is_visible(m.x, m.y) && (m.x - hx).abs() + (m.y - hy).abs() > 1)
+            .map(|(i, _)| i)
+            .collect();
+        if targets.len() < 2 {
+            return false;
+        }
+        let ring = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1), (2, 0), (-2, 0), (0, 2), (0, -2)];
+        let mut slot = 0usize;
+        self.fx.label(hx, hy, "VORTEX", (180, 130, 235));
+        self.fx.burst(&mut self.rng, hx, hy, (180, 130, 235), 26, '\u{2736}');
+        self.fx.add_shake(5);
+        self.sfx.push(Sound::BossWarn);
+        for mi in targets {
+            let (ox, oy) = (self.monsters[mi].x, self.monsters[mi].y);
+            while slot < ring.len() {
+                let (lx, ly) = (hx + ring[slot].0, hy + ring[slot].1);
+                slot += 1;
+                if self.map.is_walkable(lx, ly) && self.monster_at(lx, ly).is_none() && !(lx == hx && ly == hy) {
+                    self.fx.projectile(ox, oy, lx, ly, '\u{00b7}', (180, 130, 235));
+                    self.monsters[mi].x = lx;
+                    self.monsters[mi].y = ly;
+                    self.monsters[mi].stun = self.monsters[mi].stun.max(2);
+                    break;
+                }
+            }
+        }
+        self.hero.ability_cd = 11;
+        self.last_action = "vortex";
+        true
+    }
+
+    fn ability_possess(&mut self) -> bool {
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let target = self
+            .monsters
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| !m.boss && self.map.is_visible(m.x, m.y) && (m.x - hx).abs() + (m.y - hy).abs() <= 6)
+            .min_by_key(|(_, m)| (m.x - hx).abs() + (m.y - hy).abs())
+            .map(|(i, _)| i);
+        let Some(mi) = target else { return false };
+        if self.allies.len() >= 6 {
+            return false;
+        }
+        let m = self.monsters.swap_remove(mi);
+        let (mx, my) = (m.x, m.y);
+        let mut ally = Ally::raised(self.floor, mx, my, &m);
+        ally.hp = m.max_hp;
+        ally.ttl = 60;
+        ally.color = (200, 150, 240);
+        self.allies.push(ally);
+        self.fx.label(mx, my, "ASSERVI", (200, 150, 240));
+        self.fx.burst(&mut self.rng, mx, my, (200, 150, 240), 16, '\u{2736}');
+        self.sfx.push(Sound::Talent);
+        self.push_log(format!("Possession : {} se retourne contre les siens !", m.name), (200, 150, 240));
+        self.hero.gold += (m.gold_reward as f32 * self.mut_gold_mult()) as i32;
+        if self.hero.gain_xp(m.xp_reward) {
+            self.sfx.push(Sound::LevelUp);
+            self.fx.label(self.hero.x, self.hero.y, "NIVEAU+", (255, 225, 120));
+            self.grant_talent();
+        }
+        self.hero.ability_cd = 12;
+        self.last_action = "possession";
+        true
+    }
+
+    fn ability_phase(&mut self) -> bool {
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let target = self
+            .monsters
+            .iter()
+            .filter(|m| self.map.is_visible(m.x, m.y) && (m.x - hx).abs() + (m.y - hy).abs() > 2)
+            .min_by_key(|m| (m.x - hx).abs() + (m.y - hy).abs())
+            .map(|m| (m.x, m.y));
+        let Some((tx, ty)) = target else { return false };
+        let spot = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
+            .into_iter()
+            .map(|(dx, dy)| (tx + dx, ty + dy))
+            .find(|&(x, y)| self.map.is_walkable(x, y) && self.monster_at(x, y).is_none());
+        let Some((nx, ny)) = spot else { return false };
+        self.fx.burst(&mut self.rng, hx, hy, (150, 210, 235), 14, '\u{2022}');
+        self.hero.x = nx;
+        self.hero.y = ny;
+        let fr = self.fov_radius();
+        self.map.compute_fov(nx, ny, fr);
+        self.fx.label(nx, ny, "PHASE", (150, 210, 235));
+        self.fx.burst(&mut self.rng, nx, ny, (150, 210, 235), 14, '\u{2736}');
+        self.sfx.push(Sound::Bolt);
+        self.hero.ability_cd = 7;
+        self.last_action = "phase";
+        true
     }
 
     fn ability_volley(&mut self) -> bool {
@@ -2274,7 +2390,14 @@ impl Game {
         let (mx, my) = (self.monsters[idx].x, self.monsters[idx].y);
         let color = self.monsters[idx].color;
         let is_boss = self.monsters[idx].boss;
+        let elite = self.monsters[idx].elite;
         let name = self.monsters[idx].name.clone();
+        if is_boss {
+            self.hitstop = self.hitstop.max(3);
+        }
+        if crit {
+            self.hitstop = self.hitstop.max(5);
+        }
         self.flashes.push((mx, my, (255, 255, 255), 2));
         if element == Element::Physical {
             self.fx.damage(mx, my, dmg, crit);
@@ -2327,6 +2450,7 @@ impl Game {
             }
         }
         if self.monsters[idx].hp <= 0 {
+            self.hitstop = self.hitstop.max(if is_boss { 22 } else if elite { 10 } else { 6 });
             let m = self.monsters.swap_remove(idx);
             let raise_cap = if self.hero.has_relic(Relic::Undying) { 6 } else { 4 };
             let can_raise = self.class.raises_dead() || self.hero.has_relic(Relic::Undying);

@@ -117,18 +117,69 @@ const M_MUTATORS: [(&str, i32); 3] = [("Aleatoire", 0), ("Aucun", 1), ("Garanti"
 const M_FAMILIAR: [(&str, bool); 2] = [("Aucun", false), ("Au depart", true)];
 const M_DISPLAY: [(&str, bool); 2] = [("Glyphes", false), ("Sprites", true)];
 const M_SOUND: [(&str, bool); 2] = [("Active", false), ("Coupe", true)];
-const M_HINTS: [&str; 10] = [
-    "La classe definit arme, armure, capacite et style de jeu.",
-    "L'etat d'esprit pilote l'IA : explorer, combattre, fuir, piller...",
-    "La difficulte ajuste les PV et l'attaque des monstres.",
-    "Un trait de depart : bonus de PV, d'ATQ ou d'or/potions.",
-    "Boss Rush : un boss par etage des l'etage 10 (sans sauvegarde).",
-    "Mutateurs : modificateurs de run (spawns, scaling, recompenses).",
-    "Demarrer accompagne d'un familier qui monte en niveau avec vous.",
-    "Vitesse de simulation au lancement (modifiable avec +/-).",
-    "Affichage au lancement : carte en glyphes ou sprites pixel-art.",
-    "Son actif ou coupe au lancement (touche 'a' en jeu).",
+const M_MODE_DESC: [&str; 6] = [
+    "Explore tout, ramasse, combat, puis descend.",
+    "Cherche le combat, traque les monstres.",
+    "Fonce vers l'escalier, evite les detours.",
+    "Rafle le butin et les coffres, evite les combats.",
+    "Prudent : se soigne tot, se replie face au danger.",
+    "Traqueur : pourchasse chaque monstre, enchaine les boss.",
 ];
+const M_BOON_DESC: [&str; 4] = [
+    "Aucun bonus de depart.",
+    "Robuste : +15 PV max au depart.",
+    "Affute : +3 ATQ au depart.",
+    "Riche : +80 or et +2 potions au depart.",
+];
+const M_MUT_DESC: [&str; 3] = [
+    "Mutateurs tires au hasard (~55% de chance).",
+    "Aucun mutateur : run vanille, sans modificateur.",
+    "Un mutateur garanti chaque run (plus de piment).",
+];
+fn option_desc(sel: usize, idx: &[usize]) -> String {
+    match sel {
+        0 => {
+            if idx[0] == 0 {
+                "Classe tiree au hasard a chaque lancement.".to_string()
+            } else {
+                entity::CLASSES[idx[0] - 1].describe()
+            }
+        }
+        1 => M_MODE_DESC[idx[1]].to_string(),
+        2 => format!("Ennemis : PV et ATQ x{} (loot/score suivent).", M_DIFFS[idx[2]].1),
+        3 => M_BOON_DESC[idx[3]].to_string(),
+        4 => {
+            if M_VARIANTS[idx[4]].1 {
+                "Boss Rush : arene sans fin des l'etage 10, sans sauvegarde.".to_string()
+            } else {
+                "Run normale : descente d'etage en etage.".to_string()
+            }
+        }
+        5 => M_MUT_DESC[idx[5]].to_string(),
+        6 => {
+            if M_FAMILIAR[idx[6]].1 {
+                "Demarre avec un familier qui monte en niveau avec vous.".to_string()
+            } else {
+                "Pas de familier au depart (trouvable en jeu).".to_string()
+            }
+        }
+        7 => format!("Vitesse de simulation au lancement : {} (+/- en jeu).", SPEEDS[idx[7]].0),
+        8 => {
+            if M_DISPLAY[idx[8]].1 {
+                "Vue sprites pixel-art en demi-blocs (touche g).".to_string()
+            } else {
+                "Carte en glyphes colores classiques (touche g).".to_string()
+            }
+        }
+        _ => {
+            if M_SOUND[idx[9]].1 {
+                "Son coupe au lancement (touche a en jeu).".to_string()
+            } else {
+                "Son actif au lancement (touche a en jeu).".to_string()
+            }
+        }
+    }
+}
 const M_BOONS: [(&str, Boon); 4] = [
     ("Aucun", Boon::None),
     ("Robuste", Boon::Tough),
@@ -173,7 +224,7 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
         let mut buf = String::new();
         buf.push_str("\x1b[2J\x1b[H");
         let bw = 64i32;
-        let bh = (nrows as i32) + 12;
+        let bh = (nrows as i32) + 13;
         let ox = (cols - bw) / 2;
         let oy = ((rows - bh) / 2).max(0);
         let c = (120, 120, 150);
@@ -222,19 +273,27 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
         let sep1 = oy + 3 + nrows as i32;
         put(&mut buf, ox + 3, sep1, c, &"\u{2500}".repeat((bw - 6) as usize));
         let clamp = |s: String| -> String { s.chars().take((bw - 6) as usize).collect() };
-        put(&mut buf, ox + 3, sep1 + 1, (150, 190, 220), &clamp(format!("\u{2192} {}", M_HINTS[sel as usize])));
+        let width = (bw - 8) as usize;
+        let desc = option_desc(sel as usize, &idx);
+        let dchars: Vec<char> = desc.chars().collect();
+        let line1: String = dchars.iter().take(width).collect();
+        let line2: String = dchars.iter().skip(width).take(width).collect();
+        put(&mut buf, ox + 3, sep1 + 1, (160, 200, 230), &format!("\u{2192} {}", line1));
+        if !line2.is_empty() {
+            put(&mut buf, ox + 3, sep1 + 2, (140, 175, 205), &format!("  {}", line2));
+        }
 
         if profile.runs > 0 {
             put(
                 &mut buf,
                 ox + 3,
-                sep1 + 2,
+                sep1 + 3,
                 (170, 150, 110),
                 &clamp(format!("Profil: {} runs · etage {} · score {} · asc {}", profile.runs, profile.best_floor, profile.best_score, profile.ascension)),
             );
             let perks = profile.perk_labels();
             let perks_txt = if perks.is_empty() { "aucun (atteins l'etage 4...)".to_string() } else { perks.join(", ") };
-            put(&mut buf, ox + 3, sep1 + 3, (150, 200, 140), &clamp(format!("Bonus: {}", perks_txt)));
+            put(&mut buf, ox + 3, sep1 + 4, (150, 200, 140), &clamp(format!("Bonus: {}", perks_txt)));
         }
         put(&mut buf, ox + 3, oy + bh - 3, c, &"\u{2500}".repeat((bw - 6) as usize));
         put(&mut buf, ox + 3, oy + bh - 2, (150, 200, 150), "fleches: choisir/changer    Entree: lancer");
@@ -491,14 +550,22 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         let tps = SPEEDS[speed].1;
         let mut struck = false;
         if !paused {
-            accumulator += dt;
-            let interval = 1.0 / tps;
-            let mut steps = 0;
-            while accumulator >= interval && steps < 64 {
-                game.update();
-                struck |= game.hero_struck;
-                accumulator -= interval;
-                steps += 1;
+            if game.hitstop > 0 {
+                game.cosmetic_tick();
+                accumulator = 0.0;
+            } else {
+                accumulator += dt;
+                let interval = 1.0 / tps;
+                let mut steps = 0;
+                while accumulator >= interval && steps < 64 {
+                    game.update();
+                    struck |= game.hero_struck;
+                    accumulator -= interval;
+                    steps += 1;
+                    if game.hitstop > 0 {
+                        break;
+                    }
+                }
             }
         }
 

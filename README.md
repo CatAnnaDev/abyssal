@@ -44,7 +44,7 @@ Bestiary — toggle `k` for a codex of discovered monsters with their element, b
 cargo run --release
 ```
 
-A roomy pre-game menu lets you configure the run across ten axes — class, playstyle (completionist / fighter / rusher / looter / cautious / hunter), difficulty, starting boon, variant (Normal or Boss Rush), mutators (random / none / guaranteed), starting familiar, simulation speed, display (glyphs or sprites) and sound — each with an inline hint. Or just leave it all on the defaults / random and watch.
+A roomy pre-game menu lets you configure the run across ten axes — class, playstyle (completionist / fighter / rusher / looter / cautious / hunter), difficulty, starting boon, variant (Normal or Boss Rush), mutators (random / none / guaranteed), starting familiar, simulation speed, display (glyphs or sprites) and sound — each with a description of what it adds or removes. Or just leave it all on the defaults / random and watch.
 
 ## Controls
 
@@ -73,13 +73,15 @@ Progress autoloads on launch (`abyssal.save.json`).
 - Rift rooms — a rare parallel-world floor (a purple-tinted "Faille") packed with elites and loot: more monsters with a sharply higher elite rate, extra items and chests, and a guaranteed relic on entry; high risk, high reward
 - Eleven biomes (Caverns, Catacombs, Frostvault, Emberdepths, Abyss, Fungal Gardens, Ruined Forge, Sunken Sanctuary, Obsidian Hive, Caldera, Crystal Gallery), each with its own palette, lighting tint, biased fauna, ambient hazard, a themed champion mini-boss, a cosmetic terrain-decor layer (moss, water, bones, cracks, ice, embers, void motes) and musical key
 - Two render modes (toggle with `g`): the classic colored-glyph map, or a half-block pixel-art "sprite" view — a hero-centred camera with procedural per-archetype sprites, distinct item/feature icons, an idle bob, particles and floating damage, all drawn in any truecolor terminal with no asset files (zoom with `z`)
-- Seventeen hero classes (Warrior / Rogue / Mage / Paladin / Necromancer / Ranger / Berserker / Elementalist / Monk / Druid / Templar / Warlock / Shaman / Valkyrie / Spellblade / Sentinel / Reaper) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown
+- Twenty hero classes (Warrior / Rogue / Mage / Paladin / Necromancer / Ranger / Berserker / Elementalist / Monk / Druid / Templar / Warlock / Shaman / Valkyrie / Spellblade / Sentinel / Reaper / Spectre / Maelstrom / Lich) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown
 - Six AI playstyles (modes) that reshape how the hero behaves: completionist (explore everything), fighter (seek combat), rusher (dive for stairs), looter (grab treasure, dodge fights), cautious (heal, disengage, retreat to stairs when threatened) and hunter (chase every monster, race boss to boss)
 - Boss Rush variant (menu option): floors 1-9 are normal so you can gear up, then floor 10 becomes an endless arena — you never descend again, and the instant a boss dies a stronger one surges in. An escalating wave counter drives the difficulty and the score; it's all-or-nothing (no saving)
 - Eight talents rolled on level-up — berserk crit, lifesteal, +max HP, cleave, chain lightning, regen, scout (+vision) and steel skin (-incoming damage)
 - Five weapon families (light / heavy / staff / martial fists / bows) and four armor families (cloth / leather / plate / mail), each with six (weapons) or five (armor) tiers from starter gear up to legendary endgame pieces
 - Rare lost human companions: every so often a survivor is found stranded deep in the dungeon and joins you — a named, persistent ally with a role (guard / huntress / medic), distinct behavior (tanking, ranged shots, healing you), who follows across floors, levels up alongside the hero, and fights at your side until it falls (up to two at once)
 - Combat depth: weapon procs (bleeding wounds, armor-sundering hits) on top of the elemental affixes, plus universal crit-bleed and low-HP execute finishers
+- Spectral abilities: Vortex (yanks every nearby monster around you), Possession (turns a monster against its own kind as an ally) and Phase (blink through walls) — wielded by the Maelstrom, Lich and Spectre classes
+- Cinematic combat: hit-stop briefly freezes the action on crits, kills and boss hits so the bursts, floating numbers and shatter/lightning effects are actually visible even at high speed; bosses and elites are far tankier for longer, epic showdowns
 - Rift world-bosses: the rare parallel-world floors are stalked by an over-leveled "Guardian of the Rift" on top of the elite swarm
 - A bestiary of ~45 monster kinds across the depth range, each with its glyph, element, behavior and a procedural sprite
 - Summoned allies: the Necromancer raises slain monsters as temporary undead that fight alongside the hero (a reusable allied-unit system)
