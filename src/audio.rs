@@ -440,8 +440,8 @@ pub struct Audio {
     voice: i32,
     volume: f32,
     speed_cur: f32,
-    speed_target: f32,
     intensity: f32,
+    intensity_target: f32,
     pub muted: bool,
 }
 
@@ -463,9 +463,9 @@ impl Audio {
                         }
                     }
                 }
-                Audio { _stream: Some(stream), handle: Some(handle), music, music_level, voice, volume, speed_cur: 1.0, speed_target: 1.0, intensity: 0.0, muted: false }
+                Audio { _stream: Some(stream), handle: Some(handle), music, music_level, voice, volume, speed_cur: 1.0, intensity: 0.0, intensity_target: 0.0, muted: false }
             }
-            Err(_) => Audio { _stream: None, handle: None, music: Vec::new(), music_level, voice, volume, speed_cur: 1.0, speed_target: 1.0, intensity: 0.0, muted: false },
+            Err(_) => Audio { _stream: None, handle: None, music: Vec::new(), music_level, voice, volume, speed_cur: 1.0, intensity: 0.0, intensity_target: 0.0, muted: false },
         }
     }
 
@@ -514,8 +514,7 @@ impl Audio {
     }
 
     pub fn set_intensity(&mut self, t: f32) {
-        self.intensity = t.clamp(0.0, 1.0);
-        self.speed_target = 1.0 + self.intensity * 0.28;
+        self.intensity_target = t.clamp(0.0, 1.0);
     }
 
     pub fn tick(&mut self) {
@@ -533,16 +532,20 @@ impl Audio {
             }
             st.sink.set_volume(st.cur);
         }
-        let sstep = 0.012;
-        if (self.speed_cur - self.speed_target).abs() <= sstep {
-            self.speed_cur = self.speed_target;
-        } else if self.speed_cur < self.speed_target {
-            self.speed_cur += sstep;
+        let istep = 0.006;
+        if (self.intensity - self.intensity_target).abs() <= istep {
+            self.intensity = self.intensity_target;
+        } else if self.intensity < self.intensity_target {
+            self.intensity += istep;
         } else {
-            self.speed_cur -= sstep;
+            self.intensity -= istep;
         }
-        for st in self.music.iter() {
-            st.sink.set_speed(self.speed_cur);
+        let speed = 1.0 + self.intensity * 0.10;
+        if (speed - self.speed_cur).abs() > 0.001 {
+            self.speed_cur = speed;
+            for st in self.music.iter() {
+                st.sink.set_speed(self.speed_cur);
+            }
         }
     }
 
