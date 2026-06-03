@@ -1,4 +1,4 @@
-use crate::ai::{nearest_goal, step_toward};
+use crate::ai::{bfs_field, nearest_goal, step_toward};
 use crate::audio::Sound;
 use crate::entity::{ally_role_label, Ability, Affix, Ally, Color, Element, Feature, FeatureKind, Hero, HeroClass, Item, ItemKind, Merchant, Monster, Pet, PetKind, Relic, ScrollKind, Talent, ALLY_HUNTER, ALLY_MEDIC};
 use crate::fx::{Fx, Particle};
@@ -1193,6 +1193,10 @@ impl Game {
             return Some(self.map.stairs);
         }
         None
+    }
+
+    pub fn debug_field(&self) -> Vec<i32> {
+        bfs_field(&self.map, self.hero.x, self.hero.y, &self.blocked_tiles())
     }
 
     pub fn debug_path(&self) -> Vec<(i32, i32)> {
@@ -4402,6 +4406,7 @@ mod setup_opts {
         assert!(g2.mutators.is_empty(), "mutator_pref=1 should disable mutators");
     }
 }
+
 
 
 

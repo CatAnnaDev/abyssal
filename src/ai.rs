@@ -86,6 +86,37 @@ pub fn nearest_goal(
     None
 }
 
+pub fn bfs_field(map: &Map, sx: i32, sy: i32, blocked: &[(i32, i32)]) -> Vec<i32> {
+    let w = map.width;
+    let mut dist = vec![-1i32; (map.width * map.height) as usize];
+    if !map.in_bounds(sx, sy) {
+        return dist;
+    }
+    dist[(sy * w + sx) as usize] = 0;
+    let mut queue = VecDeque::new();
+    queue.push_back((sx, sy));
+    while let Some((cx, cy)) = queue.pop_front() {
+        let d = dist[(cy * w + cx) as usize];
+        for (dx, dy) in STEPS {
+            let nx = cx + dx;
+            let ny = cy + dy;
+            if !map.in_bounds(nx, ny) {
+                continue;
+            }
+            let ni = (ny * w + nx) as usize;
+            if dist[ni] >= 0 || !map.is_walkable(nx, ny) {
+                continue;
+            }
+            if blocked.iter().any(|&(bx, by)| bx == nx && by == ny) {
+                continue;
+            }
+            dist[ni] = d + 1;
+            queue.push_back((nx, ny));
+        }
+    }
+    dist
+}
+
 fn trace_first_step(came_from: &[i32], start: i32, goal: i32, w: i32, sx: i32, sy: i32) -> (i32, i32) {
     let mut cur = goal;
     while came_from[cur as usize] != start {

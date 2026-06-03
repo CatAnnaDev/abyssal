@@ -958,12 +958,33 @@ fn draw_transition(floor: i32, mw: i32, mh: i32, buf: &mut String) {
 fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut String) {
     use std::fmt::Write as _;
     let h = &game.hero;
+    let field = game.debug_field();
     if !sprite {
         let mark = |buf: &mut String, x: i32, y: i32, col: Color, ch: char| {
             if x >= 0 && y >= 0 && x < mw && y < mh {
                 let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;{};{};{}m{}", MROW + y, MCOL + sdx + x, col.0, col.1, col.2, ch);
             }
         };
+        for y in 0..mh {
+            for x in 0..mw {
+                if !game.map.in_bounds(x, y) || !game.map.is_walkable(x, y) || !game.map.is_explored(x, y) {
+                    continue;
+                }
+                let d = field[game.map.idx(x, y)];
+                if d < 0 {
+                    mark(buf, x, y, (140, 40, 40), '\u{00d7}');
+                } else {
+                    let t = (d as f32 / 40.0).min(1.0);
+                    let col = (
+                        (80.0 + 150.0 * t) as u8,
+                        (200.0 - 110.0 * t) as u8,
+                        (230.0 - 160.0 * t) as u8,
+                    );
+                    let digit = std::char::from_digit((d % 10) as u32, 10).unwrap_or('?');
+                    mark(buf, x, y, col, digit);
+                }
+            }
+        }
         let (sx, sy) = game.map.stairs;
         mark(buf, sx, sy, (255, 240, 140), '>');
         for &(x, y) in &game.cast_danger {
@@ -999,7 +1020,10 @@ fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut S
             }
         }
     }
-    let goal = game.debug_goal().map(|(x, y)| format!("{},{}", x, y)).unwrap_or_else(|| "-".into());
+    let goalpos = game.debug_goal();
+    let goal = goalpos.map(|(x, y)| format!("{},{}", x, y)).unwrap_or_else(|| "-".into());
+    let reach = field.iter().filter(|&&d| d >= 0).count();
+    let gdist = goalpos.map(|(x, y)| if game.map.in_bounds(x, y) { field[game.map.idx(x, y)] } else { -1 }).unwrap_or(-1);
     let bossc = game.monsters.iter().filter(|m| m.boss).count();
     let aggro = game.monsters.iter().filter(|m| m.aggro).count();
     let mode = match game.music_mode() {
@@ -1026,6 +1050,7 @@ fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut S
     let lines = vec![
         "== DEBUG (ctrl+d) ==".to_string(),
         format!("act:{}  goal:{}", game.last_action, goal),
+        format!("reach:{} gdist:{} steps:{}", reach, gdist, game.debug_path().len()),
         format!("style:{}  rush:{} w{}", game.style.label(), game.boss_rush, game.boss_wave),
         format!("music:{} int:{:.2} boss:{}", mode, game.music_intensity(), bossc),
         format!("floor:{} {} [{}]", game.floor, game.biome.label(), game.room_kind.label()),
