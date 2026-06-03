@@ -50,6 +50,7 @@ pub enum Biome {
     Forge,
     Sunken,
     Hive,
+    Caldera,
 }
 
 pub struct BiomeDef {
@@ -141,7 +142,7 @@ pub const BIOMES: &[BiomeDef] = &[
         element: Some(Element::Lightning),
         map_style: 4,
         music_style: 4,
-        fauna: &['D', 'Y', 'x', 'A', 'Q', 'B'],
+        fauna: &['D', 'Y', 'x', 'A', 'Q', 'B', 'E'],
         lore: "Le vide murmure des choses sans nom.",
         champion: ('D', "Heraut de l'Abime", Element::Lightning),
         weight_peak: 100,
@@ -205,7 +206,7 @@ pub const BIOMES: &[BiomeDef] = &[
         element: Some(Element::Poison),
         map_style: 1,
         music_style: 1,
-        fauna: &['v', 'p', 'm', 'j', 'u', 'x'],
+        fauna: &['v', 'p', 'm', 'j', 'u', 'x', 'I'],
         lore: "Des alveoles de verre noir suintent une seve acide.",
         champion: ('x', "Reine d'Obsidienne", Element::Poison),
         weight_peak: 12,
@@ -213,6 +214,22 @@ pub const BIOMES: &[BiomeDef] = &[
         weight_min: 1,
         palette: (((150, 120, 175), (66, 50, 86)), ((58, 48, 74), (26, 20, 38))),
         ambient: ('\u{00b7}', (180, 150, 210), -0.04),
+    },
+    BiomeDef {
+        biome: Biome::Caldera,
+        label: "Caldeira",
+        tint: (1.26, 0.78, 0.6),
+        element: Some(Element::Fire),
+        map_style: 3,
+        music_style: 3,
+        fauna: &['e', 'i', 'D', 'y', 'E', 'z'],
+        lore: "Des coulees de magma rougeoient sous une croute fissuree.",
+        champion: ('y', "Wyverne de Magma", Element::Fire),
+        weight_peak: 12,
+        weight_center: 20,
+        weight_min: 1,
+        palette: (((182, 104, 72), (104, 48, 34)), ((92, 52, 44), (40, 22, 18))),
+        ambient: ('\u{2218}', (255, 130, 60), -0.12),
     },
 ];
 
@@ -1306,7 +1323,38 @@ impl Game {
             self.cast_freeze();
             return true;
         }
+        if near >= 2 && self.consume_scroll(ScrollKind::Lightning) {
+            self.cast_lightning();
+            return true;
+        }
         false
+    }
+
+    fn cast_lightning(&mut self) {
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let dmg = 9 + self.floor * 2;
+        self.last_action = "chaine d'eclairs";
+        self.sfx.push(Sound::Scroll);
+        self.fx.label(hx, hy, "ECLAIRS", (245, 230, 90));
+        self.fx.add_shake(4);
+        let mut targets: Vec<(i32, i32)> = self
+            .monsters
+            .iter()
+            .filter(|m| self.map.is_visible(m.x, m.y) && (m.x - hx).abs().max((m.y - hy).abs()) <= 5)
+            .map(|m| (m.x, m.y))
+            .collect();
+        targets.sort_by_key(|&(x, y)| (x - hx).abs() + (y - hy).abs());
+        targets.truncate(4);
+        let (mut px, mut py) = (hx, hy);
+        for (cx, cy) in targets {
+            self.fx.projectile(px, py, cx, cy, '\u{2192}', (245, 230, 90));
+            if let Some(j) = self.monster_at(cx, cy) {
+                self.hit_monster(j, dmg, false, Element::Lightning);
+            }
+            px = cx;
+            py = cy;
+        }
+        self.push_log("Parchemin : chaine d'eclairs !".into(), (245, 230, 90));
     }
 
     fn cast_fireball(&mut self) {
@@ -2034,6 +2082,9 @@ impl Game {
         if executed {
             dmg = (dmg * 3 / 2).max(1);
         }
+        if self.hero.has_relic(Relic::Frenzy) && self.hero.hp * 5 < self.hero.max_hp * 2 {
+            dmg = (dmg * 27 / 20).max(1);
+        }
         self.monsters[idx].hp -= dmg;
         let (mx, my) = (self.monsters[idx].x, self.monsters[idx].y);
         let color = self.monsters[idx].color;
@@ -2109,7 +2160,12 @@ impl Game {
             }
             self.hero.kills += 1;
             self.total_kills += 1;
-            self.hero.gold += (m.gold_reward as f32 * self.mut_gold_mult()) as i32;
+            let greed = if self.hero.has_relic(Relic::Greed) { 1.5 } else { 1.0 };
+            self.hero.gold += (m.gold_reward as f32 * self.mut_gold_mult() * greed) as i32;
+            if self.hero.has_relic(Relic::Greed) && self.rng.chance(0.08) {
+                self.hero.potions += 1;
+                self.fx.label(mx, my, "+potion", (230, 120, 150));
+            }
             self.fx.bump_combo();
             self.sfx.push(if is_boss { Sound::BossHit } else { Sound::Kill });
             self.discover(&name);
@@ -2608,6 +2664,14 @@ impl Game {
                     self.hero.scrolls.push(kind);
                     self.sfx.push(Sound::Item);
                     self.push_log(format!("Parchemin ramasse : {}.", kind.label()), (235, 235, 170));
+                }
+                ItemKind::AncientEye => {
+                    self.map.reveal_all();
+                    self.sfx.push(Sound::LevelUp);
+                    self.fx.burst(&mut self.rng, self.hero.x, self.hero.y, (255, 236, 150), 26, '\u{2609}');
+                    self.fx.label(self.hero.x, self.hero.y, "OEIL ANTIQUE", (255, 236, 150));
+                    self.push_log("OEIL ANTIQUE : la relique dissipe tout le brouillard de l'etage !".into(), (255, 236, 150));
+                    self.unlock("oeil_antique", "Oeil Antique - relique de clairvoyance");
                 }
             }
             if rarity == (255, 170, 60) {

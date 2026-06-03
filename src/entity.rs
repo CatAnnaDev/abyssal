@@ -89,6 +89,7 @@ pub enum HeroClass {
     Shaman,
     Valkyrie,
     Spellblade,
+    Sentinel,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -134,10 +135,11 @@ pub const CLASSES: &[ClassDef] = &[
     ClassDef { class: HeroClass::Shaman,       label: "Chaman",        crit: 0.15, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Leather, d_hp: 8,  d_might: 4, d_guard: 1, ability: Ability::Smite },
     ClassDef { class: HeroClass::Valkyrie,     label: "Valkyrie",      crit: 0.14, cleave: 2,   bolt: 999, bleeds: false, raises: false, weapon: WeaponClass::Heavy, armor: ArmorClass::Mail,    d_hp: 16, d_might: 2, d_guard: 2, ability: Ability::Charge },
     ClassDef { class: HeroClass::Spellblade,   label: "Lame-Sort",     crit: 0.20, cleave: 999, bolt: 1,   bleeds: true,  raises: false, weapon: WeaponClass::Light, armor: ArmorClass::Cloth,   d_hp: 4,  d_might: 5, d_guard: 0, ability: Ability::Blink },
+    ClassDef { class: HeroClass::Sentinel,     label: "Sentinelle",    crit: 0.16, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Bow,   armor: ArmorClass::Mail,    d_hp: 12, d_might: 3, d_guard: 2, ability: Ability::Volley },
 ];
 
 impl HeroClass {
-    pub const ALL: [HeroClass; 15] = [
+    pub const ALL: [HeroClass; 16] = [
         HeroClass::Warrior,
         HeroClass::Rogue,
         HeroClass::Mage,
@@ -153,6 +155,7 @@ impl HeroClass {
         HeroClass::Shaman,
         HeroClass::Valkyrie,
         HeroClass::Spellblade,
+        HeroClass::Sentinel,
     ];
 
     pub fn def(self) -> &'static ClassDef {
@@ -215,6 +218,7 @@ pub enum ScrollKind {
     Fireball,
     Teleport,
     Freeze,
+    Lightning,
 }
 
 impl ScrollKind {
@@ -223,6 +227,7 @@ impl ScrollKind {
             ScrollKind::Fireball => "boule de feu",
             ScrollKind::Teleport => "teleportation",
             ScrollKind::Freeze => "gel de zone",
+            ScrollKind::Lightning => "chaine d'eclairs",
         }
     }
 }
@@ -267,10 +272,12 @@ pub enum Relic {
     Ember,
     Colossus,
     Undying,
+    Frenzy,
+    Greed,
 }
 
 impl Relic {
-    pub const ALL: [Relic; 6] = [Relic::Vampire, Relic::Spectral, Relic::Storm, Relic::Ember, Relic::Colossus, Relic::Undying];
+    pub const ALL: [Relic; 8] = [Relic::Vampire, Relic::Spectral, Relic::Storm, Relic::Ember, Relic::Colossus, Relic::Undying, Relic::Frenzy, Relic::Greed];
 
     pub fn label(self) -> &'static str {
         match self {
@@ -280,6 +287,8 @@ impl Relic {
             Relic::Ember => "Braise Eternelle",
             Relic::Colossus => "Talisman du Colosse",
             Relic::Undying => "Pacte Mort-vivant",
+            Relic::Frenzy => "Sang Bouillant",
+            Relic::Greed => "Bourse Sans Fond",
         }
     }
 
@@ -291,6 +300,8 @@ impl Relic {
             Relic::Ember => "braise",
             Relic::Colossus => "colosse",
             Relic::Undying => "mort-vivant",
+            Relic::Frenzy => "furie",
+            Relic::Greed => "cupidite",
         }
     }
 }
@@ -850,6 +861,9 @@ const BESTIARY: &[MonsterKind] = &[
     MonsterKind { glyph: 'C', color: (110, 160, 175), name: "crabe-roc", hp: 36, atk: 9, def: 7, xp: 22, gold: 18, min_floor: 5,  ranged: false, element: Element::Ice },
     MonsterKind { glyph: 'H', color: (200, 170, 200), name: "harpie",  hp: 20, atk: 11, def: 1, xp: 18, gold: 18, min_floor: 6,  ranged: true,  element: Element::Physical },
     MonsterKind { glyph: 'R', color: (160, 180, 200), name: "revenant", hp: 44, atk: 16, def: 3, xp: 40, gold: 32, min_floor: 9,  ranged: false, element: Element::Ice },
+    MonsterKind { glyph: 'y', color: (220, 110, 70),  name: "wyverne", hp: 58, atk: 19, def: 4, xp: 54, gold: 60, min_floor: 10, ranged: false, element: Element::Fire },
+    MonsterKind { glyph: 'E', color: (250, 230, 120), name: "foudroyeur", hp: 40, atk: 17, def: 2, xp: 42, gold: 40, min_floor: 9, ranged: true, element: Element::Lightning },
+    MonsterKind { glyph: 'I', color: (180, 130, 200), name: "essaim", hp: 18, atk: 9, def: 1, xp: 13, gold: 8, min_floor: 5, ranged: false, element: Element::Poison },
 ];
 
 pub fn bestiary() -> Vec<(char, Color, &'static str, &'static str, i32, &'static str)> {
@@ -1080,6 +1094,7 @@ pub enum ItemKind {
     Ring(i32, Affix),
     Amulet(i32, Affix),
     Scroll(ScrollKind),
+    AncientEye,
 }
 
 fn roll_rarity(rng: &mut Rng, floor: i32, pool: &[Affix]) -> (Color, i32, Affix) {
@@ -1153,6 +1168,9 @@ impl Merchant {
 
 impl Item {
     pub fn roll(floor: i32, x: i32, y: i32, rng: &mut Rng) -> Item {
+        if floor >= 4 && rng.chance(0.012) {
+            return Item { x, y, glyph: '\u{2609}', color: (255, 236, 150), kind: ItemKind::AncientEye };
+        }
         let r = rng.unit();
         if r < 0.32 {
             let amount = rng.between(3, 12) + floor * 2;
@@ -1160,10 +1178,11 @@ impl Item {
         } else if r < 0.52 {
             Item { x, y, glyph: '!', color: (230, 90, 150), kind: ItemKind::Potion }
         } else if r < 0.62 {
-            let kind = match rng.below(3) {
+            let kind = match rng.below(4) {
                 0 => ScrollKind::Fireball,
                 1 => ScrollKind::Teleport,
-                _ => ScrollKind::Freeze,
+                2 => ScrollKind::Freeze,
+                _ => ScrollKind::Lightning,
             };
             Item { x, y, glyph: '?', color: (235, 235, 170), kind: ItemKind::Scroll(kind) }
         } else if r < 0.76 {

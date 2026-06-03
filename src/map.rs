@@ -481,6 +481,18 @@ impl Map {
         false
     }
 
+    pub fn reveal_all(&mut self) {
+        for i in 0..self.tiles.len() {
+            if !self.explored[i] {
+                self.explored[i] = true;
+                if self.tiles[i] != Tile::Wall {
+                    self.explored_walkable += 1;
+                }
+            }
+            self.visible[i] = true;
+        }
+    }
+
     pub fn compute_fov(&mut self, ox: i32, oy: i32, radius: i32) {
         for v in self.visible.iter_mut() {
             *v = false;

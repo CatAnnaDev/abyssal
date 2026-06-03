@@ -355,6 +355,7 @@ fn scroll_breakdown(scrolls: &[ScrollKind]) -> String {
     let f = scrolls.iter().filter(|s| matches!(s, ScrollKind::Fireball)).count();
     let g = scrolls.iter().filter(|s| matches!(s, ScrollKind::Freeze)).count();
     let t = scrolls.iter().filter(|s| matches!(s, ScrollKind::Teleport)).count();
+    let l = scrolls.iter().filter(|s| matches!(s, ScrollKind::Lightning)).count();
     let mut parts: Vec<String> = Vec::new();
     if f > 0 {
         parts.push(format!("feu{}", f));
@@ -364,6 +365,9 @@ fn scroll_breakdown(scrolls: &[ScrollKind]) -> String {
     }
     if t > 0 {
         parts.push(format!("tp{}", t));
+    }
+    if l > 0 {
+        parts.push(format!("ecl{}", l));
     }
     format!("parch {}", parts.join(" "))
 }
@@ -515,6 +519,8 @@ const SPR_SCROLL: [&str; 4] = ["XXXX", "X..X", "XXXX", " .. "];
 const SPR_CHEST: [&str; 4] = ["XXXX", "X**X", "XvvX", "XXXX"];
 const SPR_TRAP: [&str; 4] = ["v v ", "XXXX", "v v ", "    "];
 
+const SPR_EYE: [&str; 4] = [" XX ", "X**X", "X**X", " XX "];
+
 fn item_sprite(glyph: char) -> &'static [&'static str; 4] {
     match glyph {
         '$' => &SPR_COIN,
@@ -524,6 +530,7 @@ fn item_sprite(glyph: char) -> &'static [&'static str; 4] {
         '\u{2218}' => &SPR_RING,
         '\u{2666}' => &SPR_AMULET,
         '?' => &SPR_SCROLL,
+        '\u{2609}' => &SPR_EYE,
         _ => &SPR_ITEM,
     }
 }
