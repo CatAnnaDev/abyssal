@@ -74,8 +74,16 @@ Progress autoloads on launch (`abyssal.save.json`).
 - **Eleven biomes** (Caverns, Catacombs, Frostvault, Emberdepths, Abyss, Fungal Gardens, Ruined Forge, Sunken Sanctuary, Obsidian Hive, Caldera, Crystal Gallery) — each with its own palette, lighting tint, fauna, ambient hazard, a themed champion, a ground-decor layer and musical key.
 - **Branching descents** — at each stairway the AI weighs 2–3 paths (treasure / challenge / warren / rest), heading for a Rest branch when wounded.
 - **Rift rooms** — rare purple "parallel world" floors packed with elites and loot, a guaranteed relic on entry, and an over-leveled "Guardian of the Rift".
-- **Features & events** — curse altars, shrines, blessing fountains, mimic chests, a rare Forge, gamble shrines, and per-floor events.
+- **Features & events** — curse altars, shrines, blessing fountains, mimic chests, a rare Forge, gamble shrines, ghost graves, traps (some stunning) and per-floor events.
+- **Abyss corruption** — a gauge that climbs with depth (and ascension): the deeper the run, the more it inflates monster HP and damage, and past a threshold foes start spawning enraged. Shown live in the hero panel.
 - **Two render modes** (`g`) — classic colored glyphs, or a half-block pixel-art sprite camera with detailed 8×8 procedural sprites (outlines + shading), particles and floating damage, and a wide zoom range from far-out to close-up (`z`).
+
+### Lives, not just runs
+- **Procedural identity** — every hero is born with a name, an origin and a personality trait (brave, greedy, coward, reckless, curious, vengeful) that actually bends the AI: a coward bails and heals early, a reckless one fights to the last sliver of HP, a greedy one never leaves gold behind.
+- **Thought log** — a live first-person narration along the bottom of the screen tells you *why* the hero acts as it does (*"Too hurt (18%), I'm pulling out."*, *"The boss is mine."*, *"My head's spinning… I can't move."*) — built for watching and streaming.
+- **Procedural obituary** — the death screen writes a one-of-a-kind epitaph referencing the run: name, origin, trait, depth reached, kills, and how it ended.
+- **Nemeses** — wound a fleeing monster and let it escape, and it can return across runs, named and ranked up, hunting you down; killing it settles the score and retires it. Persisted in your lifetime profile.
+- **Ghost graves** — fallen heroes are buried in the abyss. Later runs can find a past hero's grave and reclaim their gold, a potion and a piece of their gear.
 
 ### Heroes, classes & gear
 - **Twenty classes** (Warrior, Rogue, Mage, Paladin, Necromancer, Ranger, Berserker, Elementalist, Monk, Druid, Templar, Warlock, Shaman, Valkyrie, Spellblade, Sentinel, Reaper, Spectre, Maelstrom, Lich) — each with its own weapon/armor, crit, cleave/bolts and a cooldown ability.
