@@ -619,6 +619,14 @@ pub struct Game {
     meta_talent: bool,
     pub last_cause: String,
     pub death_quip: String,
+    #[serde(default)]
+    pub identity: crate::lore::Identity,
+    #[serde(default)]
+    pub corruption: i32,
+    #[serde(default)]
+    pub obituary: String,
+    #[serde(skip)]
+    pub thoughts: Vec<String>,
     #[serde(skip)]
     pub last_action: &'static str,
     #[serde(skip)]
@@ -794,6 +802,10 @@ impl Game {
             meta_talent: meta.3,
             last_cause: String::new(),
             death_quip: String::new(),
+            identity: crate::lore::Identity::roll(&mut rng),
+            corruption: 0,
+            obituary: String::new(),
+            thoughts: Vec::new(),
             last_action: "spawn",
             hitstop: 0,
             debug: false,
@@ -1164,6 +1176,52 @@ impl Game {
         }
     }
 
+    fn narrate(&mut self) {
+        let hp_pct = self.hero.hp * 100 / self.hero.max_hp.max(1);
+        let foes = self.monsters.iter().filter(|m| self.map.is_visible(m.x, m.y)).count();
+        let boss_near = self.monsters.iter().any(|m| m.boss && self.map.is_visible(m.x, m.y));
+        let line = match self.last_action {
+            "esquive" => "Cette attaque, je la sens venir — je m'ecarte.".to_string(),
+            "fuite" | "repli" => format!("Trop amoche ({}%), je decroche.", hp_pct),
+            "potion" => "Une gorgee, vite, avant le prochain coup.".to_string(),
+            "chasse" | "traque" | "traque escalier" => {
+                if boss_near {
+                    "Le boss est a moi.".to_string()
+                } else {
+                    "Une proie reperee — je fonds dessus.".to_string()
+                }
+            }
+            "butin" => match self.identity.trait_kind {
+                crate::lore::Trait::Greedy => "De l'or. Hors de question de le laisser.".to_string(),
+                _ => "Ca brille, je vais voir.".to_string(),
+            },
+            "combat" | "cleave" => format!("Au corps a corps. {} en vue.", foes.max(1)),
+            "charge" | "assaut" => "Je charge avant qu'il ne soit pret.".to_string(),
+            "nova" | "boule de feu" | "gel" | "chaine d'eclairs" | "eclair" => "Je libere l'energie accumulee.".to_string(),
+            "vortex" => "Tous ici. Maintenant.".to_string(),
+            "possession" => "Tu te battras pour moi, desormais.".to_string(),
+            "phase" => "Les murs ne me retiennent pas.".to_string(),
+            "volee" => "Une volee de fleches pour ouvrir.".to_string(),
+            "furie" => "La rage prend le dessus.".to_string(),
+            "levee" => "Releve-toi et sers-moi.".to_string(),
+            "chatiment" => "Au nom de ce qui reste de lumiere.".to_string(),
+            "descente" | "rush escalier" => format!("Rien a tirer ici. Plus bas. (etage {})", self.floor + 1),
+            "arene" => "L'arene ne se tait jamais. Encore un.".to_string(),
+            "attente" => "Je guette, l'oreille tendue.".to_string(),
+            _ => match self.identity.trait_kind {
+                crate::lore::Trait::Curious => "Qu'y a-t-il derriere celle-la ?".to_string(),
+                crate::lore::Trait::Coward if foes > 0 => "Restons a distance.".to_string(),
+                _ => "J'avance dans le noir.".to_string(),
+            },
+        };
+        if self.thoughts.last().map(|s| s.as_str()) != Some(line.as_str()) {
+            self.thoughts.push(line);
+            if self.thoughts.len() > 6 {
+                self.thoughts.remove(0);
+            }
+        }
+    }
+
     pub fn push_log(&mut self, text: String, color: Color) {
         self.log.push(LogLine { text, color });
         if self.log.len() > LOG_CAP {
@@ -1402,6 +1460,7 @@ impl Game {
             return;
         }
         self.hero_turn();
+        self.narrate();
         self.best_gold = self.best_gold.max(self.hero.gold);
         if matches!(self.phase, Phase::Dead(_)) {
             return;
@@ -1562,7 +1621,11 @@ impl Game {
     }
 
     fn desperate(&self) -> bool {
-        self.hero.potions == 0 && self.hero.hp * 5 < self.hero.max_hp
+        let fifths = self.identity.trait_kind.flee_threshold_fifths();
+        if fifths == 0 {
+            return false;
+        }
+        self.hero.potions == 0 && self.hero.hp * 5 < self.hero.max_hp * fifths
     }
 
     fn fov_radius(&self) -> i32 {
@@ -2719,7 +2782,8 @@ impl Game {
     }
 
     fn act_heal(&mut self) -> bool {
-        if self.hero.hp * 3 < self.hero.max_hp && self.hero.potions > 0 {
+        let thirds = self.identity.trait_kind.heal_threshold_thirds();
+        if self.hero.hp * 3 < self.hero.max_hp * thirds && self.hero.potions > 0 {
             self.last_action = "potion";
             self.hero.potions -= 1;
             let heal = (self.hero.max_hp / 2).max(10);
@@ -4131,6 +4195,7 @@ impl Game {
         self.high_scores.truncate(5);
         self.last_cause = cause.to_string();
         self.death_quip = death_quip(cause, &mut self.rng);
+        self.obituary = crate::lore::obituary(&self.identity, self.class.label(), cause, self.floor, self.hero.kills, self.hero.level, &mut self.rng);
         self.push_log(self.death_quip.clone(), (235, 180, 90));
         self.push_log(
             format!(

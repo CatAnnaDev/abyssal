@@ -164,9 +164,15 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
         buf.push('\u{2550}');
     }
     buf.push('\u{255d}');
-    let hint = " espace:pause  +/-:vitesse  m:mindset  a:son  g:sprite  z:zoom  k:bestiaire  b:marchand  s/l/n  q:quitter ";
-    let h: String = hint.chars().take((cols - 4).max(0) as usize).collect();
-    let _ = write!(buf, "\x1b[{};3H\x1b[38;2;130;130;150m{}", rows, h);
+    let (bottom, bcol) = match game.thoughts.last() {
+        Some(t) => (format!(" \u{201c}{}\u{201d}  (o:options) ", t), (150, 200, 225)),
+        None => (
+            " espace:pause  +/-:vitesse  m:mindset  a:son  g:sprite  z:zoom  k:bestiaire  b:marchand  s/l/n  q:quitter ".to_string(),
+            (130, 130, 150),
+        ),
+    };
+    let h: String = bottom.chars().take((cols - 4).max(0) as usize).collect();
+    let _ = write!(buf, "\x1b[{};3H\x1b[38;2;{};{};{}m{}", rows, bcol.0, bcol.1, bcol.2, h);
 
     let sep = mw + 2;
     for y in 2..rows {
@@ -240,9 +246,9 @@ fn draw_panel(game: &Game, cols: i32, rows: i32, mw: i32, buf: &mut String) {
 
     draw_box(buf, px, 2, pin, hh, "HEROS", FRAME);
     let mut r = 3;
-    put(buf, ix, r, (235, 210, 140), &fit(&format!("{} · {}", game.class.label(), titre(h.level)), iw));
+    put(buf, ix, r, (235, 210, 140), &fit(&format!("{} · {}", game.identity.name, game.class.label()), iw));
     r += 1;
-    put(buf, ix, r, (180, 180, 195), &format!("niveau {}", h.level));
+    put(buf, ix, r, (180, 180, 195), &fit(&format!("niv {} · {} {}", h.level, game.identity.trait_kind.label(), game.identity.origin), iw));
     r += 1;
     bar(buf, ix, r, iw, h.hp, h.max_hp, (90, 210, 110), "PV");
     r += 1;
@@ -1300,20 +1306,27 @@ fn top_scores(game: &Game) -> String {
 }
 
 fn draw_death(game: &Game, mw: i32, mh: i32, buf: &mut String) {
-    let lines = [
+    let mut lines = vec![
         "  V O U S   E T E S   M O R T  ".to_string(),
         String::new(),
-        format!("  {} tue par {}", game.class.label(), game.last_cause),
+        format!("  {}", game.identity.title()),
+        format!("  {} · {} ({})", game.class.label(), game.identity.trait_kind.label(), game.last_cause),
         format!("  etage {}  ·  niveau {}", game.floor, game.hero.level),
         format!("  {} or  ·  {} elimines", game.hero.gold, game.hero.kills),
         format!("  record: etage {}  ·  {} tues", game.best_floor, game.total_kills),
         format!("  SCORE {}", game.last_score),
         format!("  top: {}", top_scores(game)),
         String::new(),
-        format!("  \" {} \"", game.death_quip),
-        String::new(),
-        "  une nouvelle ame se prepare...".to_string(),
     ];
+    if !game.obituary.is_empty() {
+        for w in wrap_text(&game.obituary, 50) {
+            lines.push(format!("  {}", w));
+        }
+    } else {
+        lines.push(format!("  \" {} \"", game.death_quip));
+    }
+    lines.push(String::new());
+    lines.push("  une nouvelle ame se prepare...".to_string());
     let bw = lines.iter().map(|l| l.chars().count()).max().unwrap_or(20) as i32 + 4;
     let bh = lines.len() as i32 + 2;
     let ox = (mw - bw) / 2;

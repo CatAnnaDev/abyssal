@@ -4,6 +4,7 @@ mod config;
 mod entity;
 mod fx;
 mod game;
+mod lore;
 mod map;
 mod render;
 mod profile;
