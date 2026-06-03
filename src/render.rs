@@ -4,8 +4,8 @@ use crate::map::Tile;
 use std::fmt::Write as _;
 use std::io::Write;
 
-const MROW: i32 = 2;
-const MCOL: i32 = 2;
+pub const MROW: i32 = 2;
+pub const MCOL: i32 = 2;
 const FRAME: Color = (95, 95, 120);
 
 pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, sprite: bool, zoom: i32, out: &mut impl Write) {
@@ -647,6 +647,41 @@ fn item_sprite(glyph: char) -> &'static [&'static str; 8] {
         '\u{2624}' => &SPR_POTION,
         _ => &SPR_ITEM,
     }
+}
+
+pub fn world_sprite(game: &Game, x: i32, y: i32) -> Option<(&'static [&'static str; 8], Color)> {
+    if !game.map.is_visible(x, y) {
+        return None;
+    }
+    if game.hero.x == x && game.hero.y == y {
+        return Some((&SPR_HERO, (235, 225, 150)));
+    }
+    if let Some(i) = game.monster_at(x, y) {
+        let m = &game.monsters[i];
+        return Some((monster_sprite(m), m.color));
+    }
+    if let Some(p) = game.pet.as_ref() {
+        if p.x == x && p.y == y {
+            return Some((&SPR_CREATURE, (140, 230, 185)));
+        }
+    }
+    for a in &game.allies {
+        if a.x == x && a.y == y {
+            return Some((&SPR_CREATURE, a.color));
+        }
+    }
+    if let Some(mc) = game.merchant.as_ref() {
+        if mc.x == x && mc.y == y {
+            return Some((&SPR_MERCHANT, (235, 210, 140)));
+        }
+    }
+    if let Some(it) = game.items.iter().find(|it| it.x == x && it.y == y) {
+        return Some((&SPR_ITEM, it.color));
+    }
+    if let Some(f) = game.features.iter().find(|f| f.x == x && f.y == y && f.kind != FeatureKind::Trap) {
+        return Some((feature_sprite(f.kind), feature_color(f.kind)));
+    }
+    None
 }
 
 fn feature_sprite(kind: FeatureKind) -> &'static [&'static str; 8] {

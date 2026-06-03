@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod ai;
 mod audio;
 mod config;
@@ -10,12 +12,12 @@ mod render;
 mod profile;
 mod rng;
 mod twitch;
+mod win;
 
 use config::Config;
 use crossterm::{
-    cursor,
     event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
-    terminal::{self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{self, Clear, ClearType},
     ExecutableCommand,
 };
 use entity::HeroClass;
@@ -28,19 +30,8 @@ use twitch::ViewerCmd;
 const PANEL_W: i32 = 42;
 const SPEEDS: [(&str, f32); 5] = [("lent", 4.0), ("normal", 7.0), ("rapide", 12.0), ("turbo", 20.0), ("ultra", 36.0)];
 
-fn main() -> io::Result<()> {
-    let mut stdout = io::stdout();
-    terminal::enable_raw_mode()?;
-    stdout.execute(EnterAlternateScreen)?;
-    stdout.execute(cursor::Hide)?;
-    stdout.execute(Clear(ClearType::All))?;
-
-    let result = run(&mut stdout);
-
-    let _ = stdout.execute(cursor::Show);
-    let _ = stdout.execute(LeaveAlternateScreen);
-    let _ = terminal::disable_raw_mode();
-    result
+fn main() {
+    win::run();
 }
 
 fn seed() -> u64 {
@@ -50,13 +41,13 @@ fn seed() -> u64 {
         .unwrap_or(0x9E37_79B9_7F4A_7C15)
 }
 
-const OBS_PATH: &str = "abyssal.obs.html";
+pub(crate) const OBS_PATH: &str = "abyssal.obs.html";
 
-fn esc(s: &str) -> String {
+pub(crate) fn esc(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
 }
 
-fn write_obs(game: &Game) {
+pub(crate) fn write_obs(game: &Game) {
     let h = &game.hero;
     let hp_pct = (h.hp.max(0) * 100 / h.max_hp.max(1)).clamp(0, 100);
     let dead = matches!(game.phase, game::Phase::Dead(_));
