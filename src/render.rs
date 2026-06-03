@@ -543,17 +543,17 @@ fn monster_sprite(m: &crate::entity::Monster) -> &'static [&'static str; 4] {
         return if m.glyph == '\u{2638}' { &SPR_FINAL } else { &SPR_BOSS };
     }
     match m.glyph {
-        'r' | 'v' => &SPR_VERMIN,
-        'b' => &SPR_BAT,
+        'r' | 'v' | 'p' | 'L' => &SPR_VERMIN,
+        'b' | 'u' => &SPR_BAT,
         'a' => &SPR_ARCHER,
         'w' | 'S' | 'c' | 'N' | 'f' => &SPR_CASTER,
-        'O' | 'T' | 'P' | 'B' => &SPR_BRUTE,
+        'O' | 'T' | 'P' | 'B' | 'C' => &SPR_BRUTE,
         'D' | 'i' => &SPR_DEMON,
-        'Y' | 'A' | 'Q' => &SPR_DRAGON,
+        'Y' | 'A' | 'Q' | 'H' => &SPR_DRAGON,
         'z' => &SPR_BOMB,
         'j' => &SPR_BLOB,
         'e' => &SPR_FLAME,
-        'M' | 'x' | 'n' | 'G' => &SPR_WINGED,
+        'M' | 'x' | 'n' | 'G' | 'R' => &SPR_WINGED,
         '\u{25a4}' => &SPR_MIMIC,
         _ => &SPR_CREATURE,
     }

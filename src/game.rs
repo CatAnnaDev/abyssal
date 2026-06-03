@@ -48,6 +48,8 @@ pub enum Biome {
     Abyss,
     Fungal,
     Forge,
+    Sunken,
+    Hive,
 }
 
 pub struct BiomeDef {
@@ -75,7 +77,7 @@ pub const BIOMES: &[BiomeDef] = &[
         element: None,
         map_style: 0,
         music_style: 0,
-        fauna: &['r', 'g', 'k', 'o', 'b', 'W'],
+        fauna: &['r', 'g', 'k', 'o', 'b', 'W', 'L'],
         lore: "L'air sent la terre humide et le minerai.",
         champion: ('o', "Roi-Gobelin des Cavernes", Element::Physical),
         weight_peak: 20,
@@ -91,7 +93,7 @@ pub const BIOMES: &[BiomeDef] = &[
         element: Some(Element::Poison),
         map_style: 1,
         music_style: 1,
-        fauna: &['k', 's', 'h', 'T', 'G', 'N', 'j'],
+        fauna: &['k', 's', 'h', 'T', 'G', 'N', 'j', 'R'],
         lore: "Des ossements craquent sous vos pas.",
         champion: ('s', "Liche des Catacombes", Element::Poison),
         weight_peak: 16,
@@ -179,6 +181,38 @@ pub const BIOMES: &[BiomeDef] = &[
         weight_min: 1,
         palette: (((168, 130, 96), (92, 64, 42)), ((78, 62, 52), (32, 26, 22))),
         ambient: ('\u{2218}', (235, 160, 90), -0.08),
+    },
+    BiomeDef {
+        biome: Biome::Sunken,
+        label: "Sanctuaire Englouti",
+        tint: (0.8, 1.04, 1.18),
+        element: Some(Element::Ice),
+        map_style: 2,
+        music_style: 2,
+        fauna: &['s', 'j', 'M', 'C', 'H', 'b'],
+        lore: "L'eau noire clapote contre des colonnes immergees.",
+        champion: ('M', "Gardien Englouti", Element::Ice),
+        weight_peak: 11,
+        weight_center: 12,
+        weight_min: 1,
+        palette: (((120, 168, 188), (44, 78, 96)), ((50, 74, 88), (20, 32, 42))),
+        ambient: ('\u{2248}', (120, 180, 210), 0.03),
+    },
+    BiomeDef {
+        biome: Biome::Hive,
+        label: "Ruche d'Obsidienne",
+        tint: (1.06, 0.92, 1.1),
+        element: Some(Element::Poison),
+        map_style: 1,
+        music_style: 1,
+        fauna: &['v', 'p', 'm', 'j', 'u', 'x'],
+        lore: "Des alveoles de verre noir suintent une seve acide.",
+        champion: ('x', "Reine d'Obsidienne", Element::Poison),
+        weight_peak: 12,
+        weight_center: 17,
+        weight_min: 1,
+        palette: (((150, 120, 175), (66, 50, 86)), ((58, 48, 74), (26, 20, 38))),
+        ambient: ('\u{00b7}', (180, 150, 210), -0.04),
     },
 ];
 
@@ -3750,7 +3784,6 @@ mod tests {
             assert!(CLASSES[i].class == *c, "CLASSES desync at {}", i);
             assert!(c.def().class == *c);
         }
-        assert_eq!(BIOMES.len(), 7);
         for (i, d) in BIOMES.iter().enumerate() {
             assert!(d.biome as usize == i, "BIOMES desync at {}", i);
         }

@@ -86,6 +86,9 @@ pub enum HeroClass {
     Druid,
     Templar,
     Warlock,
+    Shaman,
+    Valkyrie,
+    Spellblade,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -128,10 +131,13 @@ pub const CLASSES: &[ClassDef] = &[
     ClassDef { class: HeroClass::Druid,        label: "Druide",        crit: 0.14, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Leather, d_hp: 10, d_might: 4, d_guard: 0, ability: Ability::Smite },
     ClassDef { class: HeroClass::Templar,      label: "Templier",      crit: 0.12, cleave: 3,   bolt: 999, bleeds: false, raises: false, weapon: WeaponClass::Heavy, armor: ArmorClass::Mail,    d_hp: 18, d_might: 1, d_guard: 3, ability: Ability::Charge },
     ClassDef { class: HeroClass::Warlock,      label: "Occultiste",    crit: 0.16, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Cloth,   d_hp: 4,  d_might: 6, d_guard: 0, ability: Ability::Nova },
+    ClassDef { class: HeroClass::Shaman,       label: "Chaman",        crit: 0.15, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Leather, d_hp: 8,  d_might: 4, d_guard: 1, ability: Ability::Smite },
+    ClassDef { class: HeroClass::Valkyrie,     label: "Valkyrie",      crit: 0.14, cleave: 2,   bolt: 999, bleeds: false, raises: false, weapon: WeaponClass::Heavy, armor: ArmorClass::Mail,    d_hp: 16, d_might: 2, d_guard: 2, ability: Ability::Charge },
+    ClassDef { class: HeroClass::Spellblade,   label: "Lame-Sort",     crit: 0.20, cleave: 999, bolt: 1,   bleeds: true,  raises: false, weapon: WeaponClass::Light, armor: ArmorClass::Cloth,   d_hp: 4,  d_might: 5, d_guard: 0, ability: Ability::Blink },
 ];
 
 impl HeroClass {
-    pub const ALL: [HeroClass; 12] = [
+    pub const ALL: [HeroClass; 15] = [
         HeroClass::Warrior,
         HeroClass::Rogue,
         HeroClass::Mage,
@@ -144,6 +150,9 @@ impl HeroClass {
         HeroClass::Druid,
         HeroClass::Templar,
         HeroClass::Warlock,
+        HeroClass::Shaman,
+        HeroClass::Valkyrie,
+        HeroClass::Spellblade,
     ];
 
     pub fn def(self) -> &'static ClassDef {
@@ -835,6 +844,12 @@ const BESTIARY: &[MonsterKind] = &[
     MonsterKind { glyph: 'B', color: (110, 90, 80),   name: "behemoth", hp: 75, atk: 20, def: 6, xp: 66, gold: 84, min_floor: 11, ranged: false, element: Element::Physical },
     MonsterKind { glyph: 'x', color: (170, 110, 200), name: "aberration", hp: 62, atk: 19, def: 4, xp: 62, gold: 72, min_floor: 12, ranged: false, element: Element::Lightning },
     MonsterKind { glyph: 'Q', color: (210, 150, 90),  name: "chimere", hp: 88, atk: 23, def: 6, xp: 84, gold: 130, min_floor: 13, ranged: false, element: Element::Fire },
+    MonsterKind { glyph: 'L', color: (170, 150, 120), name: "limier",  hp: 13, atk: 9,  def: 1, xp: 10, gold: 8,  min_floor: 3,  ranged: false, element: Element::Physical },
+    MonsterKind { glyph: 'u', color: (240, 230, 130), name: "luciole", hp: 8,  atk: 7,  def: 0, xp: 8,  gold: 6,  min_floor: 3,  ranged: true,  element: Element::Lightning },
+    MonsterKind { glyph: 'p', color: (160, 110, 190), name: "araignee", hp: 14, atk: 7, def: 1, xp: 10, gold: 9,  min_floor: 4,  ranged: false, element: Element::Poison },
+    MonsterKind { glyph: 'C', color: (110, 160, 175), name: "crabe-roc", hp: 36, atk: 9, def: 7, xp: 22, gold: 18, min_floor: 5,  ranged: false, element: Element::Ice },
+    MonsterKind { glyph: 'H', color: (200, 170, 200), name: "harpie",  hp: 20, atk: 11, def: 1, xp: 18, gold: 18, min_floor: 6,  ranged: true,  element: Element::Physical },
+    MonsterKind { glyph: 'R', color: (160, 180, 200), name: "revenant", hp: 44, atk: 16, def: 3, xp: 40, gold: 32, min_floor: 9,  ranged: false, element: Element::Ice },
 ];
 
 pub fn bestiary() -> Vec<(char, Color, &'static str, &'static str, i32, &'static str)> {
