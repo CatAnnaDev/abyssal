@@ -60,6 +60,8 @@ Le jeu se joue tout seul. Les entrées sont optionnelles :
 | `g` | basculer vue sprite (pixel-art demi-blocs) / carte glyphes classique |
 | `z` | changer le zoom de la vue sprite |
 | `k` | ouvrir / fermer le bestiaire |
+| `h` | ouvrir / fermer le Hall des Âmes (héroïnes passées + némésis actives) |
+| `d` | lancer le **défi du jour** (même donjon pour tout le monde ce jour-là) |
 | `b` | (debug) faire apparaître un marchand de test |
 | `s` / `l` | sauvegarder / charger |
 | `n` | nouvelle partie |

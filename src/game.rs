@@ -604,6 +604,10 @@ pub struct Game {
     #[serde(default)]
     pub boss_rush: bool,
     #[serde(default)]
+    pub daily: bool,
+    #[serde(default)]
+    pub daily_code: String,
+    #[serde(default)]
     pub boss_wave: i32,
     #[serde(default)]
     pub mutator_pref: i32,
@@ -811,6 +815,8 @@ impl Game {
             mutators: Vec::new(),
             ascension: meta.4,
             boss_rush,
+            daily: false,
+            daily_code: String::new(),
             boss_wave: 0,
             mutator_pref,
             start_pet,

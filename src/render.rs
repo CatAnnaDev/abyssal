@@ -149,7 +149,8 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
         boon,
         evt
     );
-    let title = format!("{}{}{}{}", title.trim_end(), asc, rush, muts);
+    let daily = if game.daily { format!("  ·  DEFI {}", game.daily_code) } else { String::new() };
+    let title = format!("{}{}{}{}{}", title.trim_end(), asc, rush, muts, daily);
     let title = format!("{} ", title);
     let avail = (cols - 2).max(0) as usize;
     let t: String = title.chars().take(avail).collect();
@@ -170,7 +171,7 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
     let (bottom, bcol) = match game.thoughts.last() {
         Some(t) => (format!(" \u{201c}{}\u{201d}  (o:options) ", t), (150, 200, 225)),
         None => (
-            " espace:pause  +/-:vitesse  m:mindset  a:son  g:sprite  z:zoom  k:bestiaire  h:hall  b:marchand  s/l/n  q:quitter ".to_string(),
+            " espace:pause  +/-:vitesse  m:mindset  a:son  g:sprite  z:zoom  k:bestiaire  h:hall  d:defi-du-jour  s/l/n  q:quitter ".to_string(),
             (130, 130, 150),
         ),
     };
@@ -1390,6 +1391,10 @@ fn draw_death(game: &Game, mw: i32, mh: i32, buf: &mut String) {
         format!("  top: {}", top_scores(game)),
         String::new(),
     ];
+    if game.daily {
+        lines.push(format!("  DEFI {} — etage {}, score {}", game.daily_code, game.floor, game.last_score));
+        lines.push(String::new());
+    }
     if !game.obituary.is_empty() {
         for w in wrap_text(&game.obituary, 50) {
             lines.push(format!("  {}", w));

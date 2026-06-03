@@ -50,6 +50,13 @@ fn seed() -> u64 {
         .unwrap_or(0x9E37_79B9_7F4A_7C15)
 }
 
+fn daily_seed() -> (u64, String) {
+    let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let day = secs / 86_400;
+    let s = day.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0xABCD_1234_5678_9EF0;
+    (s | 1, format!("#{}", day))
+}
+
 fn leader<K: Copy>(votes: &HashMap<K, u32>) -> Option<K> {
     votes.iter().max_by_key(|(_, n)| **n).map(|(k, _)| *k)
 }
@@ -563,6 +570,14 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     }
                     KeyCode::Char('n') => {
                         game = build_game(map_w, map_h, &setup, profile.meta());
+                        game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone());
+                        let _ = stdout.execute(Clear(ClearType::All));
+                    }
+                    KeyCode::Char('d') => {
+                        let (ds, code) = daily_seed();
+                        game = Game::new(map_w, map_h, ds);
+                        game.daily = true;
+                        game.daily_code = code;
                         game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone());
                         let _ = stdout.execute(Clear(ClearType::All));
                     }
