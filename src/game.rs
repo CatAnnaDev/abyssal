@@ -2468,6 +2468,10 @@ impl Game {
             return false;
         }
         let (hx, hy) = (self.hero.x, self.hero.y);
+        let threat = self.monsters.iter().any(|m| self.map.is_visible(m.x, m.y) && (m.x - hx).abs().max((m.y - hy).abs()) <= 7);
+        if !threat {
+            return false;
+        }
         let mut spawned = 0;
         for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)] {
             if spawned >= 2 || self.allies.len() >= 4 {
