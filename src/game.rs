@@ -1,4 +1,4 @@
-use crate::ai::{bfs_field, nearest_goal, step_toward};
+use crate::ai::{bfs_field, nearest_goal, step_to, step_toward};
 use crate::audio::Sound;
 use crate::entity::{ally_role_label, Ability, Affix, Ally, Color, Element, Feature, FeatureKind, Hero, HeroClass, Item, ItemKind, Merchant, Monster, Pet, PetKind, Relic, ScrollKind, Talent, ALLY_HUNTER, ALLY_MEDIC};
 use crate::fx::{Fx, Particle};
@@ -625,6 +625,8 @@ pub struct Game {
     pub hitstop: i32,
     #[serde(skip)]
     pub debug: bool,
+    #[serde(default)]
+    pub pathfinder: crate::ai::Pathfinder,
     pub style: Playstyle,
     pub class: HeroClass,
     #[serde(skip)]
@@ -783,6 +785,7 @@ impl Game {
             last_action: "spawn",
             hitstop: 0,
             debug: false,
+            pathfinder: crate::ai::Pathfinder::default(),
             style,
             class,
             flashes: Vec::new(),
@@ -1210,7 +1213,7 @@ impl Game {
             if x == gx && y == gy {
                 break;
             }
-            match step_toward(&self.map, x, y, &blocked, |a, b| a == gx && b == gy) {
+            match step_to(self.pathfinder, &self.map, x, y, gx, gy, &blocked) {
                 Some((dx, dy)) => {
                     x += dx;
                     y += dy;
@@ -2677,7 +2680,7 @@ impl Game {
         if let Some((tx, ty)) = target {
             let open = self.blocked_tiles();
             if let Some((dx, dy)) =
-                step_toward(&self.map, self.hero.x, self.hero.y, &open, |x, y| x == tx && y == ty)
+                step_to(self.pathfinder, &self.map, self.hero.x, self.hero.y, tx, ty, &open)
             {
                 self.last_action = "chasse";
                 self.move_or_act(dx, dy);
@@ -2691,7 +2694,7 @@ impl Game {
         if let Some((tx, ty)) = self.nearest_seen_item() {
             let open = self.blocked_tiles();
             if let Some((dx, dy)) =
-                step_toward(&self.map, self.hero.x, self.hero.y, &open, |x, y| x == tx && y == ty)
+                step_to(self.pathfinder, &self.map, self.hero.x, self.hero.y, tx, ty, &open)
             {
                 self.last_action = "butin";
                 self.move_or_act(dx, dy);
@@ -2711,7 +2714,7 @@ impl Game {
             .map(|f| (f.x, f.y));
         if let Some((tx, ty)) = target {
             let open = self.blocked_tiles();
-            if let Some((dx, dy)) = step_toward(&self.map, hx, hy, &open, |x, y| x == tx && y == ty) {
+            if let Some((dx, dy)) = step_to(self.pathfinder, &self.map, hx, hy, tx, ty, &open) {
                 self.last_action = "autel";
                 self.move_or_act(dx, dy);
                 return true;
@@ -2735,7 +2738,7 @@ impl Game {
             return false;
         }
         let open = self.blocked_tiles();
-        if let Some((dx, dy)) = step_toward(&self.map, self.hero.x, self.hero.y, &open, |x, y| x == mx && y == my) {
+        if let Some((dx, dy)) = step_to(self.pathfinder, &self.map, self.hero.x, self.hero.y, mx, my, &open) {
             self.last_action = "marchand";
             self.move_or_act(dx, dy);
             return true;
@@ -2757,7 +2760,7 @@ impl Game {
         }
         if let Some((tx, ty)) = self.explore_target {
             if let Some((dx, dy)) =
-                step_toward(&self.map, self.hero.x, self.hero.y, &open, |x, y| x == tx && y == ty)
+                step_to(self.pathfinder, &self.map, self.hero.x, self.hero.y, tx, ty, &open)
             {
                 self.last_action = "exploration";
                 self.move_or_act(dx, dy);
@@ -2771,7 +2774,7 @@ impl Game {
     fn act_to_stairs(&mut self) -> bool {
         let (sx, sy) = self.map.stairs;
         let open = self.blocked_tiles();
-        if let Some((dx, dy)) = step_toward(&self.map, self.hero.x, self.hero.y, &open, |x, y| x == sx && y == sy) {
+        if let Some((dx, dy)) = step_to(self.pathfinder, &self.map, self.hero.x, self.hero.y, sx, sy, &open) {
             self.last_action = "vers escalier";
             self.move_or_act(dx, dy);
             return true;
@@ -4406,6 +4409,7 @@ mod setup_opts {
         assert!(g2.mutators.is_empty(), "mutator_pref=1 should disable mutators");
     }
 }
+
 
 
 

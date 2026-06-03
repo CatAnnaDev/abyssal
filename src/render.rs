@@ -1050,7 +1050,7 @@ fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut S
     let lines = vec![
         "== DEBUG (ctrl+d) ==".to_string(),
         format!("act:{}  goal:{}", game.last_action, goal),
-        format!("reach:{} gdist:{} steps:{}", reach, gdist, game.debug_path().len()),
+        format!("pf:{} reach:{} gdist:{} steps:{}", game.pathfinder.label(), reach, gdist, game.debug_path().len()),
         format!("style:{}  rush:{} w{}", game.style.label(), game.boss_rush, game.boss_wave),
         format!("music:{} int:{:.2} boss:{}", mode, game.music_intensity(), bossc),
         format!("floor:{} {} [{}]", game.floor, game.biome.label(), game.room_kind.label()),

@@ -140,6 +140,7 @@ Multiplied together that is roughly **180 billion** theoretical builds (≈ 1.8 
 - `sound_enabled` / `ambient_enabled` — SFX and the music track on/off
 - `master_volume` / `ambient_volume` — SFX and music levels, 0.0–2.0 (also tweakable in the in-game options menu `o`)
 - `music_preset` — music style: 0 = Auto (per biome), or a fixed preset (Chill / Energique / Sombre / Retro 8-bit / Mystique)
+- `pathfinder` — hero navigation algorithm: 0 BFS, 1 A*, 2 Dijkstra (weighted, danger-aware), 3 Greedy, 4 Diagonal (8-way)
 - `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote` — the optional Twitch integration (off by default)
 
 ## Saves & files
