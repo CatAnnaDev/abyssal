@@ -51,6 +51,7 @@ pub enum Biome {
     Sunken,
     Hive,
     Caldera,
+    Crystal,
 }
 
 pub struct BiomeDef {
@@ -230,6 +231,22 @@ pub const BIOMES: &[BiomeDef] = &[
         weight_min: 1,
         palette: (((182, 104, 72), (104, 48, 34)), ((92, 52, 44), (40, 22, 18))),
         ambient: ('\u{2218}', (255, 130, 60), -0.12),
+    },
+    BiomeDef {
+        biome: Biome::Crystal,
+        label: "Galerie Cristalline",
+        tint: (0.9, 1.0, 1.2),
+        element: Some(Element::Ice),
+        map_style: 4,
+        music_style: 2,
+        fauna: &['s', 'M', 'U', 'm', 'C', 'P'],
+        lore: "Des prismes de glace renvoient mille reflets tranchants.",
+        champion: ('M', "Prisme Vivant", Element::Ice),
+        weight_peak: 11,
+        weight_center: 13,
+        weight_min: 1,
+        palette: (((150, 180, 210), (62, 86, 116)), ((68, 92, 120), (28, 38, 54))),
+        ambient: ('\u{2727}', (180, 220, 245), 0.08),
     },
 ];
 
@@ -451,10 +468,22 @@ pub enum Mutator {
     Fragile,
     Pullulement,
     Champions,
+    Titans,
+    Soif,
+    Frenesie,
 }
 
 impl Mutator {
-    pub const ALL: [Mutator; 5] = [Mutator::Sanguinaire, Mutator::Cupidite, Mutator::Fragile, Mutator::Pullulement, Mutator::Champions];
+    pub const ALL: [Mutator; 8] = [
+        Mutator::Sanguinaire,
+        Mutator::Cupidite,
+        Mutator::Fragile,
+        Mutator::Pullulement,
+        Mutator::Champions,
+        Mutator::Titans,
+        Mutator::Soif,
+        Mutator::Frenesie,
+    ];
 
     pub fn label(self) -> &'static str {
         match self {
@@ -463,12 +492,16 @@ impl Mutator {
             Mutator::Fragile => "Fragile",
             Mutator::Pullulement => "Pullulement",
             Mutator::Champions => "Champions",
+            Mutator::Titans => "Titans",
+            Mutator::Soif => "Soif de Sang",
+            Mutator::Frenesie => "Frenesie",
         }
     }
 
     fn count_mult(self) -> f32 {
         match self {
             Mutator::Pullulement => 1.6,
+            Mutator::Titans => 0.55,
             _ => 1.0,
         }
     }
@@ -477,6 +510,9 @@ impl Mutator {
         match self {
             Mutator::Cupidite => 1.25,
             Mutator::Pullulement => 0.7,
+            Mutator::Titans => 1.9,
+            Mutator::Soif => 1.2,
+            Mutator::Frenesie => 0.6,
             _ => 1.0,
         }
     }
@@ -484,6 +520,8 @@ impl Mutator {
     fn atk_mult(self) -> f32 {
         match self {
             Mutator::Sanguinaire => 1.25,
+            Mutator::Titans => 1.25,
+            Mutator::Frenesie => 1.4,
             _ => 1.0,
         }
     }
@@ -492,6 +530,7 @@ impl Mutator {
         match self {
             Mutator::Cupidite => 2.0,
             Mutator::Sanguinaire => 1.5,
+            Mutator::Titans => 1.3,
             _ => 1.0,
         }
     }
@@ -1498,6 +1537,9 @@ impl Game {
     fn mut_elite_add(&self) -> f32 {
         self.mutators.iter().map(|m| m.elite_add()).sum()
     }
+    fn mut_lifesteal(&self) -> bool {
+        self.mutators.contains(&Mutator::Soif)
+    }
 
     fn roll_mutators(&mut self) {
         self.mutators.clear();
@@ -2256,7 +2298,7 @@ impl Game {
             self.fx.burst(&mut self.rng, mx, my, (255, 230, 120), 8, '\u{2736}');
         }
         self.sfx.push(if crit { Sound::Crit } else { Sound::Hit });
-        if self.hero.has_affix(Affix::Lifesteal) || self.hero.has_talent(Talent::Sangsue) {
+        if self.hero.has_affix(Affix::Lifesteal) || self.hero.has_talent(Talent::Sangsue) || self.mut_lifesteal() {
             self.hero.hp = (self.hero.hp + (dmg / 4).max(1)).min(self.hero.max_hp);
         }
         if self.monsters[idx].hp > 0 {

@@ -878,6 +878,9 @@ const BESTIARY: &[MonsterKind] = &[
     MonsterKind { glyph: 'I', color: (180, 130, 200), name: "essaim", hp: 18, atk: 9, def: 1, xp: 13, gold: 8, min_floor: 5, ranged: false, element: Element::Poison },
     MonsterKind { glyph: 'F', color: (190, 210, 230), name: "fantome", hp: 22, atk: 12, def: 1, xp: 20, gold: 14, min_floor: 6, ranged: false, element: Element::Ice },
     MonsterKind { glyph: 'V', color: (200, 80, 110),  name: "vampire", hp: 50, atk: 18, def: 4, xp: 50, gold: 60, min_floor: 11, ranged: false, element: Element::Physical },
+    MonsterKind { glyph: 't', color: (150, 170, 110), name: "tisseuse", hp: 24, atk: 11, def: 2, xp: 18, gold: 14, min_floor: 6, ranged: false, element: Element::Poison },
+    MonsterKind { glyph: 'q', color: (235, 130, 90),  name: "quasit", hp: 16, atk: 12, def: 1, xp: 16, gold: 18, min_floor: 7, ranged: true, element: Element::Fire },
+    MonsterKind { glyph: 'U', color: (150, 200, 230), name: "ondine", hp: 30, atk: 13, def: 2, xp: 28, gold: 24, min_floor: 8, ranged: true, element: Element::Ice },
 ];
 
 pub fn bestiary() -> Vec<(char, Color, &'static str, &'static str, i32, &'static str)> {
