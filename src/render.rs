@@ -71,7 +71,7 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
     if game.merchant.is_some() && (game.shop_timer > 0 || game.shop_preview) {
         draw_shop(game, mw, &mut buf);
     }
-    if !game.top_voters.is_empty() {
+    if !game.top_voters.is_empty() || !game.twitch_channel.is_empty() {
         draw_top_voters(game, mh, &mut buf);
     }
     if game.fx.combo >= 3 {
@@ -930,7 +930,26 @@ fn draw_transition(floor: i32, mw: i32, mh: i32, buf: &mut String) {
 }
 
 fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
-    let mut lines: Vec<String> = vec!["TOP CHAT".to_string()];
+    let title = if game.twitch_channel.is_empty() {
+        "TWITCH".to_string()
+    } else {
+        format!("TWITCH #{}", game.twitch_channel)
+    };
+    let mut lines: Vec<String> = vec![title];
+    let st = game.style_tally;
+    if st[0] + st[1] + st[2] > 0 {
+        let bar = |n: u32| -> String {
+            let k = n.min(8) as usize;
+            "\u{2588}".repeat(k)
+        };
+        lines.push("votes etat d'esprit:".to_string());
+        lines.push(format!("!1 complet {:<8} {}", bar(st[0]), st[0]));
+        lines.push(format!("!2 combat  {:<8} {}", bar(st[1]), st[1]));
+        lines.push(format!("!3 rush    {:<8} {}", bar(st[2]), st[2]));
+    }
+    if !game.top_voters.is_empty() {
+        lines.push("top chat:".to_string());
+    }
     for (i, (user, n)) in game.top_voters.iter().enumerate() {
         let u: String = user.chars().take(14).collect();
         lines.push(format!("{}. {} ({})", i + 1, u, n));

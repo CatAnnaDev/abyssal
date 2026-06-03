@@ -108,7 +108,7 @@ Progress autoloads on launch (`abyssal.save.json`).
 - Curse altars, shrines, fountains, mimic chests, familiars and per-floor events
 - Rare merchants, an endless abyss mode with a scoreboard, a bestiary and death cards
 - Procedural 8/16-bit chiptune, all generated at runtime with no audio files: synthesized square/triangle/noise SFX for hits, crits, kills, loot, level-ups, boss tells and death, plus an **adaptive** chill-pop backing track — a base groove (seventh-chord progression, soft bass, pad and drums) that layers in a driving arpeggio when enemies are near and a tense theme when a boss is alive, crossfading smoothly with the action
-- Optional Twitch chat integration: viewers vote on the hero's mindset and merchant purchases (fully configurable, off by default)
+- Optional Twitch chat integration: viewers vote on the hero's mindset and merchant purchases, shown in a live on-screen panel (channel, live mindset-vote bars, top chatters); all Twitch options are adjustable in the in-game options menu
 
 ## Possible builds
 

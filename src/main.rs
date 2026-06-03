@@ -637,6 +637,12 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
             ranked.sort_by(|a, b| b.1.cmp(&a.1));
             ranked.truncate(5);
             game.top_voters = ranked;
+            game.twitch_channel = cfg.twitch_channel.trim().trim_start_matches('#').to_string();
+            game.style_tally = [
+                style_votes.get(&Playstyle::Completionist).copied().unwrap_or(0),
+                style_votes.get(&Playstyle::Combatant).copied().unwrap_or(0),
+                style_votes.get(&Playstyle::Rusher).copied().unwrap_or(0),
+            ];
 
             if game.merchant.is_some() && cfg.allow_merchant_vote {
                 if let Some(pick) = leader(&merch_votes) {
