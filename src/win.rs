@@ -311,6 +311,18 @@ mod tests {
     }
 
     #[test]
+    fn pregame_menu_renders() {
+        let cols = MAP_W + PANEL_W;
+        let w = cols as usize * 8;
+        let h = (MAP_H + 2) as usize * 8;
+        let classes = [("Aleatoire", None), ("Mage", None)];
+        let idx = [1usize, 1, 1, 0, 0, 0, 1, 1, 0];
+        let fb = pregame_fb(w, h, cols, &classes, &idx, 2, true);
+        assert_eq!(fb.len(), w * h);
+        assert!(fb.iter().any(|&p| p != 0));
+    }
+
+    #[test]
     fn parse_grid_reads_cursor_and_color() {
         let s = "\x1b[1;1H\x1b[38;2;10;20;30mA\x1b[2;3H\x1b[0mB";
         let g = parse_grid(s, 5, 3);
@@ -320,6 +332,196 @@ mod tests {
     }
 }
 
+fn draw_text(fb: &mut [u32], w: usize, h: usize, col: usize, row: usize, s: &str, fg: (u8, u8, u8)) {
+    for (i, ch) in s.chars().enumerate() {
+        put_glyph(fb, w, h, col + i, row, ch, fg, None);
+    }
+}
+
+const MENU_MODES: [(&str, Playstyle); 6] = [
+    ("Completionniste", Playstyle::Completionist),
+    ("Combattant", Playstyle::Combatant),
+    ("Rusher", Playstyle::Rusher),
+    ("Pilleur", Playstyle::Looter),
+    ("Prudent", Playstyle::Cautious),
+    ("Traqueur", Playstyle::Hunter),
+];
+const MENU_BOONS: [(&str, game::Boon); 4] = [("Aucun", game::Boon::None), ("Robuste", game::Boon::Tough), ("Affute", game::Boon::Sharp), ("Riche", game::Boon::Rich)];
+const MENU_VARIANTS: [&str; 2] = ["Normal", "Boss Rush"];
+const MENU_MUTATORS: [&str; 3] = ["Aleatoire", "Aucun", "Garanti"];
+const MENU_FAMILIAR: [&str; 2] = ["Aucun", "Au depart"];
+const MENU_SOUND: [&str; 2] = ["Active", "Coupe"];
+
+struct Started {
+    game: Game,
+    speed: usize,
+    muted: bool,
+}
+
+fn pregame_menu(window: &mut Window, profile: &profile::Profile, w: usize, h: usize, cols: i32) -> Option<Started> {
+    let mut classes: Vec<(&str, Option<crate::entity::HeroClass>)> = vec![("Aleatoire", None)];
+    for c in crate::entity::CLASSES {
+        classes.push((c.label, Some(c.class)));
+    }
+    let lens = [classes.len(), MENU_MODES.len(), game::DIFFICULTIES.len(), MENU_BOONS.len(), MENU_VARIANTS.len(), MENU_MUTATORS.len(), MENU_FAMILIAR.len(), SPEEDS.len(), MENU_SOUND.len()];
+    let mut idx = [0usize, 1, 1, 0, 0, 0, 0, 1, 0];
+    let mut sel = 0usize;
+    let has_save = Game::load().is_some();
+    let n = 9usize;
+
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        for key in window.get_keys_pressed(KeyRepeat::No) {
+            match key {
+                Key::Up => sel = (sel + n - 1) % n,
+                Key::Down => sel = (sel + 1) % n,
+                Key::Left => idx[sel] = (idx[sel] + lens[sel] - 1) % lens[sel],
+                Key::Right => idx[sel] = (idx[sel] + 1) % lens[sel],
+                Key::Enter => {
+                    let (dl, dm) = game::DIFFICULTIES[idx[2]];
+                    let g = Game::new_with(
+                        MAP_W,
+                        MAP_H,
+                        seed(),
+                        classes[idx[0]].1,
+                        MENU_MODES[idx[1]].1,
+                        dm,
+                        dl.to_string(),
+                        MENU_BOONS[idx[3]].1,
+                        profile.meta(),
+                        idx[4] == 1,
+                        idx[5] as i32,
+                        idx[6] == 1,
+                    );
+                    return Some(Started { game: g, speed: idx[7], muted: idx[8] == 1 });
+                }
+                Key::C if has_save => {
+                    if let Some(g) = Game::load() {
+                        return Some(Started { game: g, speed: 1, muted: false });
+                    }
+                }
+                Key::Q => return None,
+                _ => {}
+            }
+        }
+
+        let fb = pregame_fb(w, h, cols, &classes, &idx, sel, has_save);
+        let _ = window.update_with_buffer(&fb, w, h);
+    }
+    None
+}
+
+#[allow(clippy::too_many_arguments)]
+fn pregame_fb(w: usize, h: usize, cols: i32, classes: &[(&str, Option<crate::entity::HeroClass>)], idx: &[usize; 9], sel: usize, has_save: bool) -> Vec<u32> {
+    let diffs = game::DIFFICULTIES;
+    let labels = ["Classe", "Etat d'esprit", "Difficulte", "Trait de depart", "Variante", "Mutateurs", "Familier", "Vitesse", "Son"];
+    let mut fb = vec![0u32; w * h];
+    let ox = (cols as usize) / 2 - 16;
+    let mut r = 3usize;
+    draw_text(&mut fb, w, h, ox, r, "A B Y S S A L", (255, 225, 130));
+    r += 2;
+    draw_text(&mut fb, w, h, ox, r, "fleches: choisir   entree: commencer", (150, 150, 165));
+    r += 1;
+    if has_save {
+        draw_text(&mut fb, w, h, ox, r, "c: continuer la sauvegarde   q: quitter", (150, 150, 165));
+    } else {
+        draw_text(&mut fb, w, h, ox, r, "q: quitter", (150, 150, 165));
+    }
+    r += 2;
+    let values: [String; 9] = [
+        classes[idx[0]].0.to_string(),
+        MENU_MODES[idx[1]].0.to_string(),
+        format!("{} (x{})", diffs[idx[2]].0, diffs[idx[2]].1),
+        MENU_BOONS[idx[3]].0.to_string(),
+        MENU_VARIANTS[idx[4]].to_string(),
+        MENU_MUTATORS[idx[5]].to_string(),
+        MENU_FAMILIAR[idx[6]].to_string(),
+        SPEEDS[idx[7]].0.to_string(),
+        MENU_SOUND[idx[8]].to_string(),
+    ];
+    for i in 0..labels.len() {
+        let y = r + i * 2;
+        let arrow = if i == sel { ">" } else { " " };
+        let col = if i == sel { (255, 235, 150) } else { (180, 180, 195) };
+        draw_text(&mut fb, w, h, ox, y, &format!("{} {:<16}", arrow, labels[i]), col);
+        draw_text(&mut fb, w, h, ox + 20, y, &format!("< {} >", values[i]), if i == sel { (235, 215, 140) } else { (150, 195, 210) });
+    }
+    fb
+}
+
+fn options_menu(window: &mut Window, cfg: &mut Config, w: usize, h: usize, cols: i32) {
+    let n = 13usize;
+    let mut sel = 0usize;
+    let onoff = |b: bool| if b { "oui" } else { "non" };
+    loop {
+        if !window.is_open() {
+            break;
+        }
+        let mut close = false;
+        for key in window.get_keys_pressed(KeyRepeat::No) {
+            match key {
+                Key::Up => sel = (sel + n - 1) % n,
+                Key::Down => sel = (sel + 1) % n,
+                Key::O | Key::Enter | Key::Escape => close = true,
+                Key::Left | Key::Right => {
+                    let dir = if key == Key::Right { 1 } else { -1 };
+                    match sel {
+                        0 => cfg.sound_enabled = !cfg.sound_enabled,
+                        1 => cfg.ambient_enabled = !cfg.ambient_enabled,
+                        2 => cfg.master_volume = (cfg.master_volume + dir as f32 * 0.1).clamp(0.0, 2.0),
+                        3 => cfg.ambient_volume = (cfg.ambient_volume + dir as f32 * 0.1).clamp(0.0, 2.0),
+                        4 => cfg.music_preset = (cfg.music_preset + dir).rem_euclid(6),
+                        5 => cfg.pathfinder = (cfg.pathfinder + dir).rem_euclid(crate::ai::Pathfinder::ALL.len() as i32),
+                        6 => cfg.window_scale = match cfg.window_scale {
+                            1 => if dir > 0 { 2 } else { 4 },
+                            2 => if dir > 0 { 4 } else { 1 },
+                            _ => if dir > 0 { 1 } else { 2 },
+                        },
+                        7 => cfg.twitch_enabled = !cfg.twitch_enabled,
+                        8 => cfg.allow_style_vote = !cfg.allow_style_vote,
+                        9 => cfg.allow_merchant_vote = !cfg.allow_merchant_vote,
+                        10 => cfg.allow_chaos_vote = !cfg.allow_chaos_vote,
+                        11 => cfg.allow_bet_vote = !cfg.allow_bet_vote,
+                        _ => cfg.obs_overlay = !cfg.obs_overlay,
+                    }
+                }
+                _ => {}
+            }
+        }
+        if close {
+            break;
+        }
+        let presets = ["Auto", "Chill", "Energique", "Sombre", "Retro 8-bit", "Mystique"];
+        let rows_txt: [(String, String); 13] = [
+            ("Son".into(), onoff(cfg.sound_enabled).into()),
+            ("Ambiance".into(), onoff(cfg.ambient_enabled).into()),
+            ("Volume SFX".into(), format!("{:.1}", cfg.master_volume)),
+            ("Volume musique".into(), format!("{:.1}", cfg.ambient_volume)),
+            ("Preset musique".into(), presets[cfg.music_preset.rem_euclid(6) as usize].into()),
+            ("Pathfinder".into(), crate::ai::Pathfinder::from_index(cfg.pathfinder).label().into()),
+            ("Echelle fenetre".into(), format!("{}x (au relancement)", cfg.window_scale)),
+            ("Twitch".into(), onoff(cfg.twitch_enabled).into()),
+            ("Vote mindset".into(), onoff(cfg.allow_style_vote).into()),
+            ("Vote marchand".into(), onoff(cfg.allow_merchant_vote).into()),
+            ("Vote chaos".into(), onoff(cfg.allow_chaos_vote).into()),
+            ("Vote paris".into(), onoff(cfg.allow_bet_vote).into()),
+            ("Overlay OBS".into(), onoff(cfg.obs_overlay).into()),
+        ];
+        let mut fb = vec![0u32; w * h];
+        let ox = (cols as usize) / 2 - 18;
+        draw_text(&mut fb, w, h, ox, 2, "O P T I O N S", (255, 225, 130));
+        draw_text(&mut fb, w, h, ox, 4, "fleches: regler   o/entree/echap: fermer", (150, 150, 165));
+        for i in 0..n {
+            let y = 6 + i * 2;
+            let arrow = if i == sel { ">" } else { " " };
+            let col = if i == sel { (255, 235, 150) } else { (180, 180, 195) };
+            draw_text(&mut fb, w, h, ox, y, &format!("{} {:<16}", arrow, rows_txt[i].0), col);
+            draw_text(&mut fb, w, h, ox + 20, y, &format!("< {} >", rows_txt[i].1), if i == sel { (235, 215, 140) } else { (150, 195, 210) });
+        }
+        let _ = window.update_with_buffer(&fb, w, h);
+    }
+    cfg.save();
+}
+
 pub fn run() {
     let cols = MAP_W + PANEL_W;
     let rows = MAP_H + 2;
@@ -327,10 +529,8 @@ pub fn run() {
     let h = rows as usize * 8;
 
     let mut profile = profile::Profile::load();
-    let mut game = if let Some(g) = Game::load() { g } else { Game::new(MAP_W, MAP_H, seed()) };
-    game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone(), profile.dailies.clone());
 
-    let cfg = Config::load_or_create();
+    let mut cfg = Config::load_or_create();
     let mut audio = audio::Audio::new(cfg.ambient_enabled, cfg.master_volume, cfg.ambient_volume, cfg.music_preset);
     audio.muted = !cfg.sound_enabled;
     let votes = if cfg.twitch_active() { Some(twitch::connect(&cfg.twitch_channel)) } else { None };
@@ -354,6 +554,14 @@ pub fn run() {
     };
     window.set_target_fps(60);
 
+    let started = match pregame_menu(&mut window, &profile, w, h, cols) {
+        Some(s) => s,
+        None => return,
+    };
+    let mut game = started.game;
+    game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone(), profile.dailies.clone());
+    audio.muted = !cfg.sound_enabled || started.muted;
+
     let mut style_votes: HashMap<Playstyle, u32> = HashMap::new();
     let mut merch_votes: HashMap<MerchantPick, u32> = HashMap::new();
     let mut voter_counts: HashMap<String, u32> = HashMap::new();
@@ -363,7 +571,7 @@ pub fn run() {
     let mut last_obs = Instant::now();
     let mut bets: HashMap<String, i32> = HashMap::new();
 
-    let mut speed = 1usize;
+    let mut speed = started.speed.min(SPEEDS.len() - 1);
     let mut paused = false;
     let mut accumulator = 0.0f32;
     let mut last = Instant::now();
@@ -409,6 +617,11 @@ pub fn run() {
                 }
                 Key::K => game.show_codex = !game.show_codex,
                 Key::H => game.show_hall = !game.show_hall,
+                Key::O => {
+                    options_menu(&mut window, &mut cfg, w, h, cols);
+                    audio = audio::Audio::new(cfg.ambient_enabled, cfg.master_volume, cfg.ambient_volume, cfg.music_preset);
+                    audio.muted = !cfg.sound_enabled;
+                }
                 Key::M => game.cycle_style(),
                 Key::B => game.spawn_test_merchant(),
                 Key::Key1 => game.set_style(Playstyle::Completionist),
