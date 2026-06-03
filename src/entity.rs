@@ -8,6 +8,8 @@ pub enum WeaponClass {
     Light,
     Heavy,
     Staff,
+    Fist,
+    Bow,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -15,6 +17,7 @@ pub enum ArmorClass {
     Cloth,
     Leather,
     Plate,
+    Mail,
 }
 
 impl WeaponClass {
@@ -23,6 +26,8 @@ impl WeaponClass {
             WeaponClass::Light => "leger",
             WeaponClass::Heavy => "lourd",
             WeaponClass::Staff => "magique",
+            WeaponClass::Fist => "martial",
+            WeaponClass::Bow => "a distance",
         }
     }
 }
@@ -33,22 +38,28 @@ impl ArmorClass {
             ArmorClass::Cloth => "tissu",
             ArmorClass::Leather => "cuir",
             ArmorClass::Plate => "plaque",
+            ArmorClass::Mail => "mailles",
         }
     }
 }
 
-const LIGHT_WEAPONS: &[(&str, i32)] = &[("dague", 2), ("stylet", 4), ("kriss", 6), ("lames jumelles", 9), ("croc d'ombre", 13)];
-const HEAVY_WEAPONS: &[(&str, i32)] = &[("epee courte", 3), ("hache", 5), ("masse d'armes", 7), ("epee large", 10), ("fleau ardent", 14)];
-const STAFF_WEAPONS: &[(&str, i32)] = &[("baton", 2), ("baton runique", 4), ("sceptre", 7), ("baton de givre", 10), ("baton du chaos", 14)];
-const CLOTH_ARMORS: &[(&str, i32)] = &[("tunique", 1), ("robe", 3), ("robe runique", 5), ("manteau arcanique", 8)];
-const LEATHER_ARMORS: &[(&str, i32)] = &[("armure de cuir", 2), ("cuir cloute", 4), ("cuir renforce", 6), ("cape d'ombre", 9)];
-const PLATE_ARMORS: &[(&str, i32)] = &[("cotte de mailles", 2), ("plastron", 4), ("armure de plates", 6), ("egide drakonienne", 9)];
+const LIGHT_WEAPONS: &[(&str, i32)] = &[("dague", 2), ("stylet", 4), ("kriss", 6), ("lames jumelles", 9), ("croc d'ombre", 13), ("faux de l'abime", 16)];
+const HEAVY_WEAPONS: &[(&str, i32)] = &[("epee courte", 3), ("hache", 5), ("masse d'armes", 7), ("epee large", 10), ("fleau ardent", 14), ("colosse titanesque", 17)];
+const STAFF_WEAPONS: &[(&str, i32)] = &[("baton", 2), ("baton runique", 4), ("sceptre", 7), ("baton de givre", 10), ("baton du chaos", 14), ("baton primordial", 17)];
+const FIST_WEAPONS: &[(&str, i32)] = &[("poings de fer", 2), ("griffes", 4), ("gantelets clouttes", 7), ("poings d'acier", 10), ("griffes du dragon", 14), ("poings celestes", 16)];
+const BOW_WEAPONS: &[(&str, i32)] = &[("arc court", 2), ("arc long", 5), ("arbalete", 7), ("arc composite", 10), ("arc du crepuscule", 14), ("arc des etoiles", 16)];
+const CLOTH_ARMORS: &[(&str, i32)] = &[("tunique", 1), ("robe", 3), ("robe runique", 5), ("manteau arcanique", 8), ("manteau du vide", 11)];
+const LEATHER_ARMORS: &[(&str, i32)] = &[("armure de cuir", 2), ("cuir cloute", 4), ("cuir renforce", 6), ("cape d'ombre", 9), ("cuir du traqueur", 12)];
+const PLATE_ARMORS: &[(&str, i32)] = &[("cotte de mailles", 2), ("plastron", 4), ("armure de plates", 6), ("egide drakonienne", 9), ("plates du titan", 13)];
+const MAIL_ARMORS: &[(&str, i32)] = &[("haubergeon", 2), ("cotte renforcee", 4), ("harnois", 7), ("mailles sacrees", 10), ("egide du gardien", 13)];
 
 fn weapons_for(c: WeaponClass) -> &'static [(&'static str, i32)] {
     match c {
         WeaponClass::Light => LIGHT_WEAPONS,
         WeaponClass::Heavy => HEAVY_WEAPONS,
         WeaponClass::Staff => STAFF_WEAPONS,
+        WeaponClass::Fist => FIST_WEAPONS,
+        WeaponClass::Bow => BOW_WEAPONS,
     }
 }
 
@@ -57,6 +68,7 @@ fn armors_for(c: ArmorClass) -> &'static [(&'static str, i32)] {
         ArmorClass::Cloth => CLOTH_ARMORS,
         ArmorClass::Leather => LEATHER_ARMORS,
         ArmorClass::Plate => PLATE_ARMORS,
+        ArmorClass::Mail => MAIL_ARMORS,
     }
 }
 
@@ -70,9 +82,28 @@ pub enum HeroClass {
     Ranger,
     Berserker,
     Elementalist,
+    Monk,
+    Druid,
+    Templar,
+    Warlock,
 }
 
 impl HeroClass {
+    pub const ALL: [HeroClass; 12] = [
+        HeroClass::Warrior,
+        HeroClass::Rogue,
+        HeroClass::Mage,
+        HeroClass::Paladin,
+        HeroClass::Necromancer,
+        HeroClass::Ranger,
+        HeroClass::Berserker,
+        HeroClass::Elementalist,
+        HeroClass::Monk,
+        HeroClass::Druid,
+        HeroClass::Templar,
+        HeroClass::Warlock,
+    ];
+
     pub fn label(self) -> &'static str {
         match self {
             HeroClass::Warrior => "Guerrier",
@@ -83,20 +114,15 @@ impl HeroClass {
             HeroClass::Ranger => "Rodeur",
             HeroClass::Berserker => "Berserker",
             HeroClass::Elementalist => "Elementaliste",
+            HeroClass::Monk => "Moine",
+            HeroClass::Druid => "Druide",
+            HeroClass::Templar => "Templier",
+            HeroClass::Warlock => "Occultiste",
         }
     }
 
     pub fn pick(rng: &mut Rng) -> HeroClass {
-        match rng.below(8) {
-            0 => HeroClass::Warrior,
-            1 => HeroClass::Rogue,
-            2 => HeroClass::Mage,
-            3 => HeroClass::Paladin,
-            4 => HeroClass::Necromancer,
-            5 => HeroClass::Ranger,
-            6 => HeroClass::Berserker,
-            _ => HeroClass::Elementalist,
-        }
+        HeroClass::ALL[rng.below(HeroClass::ALL.len())]
     }
 
     pub fn crit_chance(self) -> f32 {
@@ -109,6 +135,10 @@ impl HeroClass {
             HeroClass::Ranger => 0.20,
             HeroClass::Berserker => 0.18,
             HeroClass::Elementalist => 0.15,
+            HeroClass::Monk => 0.26,
+            HeroClass::Druid => 0.14,
+            HeroClass::Templar => 0.12,
+            HeroClass::Warlock => 0.16,
         }
     }
 
@@ -117,6 +147,8 @@ impl HeroClass {
             HeroClass::Warrior => 2,
             HeroClass::Paladin => 3,
             HeroClass::Berserker => 2,
+            HeroClass::Templar => 3,
+            HeroClass::Monk => 2,
             _ => 999,
         }
     }
@@ -127,13 +159,15 @@ impl HeroClass {
             HeroClass::Necromancer => 1,
             HeroClass::Ranger => 1,
             HeroClass::Elementalist => 1,
+            HeroClass::Druid => 1,
+            HeroClass::Warlock => 1,
             HeroClass::Rogue => 6,
             _ => 999,
         }
     }
 
     pub fn bleeds(self) -> bool {
-        matches!(self, HeroClass::Rogue | HeroClass::Berserker)
+        matches!(self, HeroClass::Rogue | HeroClass::Berserker | HeroClass::Monk)
     }
 
     pub fn raises_dead(self) -> bool {
@@ -147,9 +181,13 @@ impl HeroClass {
             HeroClass::Mage => WeaponClass::Staff,
             HeroClass::Paladin => WeaponClass::Heavy,
             HeroClass::Necromancer => WeaponClass::Staff,
-            HeroClass::Ranger => WeaponClass::Light,
+            HeroClass::Ranger => WeaponClass::Bow,
             HeroClass::Berserker => WeaponClass::Heavy,
             HeroClass::Elementalist => WeaponClass::Staff,
+            HeroClass::Monk => WeaponClass::Fist,
+            HeroClass::Druid => WeaponClass::Staff,
+            HeroClass::Templar => WeaponClass::Heavy,
+            HeroClass::Warlock => WeaponClass::Staff,
         }
     }
 
@@ -163,6 +201,10 @@ impl HeroClass {
             HeroClass::Ranger => ArmorClass::Leather,
             HeroClass::Berserker => ArmorClass::Leather,
             HeroClass::Elementalist => ArmorClass::Cloth,
+            HeroClass::Monk => ArmorClass::Leather,
+            HeroClass::Druid => ArmorClass::Leather,
+            HeroClass::Templar => ArmorClass::Mail,
+            HeroClass::Warlock => ArmorClass::Cloth,
         }
     }
 
@@ -198,6 +240,24 @@ impl HeroClass {
             }
             HeroClass::Elementalist => {
                 h.might += 5;
+            }
+            HeroClass::Monk => {
+                h.might += 4;
+                h.max_hp += 10;
+                h.guard += 1;
+            }
+            HeroClass::Druid => {
+                h.might += 4;
+                h.max_hp += 10;
+            }
+            HeroClass::Templar => {
+                h.max_hp += 18;
+                h.guard += 3;
+                h.might += 1;
+            }
+            HeroClass::Warlock => {
+                h.might += 6;
+                h.max_hp += 4;
             }
         }
         h.weapon = weapons_for(self.weapon_class())[0].0.into();
@@ -421,10 +481,10 @@ impl Hero {
         Hero {
             x,
             y,
-            hp: 32,
-            max_hp: 32,
+            hp: 42,
+            max_hp: 42,
             might: 5,
-            guard: 1,
+            guard: 2,
             weapon_bonus: 0,
             armor_bonus: 0,
             level: 1,
@@ -583,6 +643,7 @@ pub enum FeatureKind {
     Familiar,
     Forge,
     Gamble,
+    Lost,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
@@ -655,32 +716,75 @@ pub struct Ally {
     pub ttl: i32,
     pub glyph: char,
     pub color: Color,
+    #[serde(default)]
+    pub max_hp: i32,
+    #[serde(default)]
+    pub companion: bool,
+    #[serde(default)]
+    pub name: String,
 }
+
+const LOST_NAMES: &[(&str, char)] = &[
+    ("Garde Aldric", 'G'),
+    ("Soeur Mirel", 'M'),
+    ("Traqueur Vael", 'V'),
+    ("Lame Orin", 'O'),
+    ("Sentinelle Kael", 'K'),
+    ("Erudit Brann", 'B'),
+    ("Chasseresse Lys", 'L'),
+    ("Vagabond Dorn", 'D'),
+];
 
 impl Ally {
     pub fn raised(floor: i32, x: i32, y: i32, src: &Monster) -> Ally {
         let depth = floor.max(1);
+        let hp = (src.max_hp / 2).max(3);
         Ally {
             x,
             y,
-            hp: (src.max_hp / 2).max(3),
+            hp,
+            max_hp: hp,
             atk: (src.atk * 2 / 3 + depth / 2).max(2),
             ttl: 30,
             glyph: '\u{2625}',
             color: (180, 200, 175),
+            companion: false,
+            name: String::new(),
         }
     }
 
     pub fn skeleton(floor: i32, x: i32, y: i32) -> Ally {
         let depth = floor.max(1);
+        let hp = 10 + depth * 2;
         Ally {
             x,
             y,
-            hp: 10 + depth * 2,
+            hp,
+            max_hp: hp,
             atk: 5 + depth,
             ttl: 40,
             glyph: '\u{2625}',
             color: (205, 210, 195),
+            companion: false,
+            name: String::new(),
+        }
+    }
+
+    pub fn companion(floor: i32, x: i32, y: i32, rng: &mut Rng) -> Ally {
+        let depth = floor.max(1);
+        let (name, glyph) = LOST_NAMES[rng.below(LOST_NAMES.len())];
+        let hp = 40 + depth * 5;
+        Ally {
+            x,
+            y,
+            hp,
+            max_hp: hp,
+            atk: 9 + depth,
+            ttl: i32::MAX,
+            glyph,
+            color: (255, 224, 150),
+            companion: true,
+            name: name.to_string(),
         }
     }
 }
@@ -917,9 +1021,9 @@ impl Monster {
             glyph: '\u{25a4}',
             color: (235, 150, 80),
             name: "mimic".to_string(),
-            hp: 24 + depth * 4,
-            max_hp: 24 + depth * 4,
-            atk: 10 + depth,
+            hp: 18 + depth * 3,
+            max_hp: 18 + depth * 3,
+            atk: 6 + depth,
             def: 2 + depth / 4,
             xp_reward: 25 + depth * 3,
             gold_reward: 60 + depth * 8,
@@ -1049,10 +1153,12 @@ impl Item {
             };
             Item { x, y, glyph: '?', color: (235, 235, 170), kind: ItemKind::Scroll(kind) }
         } else if r < 0.76 {
-            let wc = match rng.below(3) {
+            let wc = match rng.below(5) {
                 0 => WeaponClass::Light,
                 1 => WeaponClass::Heavy,
-                _ => WeaponClass::Staff,
+                2 => WeaponClass::Staff,
+                3 => WeaponClass::Fist,
+                _ => WeaponClass::Bow,
             };
             let table = weapons_for(wc);
             let tier = ((floor / 2).min(table.len() as i32 - 1)).max(0) as usize;
@@ -1062,10 +1168,11 @@ impl Item {
             let name = if affix != Affix::None { format!("{} {}", base, affix.label()) } else { base.to_string() };
             Item { x, y, glyph: '/', color, kind: ItemKind::Weapon(bonus0 + rbonus, name, affix, wc) }
         } else if r < 0.88 {
-            let ac = match rng.below(3) {
+            let ac = match rng.below(4) {
                 0 => ArmorClass::Cloth,
                 1 => ArmorClass::Leather,
-                _ => ArmorClass::Plate,
+                2 => ArmorClass::Plate,
+                _ => ArmorClass::Mail,
             };
             let table = armors_for(ac);
             let tier = ((floor / 3).min(table.len() as i32 - 1)).max(0) as usize;

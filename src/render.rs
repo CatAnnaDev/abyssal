@@ -469,6 +469,7 @@ fn feature_color(kind: FeatureKind) -> Color {
         FeatureKind::Trap => (210, 95, 75),
         FeatureKind::Forge => (255, 170, 70),
         FeatureKind::Gamble => (235, 200, 120),
+        FeatureKind::Lost => (255, 224, 150),
     }
 }
 
@@ -518,6 +519,7 @@ fn feature_sprite(kind: FeatureKind) -> &'static [&'static str; 4] {
         FeatureKind::Chest => &SPR_CHEST,
         FeatureKind::Trap => &SPR_TRAP,
         FeatureKind::Fountain => &SPR_POTION,
+        FeatureKind::Lost => &SPR_HERO,
         _ => &SPR_ITEM,
     }
 }
@@ -668,7 +670,7 @@ fn draw_sprite_map(game: &Game, mw: i32, mh: i32, sdx: i32, tint: (f32, f32, f32
                 } else if game.pet.as_ref().is_some_and(|p| p.x == wx && p.y == wy) {
                     overlay_sprite(&mut cell, &SPR_CREATURE, (120, 230, 180), 0, -bob);
                 } else if let Some(a) = game.allies.iter().find(|a| a.x == wx && a.y == wy) {
-                    overlay_sprite(&mut cell, &SPR_CREATURE, a.color, 0, -bob);
+                    overlay_sprite(&mut cell, if a.companion { &SPR_HERO } else { &SPR_CREATURE }, a.color, 0, -bob);
                 } else if let Some(i) = game.monster_at(wx, wy) {
                     let m = &game.monsters[i];
                     overlay_sprite(&mut cell, monster_sprite(m), m.color, 0, -bob);
@@ -820,6 +822,7 @@ fn cell_render(game: &Game, x: i32, y: i32, tint: (f32, f32, f32)) -> (char, Col
             FeatureKind::Trap => ('^', (210, 95, 75)),
             FeatureKind::Forge => ('\u{2692}', (255, 170, 70)),
             FeatureKind::Gamble => ('\u{2684}', (235, 200, 120)),
+            FeatureKind::Lost => ('\u{263a}', (255, 224, 150)),
         };
         result = (ch, shade(col, light.max(0.8), (1.0, 1.0, 1.0)), bg_lit);
     }

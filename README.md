@@ -68,12 +68,14 @@ Progress autoloads on launch (`abyssal.save.json`).
 
 ## Features
 
-- Procedural dungeons with rooms, corridors, LOS field-of-view and a discovery meter
+- Advanced procedural world generation (v2): each biome uses its own algorithm — cellular-automata caves (Caverns), dense BSP-style crypts (Catacombs), wide great halls (Frostvault), rooms fused with organic cave blobs (Emberdepths), and a loop-heavy labyrinth (Abyss) — with round rooms, pillared halls, guaranteed full connectivity, extra loops, and stairs placed at the farthest reachable point for pacing
 - Branching descents: at every stairway the AI weighs 2–3 paths by mindset (and heads for a Rest branch when wounded), each leading to a biome and a room type (treasure / challenge / warren / rest)
 - Rift rooms — a rare parallel-world floor (a purple-tinted "Faille") packed with elites and loot: more monsters with a sharply higher elite rate, extra items and chests, and a guaranteed relic on entry; high risk, high reward
 - Five biomes (Caverns, Catacombs, Frostvault, Emberdepths, Abyss), each with its own palette, lighting tint, biased fauna, ambient hazard, a themed champion mini-boss, and musical key
 - Two render modes (toggle with `g`): the classic colored-glyph map, or a half-block pixel-art "sprite" view — a hero-centred camera with procedural per-archetype sprites, distinct item/feature icons, an idle bob, particles and floating damage, all drawn in any truecolor terminal with no asset files (zoom with `z`)
-- Eight hero classes (Warrior / Rogue / Mage / Paladin / Necromancer / Ranger / Berserker / Elementalist) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown (charge, blink-strike, ice nova, smite-heal, raise-dead, arrow volley, whirlwind fury, elemental nova)
+- Twelve hero classes (Warrior / Rogue / Mage / Paladin / Necromancer / Ranger / Berserker / Elementalist / Monk / Druid / Templar / Warlock) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown (charge, blink-strike, ice nova, smite-heal, raise-dead, arrow volley, whirlwind fury, elemental nova, dash, nature mending, holy charge, shadow nova)
+- Five weapon families (light / heavy / staff / martial fists / bows) and four armor families (cloth / leather / plate / mail), each with six (weapons) or five (armor) tiers from starter gear up to legendary endgame pieces
+- Rare lost human companions: every so often a survivor (a guard, huntress, scholar...) is found stranded deep in the dungeon and joins you — a named, persistent ally that follows across floors and fights at your side until it falls
 - A bestiary of ~30 monster kinds across the depth range, each with its glyph, element, behavior and a procedural sprite
 - Summoned allies: the Necromancer raises slain monsters as temporary undead that fight alongside the hero (a reusable allied-unit system)
 - Unique relics dropped by bosses and champions with special effects (lifesteal on kill, ghostly dodge, chain-lightning procs, burning hits, +max HP, raise-the-dead for any class)
@@ -128,7 +130,7 @@ Votes are tallied over `vote_window_secs`; each viewer counts once per window.
 
 Everything is generated and rendered at runtime — no art, audio, or data files.
 
-- `map.rs` — procedural generation (rooms + corridors), Bresenham line-of-sight FOV, discovery metering
+- `map.rs` — world generation v2: per-biome algorithms (cellular-automata caves, BSP-style rooms, great halls, room+cave hybrids, loop labyrinths), connectivity flood-fill, round rooms, pillars, Bresenham line-of-sight FOV, discovery metering
 - `ai.rs` — BFS pathfinding (`step_toward`, `nearest_goal`)
 - `entity.rs` — hero, classes, monsters (bestiary), items, affixes, relics, talents, pets/allies, elements
 - `game.rs` — the simulation: turn order, the hero's priority-based AI (dodge → heal → ability → bolt → scroll → attack → hunt/loot/feature/merchant/explore/descend), combat, biomes, branching, mutators, bosses

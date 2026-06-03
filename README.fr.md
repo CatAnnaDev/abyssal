@@ -68,12 +68,14 @@ La progression se charge automatiquement au lancement (`abyssal.save.json`).
 
 ## Fonctionnalités
 
-- Donjons procéduraux (salles, couloirs), champ de vision en ligne de mire et compteur de découverte
+- Génération de monde procédurale avancée (v2) : chaque biome a son propre algorithme — grottes en automate cellulaire (Cavernes), cryptes denses façon BSP (Catacombes), grandes halles larges (Glacier), salles fusionnées à des poches de grottes organiques (Tréfonds) et un labyrinthe truffé de boucles (Abîme) — avec salles rondes, halls à piliers, connectivité totale garantie, boucles supplémentaires, et l'escalier placé au point praticable le plus éloigné pour le rythme
 - Descentes ramifiées : à chaque escalier l'IA pèse 2–3 voies selon son état d'esprit (et fonce vers une salle de repos si elle est blessée), chacune menant à un biome et un type de salle (trésor / défi / nuée / repos)
 - Salles Faille — un étage de monde parallèle rare (une « Faille » teintée de violet) gorgé d'élites et de butin : plus de monstres avec un taux d'élite très élevé, objets et coffres supplémentaires, et une relique garantie à l'entrée ; gros risque, grosse récompense
 - Cinq biomes (Cavernes, Catacombes, Glacier, Tréfonds, Abîme), chacun avec sa palette, sa teinte d'éclairage, sa faune biaisée, un danger ambiant, un champion thématique et sa tonalité musicale
 - Deux modes de rendu (touche `g`) : la carte en glyphes colorés classique, ou une vue « sprite » pixel-art en demi-blocs — caméra centrée sur le héros, sprites procéduraux par archétype, icônes d'objets distinctes, petit balancement, particules et dégâts flottants, le tout dans n'importe quel terminal truecolor sans fichier (zoom avec `z`)
-- Huit classes de héros (Guerrier / Voleur / Mage / Paladin / Nécromancien / Rôdeur / Berserker / Élémentaliste), armes/armures/crit/cleave/bolts distincts, plus une capacité active déclenchée par l'IA en cooldown (charge, assaut-éclair, nova de glace, châtiment-soin, levée des morts, volée de flèches, furie tournoyante, nova élémentaire)
+- Douze classes de héros (Guerrier / Voleur / Mage / Paladin / Nécromancien / Rôdeur / Berserker / Élémentaliste / Moine / Druide / Templier / Occultiste), armes/armures/crit/cleave/bolts distincts, plus une capacité active déclenchée par l'IA en cooldown (charge, assaut-éclair, nova de glace, châtiment-soin, levée des morts, volée de flèches, furie tournoyante, nova élémentaire, ruée, soin de la nature, charge sacrée, nova d'ombre)
+- Cinq familles d'armes (légère / lourde / magique / poings martiaux / arcs) et quatre familles d'armures (tissu / cuir / plaque / mailles), chacune avec six paliers (armes) ou cinq (armures), du matériel de départ jusqu'aux pièces légendaires de fin de partie
+- Compagnons humains perdus et rares : de temps en temps un survivant (un garde, une chasseresse, un érudit...) est retrouvé échoué au fond du donjon et vous rejoint — un allié nommé et persistant qui vous suit d'étage en étage et combat à vos côtés jusqu'à ce qu'il tombe
 - Un bestiaire d'une trentaine de monstres sur toute la profondeur, chacun avec son glyphe, son élément, son comportement et un sprite procédural
 - Alliés invoqués : le Nécromancien relève les monstres tués en morts-vivants temporaires qui combattent à ses côtés (système d'unités alliées réutilisable)
 - Reliques uniques lâchées par les boss et champions, à effets spéciaux (vol de vie aux kills, esquive spectrale, éclairs en chaîne, coups enflammés, +PV max, levée des morts pour toute classe)
@@ -128,7 +130,7 @@ Les votes sont comptés sur `vote_window_secs` ; chaque viewer compte une fois p
 
 Tout est généré et rendu au runtime — aucun fichier d'art, d'audio ou de données.
 
-- `map.rs` — génération procédurale (salles + couloirs), FOV en ligne de mire (Bresenham), mesure de découverte
+- `map.rs` — génération de monde v2 : algorithmes par biome (grottes en automate cellulaire, salles façon BSP, grandes halles, hybrides salles+grottes, labyrinthes à boucles), flood-fill de connectivité, salles rondes, piliers, FOV en ligne de mire (Bresenham), mesure de découverte
 - `ai.rs` — pathfinding BFS (`step_toward`, `nearest_goal`)
 - `entity.rs` — héros, classes, monstres (bestiaire), objets, affixes, reliques, talents, familiers/alliés, éléments
 - `game.rs` — la simulation : ordre des tours, l'IA du héros par priorités (esquive → soin → capacité → éclair → parchemin → attaque → chasse/butin/feature/marchand/exploration/descente), combat, biomes, ramifications, mutateurs, boss

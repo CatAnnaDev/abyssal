@@ -567,7 +567,7 @@ impl Game {
     }
 
     fn populate_floor(&mut self, first: bool) {
-        let map = Map::generate(self.map_w, self.map_h, &mut self.rng);
+        let map = Map::generate_styled(self.map_w, self.map_h, self.biome.style_id(), &mut self.rng);
         let (hx, hy) = map.spawn_point();
         self.map = map;
         self.hero.x = hx;
@@ -591,7 +591,8 @@ impl Game {
         for y in 0..self.map.height {
             for x in 0..self.map.width {
                 if self.map.tile(x, y) == Tile::Floor && !(x == hx && y == hy) {
-                    let near_spawn = (x - hx).abs() + (y - hy).abs() < 5;
+                    let safe_radius = if self.floor <= 3 { 8 } else { 6 };
+                    let near_spawn = (x - hx).abs() + (y - hy).abs() < safe_radius;
                     if !near_spawn {
                         floor_tiles.push((x, y));
                     }
@@ -632,8 +633,8 @@ impl Game {
         if self.floor >= 3 {
             monster_count = ((monster_count as f32 * self.mut_count_mult()) as usize).min(40);
         }
-        if self.floor <= 2 {
-            monster_count = monster_count.min(2 + self.floor as usize * 2);
+        if self.floor <= 3 {
+            monster_count = monster_count.min(self.floor as usize + 1);
         }
 
         let biome_el = self.biome.element();
@@ -661,6 +662,9 @@ impl Game {
             elite_chance = (elite_chance + 0.45).min(0.85);
         }
         elite_chance = (elite_chance + self.mut_elite_add()).min(0.75);
+        if self.floor <= 2 {
+            elite_chance = 0.0;
+        }
         let promote: Vec<bool> = (0..self.monsters.len()).map(|_| self.rng.chance(elite_chance)).collect();
         for (i, m) in self.monsters.iter_mut().enumerate() {
             if promote[i] {
@@ -717,6 +721,9 @@ impl Game {
         }
         if self.floor >= 2 && self.rng.chance(0.16) {
             place_feature(&mut floor_tiles, &mut self.rng, FeatureKind::Gamble, &mut self.features);
+        }
+        if self.floor >= 3 && !self.allies.iter().any(|a| a.companion) && self.rng.chance(0.04) {
+            place_feature(&mut floor_tiles, &mut self.rng, FeatureKind::Lost, &mut self.features);
         }
         let chests = 1 + self.rng.below(2) + if self.event == FloorEvent::Treasure { 4 } else { 0 } + bonus_chests;
         for _ in 0..chests {
@@ -778,7 +785,18 @@ impl Game {
         self.danger.clear();
         self.cast_danger.clear();
         self.hazard.clear();
-        self.allies.clear();
+        self.allies.retain(|a| a.companion);
+        let spots = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)];
+        for k in 0..self.allies.len() {
+            let spot = spots
+                .into_iter()
+                .map(|(dx, dy)| (hx + dx, hy + dy))
+                .find(|&(x, y)| self.map.is_walkable(x, y) && self.monster_at(x, y).is_none() && !self.allies.iter().any(|a| a.x == x && a.y == y))
+                .unwrap_or((hx, hy));
+            self.allies[k].x = spot.0;
+            self.allies[k].y = spot.1;
+            self.allies[k].hp = self.allies[k].max_hp;
+        }
         self.floor_turns = 0;
         self.objective = Objective::None;
         self.objective_done = false;
@@ -1482,6 +1500,10 @@ impl Game {
             HeroClass::Ranger => self.ability_volley(),
             HeroClass::Berserker => self.ability_furie(),
             HeroClass::Elementalist => self.ability_nova(),
+            HeroClass::Monk => self.ability_blink(),
+            HeroClass::Druid => self.ability_smite(),
+            HeroClass::Templar => self.ability_charge(),
+            HeroClass::Warlock => self.ability_nova(),
         }
     }
 
@@ -1575,10 +1597,17 @@ impl Game {
     fn ally_turns(&mut self) {
         let mut i = 0;
         while i < self.allies.len() {
-            self.allies[i].ttl -= 1;
+            if !self.allies[i].companion {
+                self.allies[i].ttl -= 1;
+            }
             if self.allies[i].ttl <= 0 || self.allies[i].hp <= 0 {
                 let (ax, ay) = (self.allies[i].x, self.allies[i].y);
                 self.fx.burst(&mut self.rng, ax, ay, (120, 130, 120), 5, '\u{00b7}');
+                if self.allies[i].companion {
+                    let nm = self.allies[i].name.clone();
+                    self.fx.label(ax, ay, "TOMBE", (255, 150, 120));
+                    self.push_log(format!("{} est tombe a vos cotes...", nm), BAD);
+                }
                 self.allies.swap_remove(i);
                 continue;
             }
@@ -2411,7 +2440,8 @@ impl Game {
                 self.fx.label(hx, hy, "SOIN", (110, 200, 230));
             }
             FeatureKind::Chest => {
-                let mimic_spot = if self.rng.chance(0.28) {
+                let mimic_chance = if self.floor <= 2 { 0.08 } else { 0.26 };
+                let mimic_spot = if self.rng.chance(mimic_chance) {
                     [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1)]
                         .into_iter()
                         .map(|(dx, dy)| (hx + dx, hy + dy))
@@ -2421,7 +2451,7 @@ impl Game {
                 };
                 if let Some((mxp, myp)) = mimic_spot {
                     self.monsters.push(Monster::mimic(self.floor, mxp, myp));
-                    let bite = 5 + self.floor;
+                    let bite = 3 + self.floor;
                     self.hero.hp -= bite;
                     self.fx.add_shake(6);
                     self.fx.damage(hx, hy, bite, true);
@@ -2484,6 +2514,20 @@ impl Game {
                 self.fx.burst(&mut self.rng, hx, hy, (120, 230, 180), 14, '\u{2726}');
                 self.fx.label(hx, hy, "FAMILIER", (120, 230, 180));
                 self.push_log(format!("Un familier ({}) se joint a vous !", pname), (120, 230, 180));
+            }
+            FeatureKind::Lost => {
+                let spot = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1)]
+                    .into_iter()
+                    .map(|(dx, dy)| (hx + dx, hy + dy))
+                    .find(|&(x, y)| self.map.is_walkable(x, y) && self.monster_at(x, y).is_none())
+                    .unwrap_or((hx, hy));
+                let ally = Ally::companion(self.floor, spot.0, spot.1, &mut self.rng);
+                let nm = ally.name.clone();
+                self.allies.push(ally);
+                self.fx.burst(&mut self.rng, hx, hy, (255, 224, 150), 18, '\u{2665}');
+                self.fx.label(hx, hy, "COMPAGNON", (255, 224, 150));
+                self.push_log(format!("{}, perdu dans le donjon, vous rejoint et se battra a vos cotes !", nm), (255, 224, 150));
+                self.unlock("compagnon", "Compagnon - une ame sauvee");
             }
             FeatureKind::Trap => {
                 let dmg = 4 + self.floor * 2;
@@ -2860,7 +2904,8 @@ impl Game {
                 continue;
             }
 
-            if self.map.is_visible(mx, my) && dist <= AGGRO {
+            let aggro_range = if self.floor <= 2 { 4 } else { AGGRO };
+            if self.map.is_visible(mx, my) && dist <= aggro_range {
                 self.monsters[i].aggro = true;
             }
             if !self.monsters[i].aggro {
@@ -3517,3 +3562,4 @@ mod tests {
 fn super_panel() -> i32 {
     34
 }
+
