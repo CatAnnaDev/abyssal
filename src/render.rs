@@ -256,7 +256,8 @@ fn draw_panel(game: &Game, cols: i32, rows: i32, mw: i32, buf: &mut String) {
     r += 1;
     put(buf, ix, r, (170, 170, 185), &format!("ATQ {:<4} DEF {:<4} or {}", h.atk(), h.def(), h.gold));
     r += 1;
-    put(buf, ix, r, (200, 170, 90), &fit(&format!("{} · {}%", game.style.label(), game.map.discovery_percent()), iw));
+    let corr_col = if game.corruption >= 70 { (220, 90, 200) } else if game.corruption >= 40 { (210, 140, 200) } else { (200, 170, 90) };
+    put(buf, ix, r, corr_col, &fit(&format!("{} · {}% · corr {}%", game.style.label(), game.map.discovery_percent(), game.corruption), iw));
     r += 1;
     put(buf, ix, r, (210, 150, 120), &fit(&status_line(game), iw));
     r += 1;

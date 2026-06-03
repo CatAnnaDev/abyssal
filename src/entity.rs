@@ -496,6 +496,8 @@ pub struct Hero {
     pub ability_cd: i32,
     #[serde(default)]
     pub relics: Vec<Relic>,
+    #[serde(default)]
+    pub stun: i32,
 }
 
 impl Hero {
@@ -539,6 +541,7 @@ impl Hero {
             talents: Vec::new(),
             ability_cd: 0,
             relics: Vec::new(),
+            stun: 0,
         }
     }
 

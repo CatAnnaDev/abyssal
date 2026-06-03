@@ -947,6 +947,8 @@ impl Game {
             monster_count = (monster_count / 3).max(2);
         }
 
+        self.corruption = (self.floor * 4 + self.ascension * 5 + self.boss_wave * 3).min(100);
+        let corr = self.corruption;
         let biome_el = self.biome.element();
         let fauna = self.biome.fauna();
         for _ in 0..monster_count {
@@ -959,6 +961,14 @@ impl Game {
             if let Some(el) = biome_el {
                 if self.rng.chance(0.55) {
                     m.element = el;
+                }
+            }
+            if corr > 0 {
+                m.hp = (m.hp * (100 + corr) / 100).max(1);
+                m.max_hp = m.hp;
+                m.atk += corr / 25;
+                if corr >= 70 && self.rng.chance(0.2) {
+                    m.enraged = true;
                 }
             }
             self.monsters.push(m);
@@ -1238,6 +1248,7 @@ impl Game {
         let foes = self.monsters.iter().filter(|m| self.map.is_visible(m.x, m.y)).count();
         let boss_near = self.monsters.iter().any(|m| m.boss && self.map.is_visible(m.x, m.y));
         let line = match self.last_action {
+            "etourdi" => "La tete tourne... je ne peux pas bouger.".to_string(),
             "esquive" => "Cette attaque, je la sens venir — je m'ecarte.".to_string(),
             "fuite" | "repli" => format!("Trop amoche ({}%), je decroche.", hp_pct),
             "potion" => "Une gorgee, vite, avant le prochain coup.".to_string(),
@@ -1903,6 +1914,11 @@ impl Game {
         self.prev_tile = self.turn_start_tile;
         self.turn_start_tile = (self.hero.x, self.hero.y);
         self.nav_target = None;
+        if self.hero.stun > 0 {
+            self.hero.stun -= 1;
+            self.last_action = "etourdi";
+            return;
+        }
         if self.act_dodge() {
             return;
         }
@@ -3461,6 +3477,10 @@ impl Game {
                 if self.hero.hp <= 0 {
                     self.hero.hp = 0;
                     self.die("un piege");
+                } else if self.rng.chance(0.3) {
+                    self.hero.stun = 2;
+                    self.fx.label(hx, hy, "ETOURDI", (235, 220, 120));
+                    self.push_log("Le choc vous etourdit.".into(), WARN);
                 }
             }
             FeatureKind::Grave => {
