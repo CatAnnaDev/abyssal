@@ -653,6 +653,10 @@ pub struct Game {
     #[serde(skip)]
     pub shop_preview: bool,
     #[serde(skip)]
+    pub shop_vote_secs: f32,
+    #[serde(skip)]
+    pub twitch_feed: Vec<String>,
+    #[serde(skip)]
     pub merchant_votes: [u32; 7],
     #[serde(skip)]
     pub style_tally: [u32; 3],
@@ -792,6 +796,8 @@ impl Game {
             forced_purchase: None,
             shop_timer: 0,
             shop_preview: false,
+            shop_vote_secs: 0.0,
+            twitch_feed: Vec::new(),
             merchant_votes: [0; 7],
             style_tally: [0; 3],
             twitch_channel: String::new(),
@@ -1170,6 +1176,34 @@ impl Game {
             MusicMode::Combat
         } else {
             MusicMode::Calm
+        }
+    }
+
+    pub fn tag_monster(&mut self, user: &str) {
+        if self.monsters.iter().any(|m| m.owner == user) {
+            return;
+        }
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let pick = self
+            .monsters
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| m.owner.is_empty() && !m.boss)
+            .min_by_key(|(_, m)| (m.x - hx).abs() + (m.y - hy).abs())
+            .map(|(i, _)| i);
+        if let Some(i) = pick {
+            let name: String = user.chars().take(14).collect();
+            let mob = self.monsters[i].name.clone();
+            self.monsters[i].owner = name.clone();
+            self.push_feed(format!("{} possede un {}", name, mob));
+        }
+    }
+
+    pub fn push_feed(&mut self, line: String) {
+        self.twitch_feed.push(line);
+        let n = self.twitch_feed.len();
+        if n > 4 {
+            self.twitch_feed.drain(0..n - 4);
         }
     }
 
@@ -2526,6 +2560,10 @@ impl Game {
                 }
             } else if m.elite {
                 self.push_log(format!("Elite vaincu : {} ! (+{} XP)", name, m.xp_reward), GOOD);
+            }
+            if !m.owner.is_empty() {
+                self.push_log(format!("Le {} de {} est terrasse !", name, m.owner), (220, 130, 200));
+                self.push_feed(format!("le {} de {} tombe", name, m.owner));
             }
             if self.total_kills == 1 {
                 self.unlock("first_blood", "Premier sang");

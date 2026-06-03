@@ -661,6 +661,8 @@ pub struct Monster {
     pub enraged: bool,
     #[serde(default)]
     pub bleed: i32,
+    #[serde(default)]
+    pub owner: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -977,6 +979,7 @@ impl Monster {
             summoner: kind.glyph == 'S',
             enraged: false,
             bleed: 0,
+            owner: String::new(),
         }
     }
 
@@ -1058,6 +1061,7 @@ impl Monster {
             summoner: false,
             enraged: false,
             bleed: 0,
+            owner: String::new(),
         }
     }
 
@@ -1095,6 +1099,7 @@ impl Monster {
             summoner: false,
             enraged: false,
             bleed: 0,
+            owner: String::new(),
         }
     }
 
@@ -1130,6 +1135,7 @@ impl Monster {
             summoner: false,
             enraged: false,
             bleed: 0,
+            owner: String::new(),
         }
     }
 }

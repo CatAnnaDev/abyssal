@@ -609,28 +609,31 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                 shop_window -= dt;
             }
             game.shop_preview = merchant_here && shop_window > 0.0;
+            game.shop_vote_secs = if merchant_here { shop_window.max(0.0) } else { 0.0 };
         }
         prev_merchant = merchant_here;
 
         if let Some(rx) = &votes {
             while let Ok((user, cmd)) = rx.try_recv() {
-                let counted = match cmd {
+                let (counted, action) = match cmd {
                     ViewerCmd::Style(s) if cfg.allow_style_vote => {
                         *style_votes.entry(s).or_insert(0) += 1;
-                        true
+                        (true, format!("{} vote {}", user, s.label()))
                     }
                     ViewerCmd::Speed(d) if cfg.allow_speed_vote => {
                         speed_votes += d;
-                        true
+                        (true, format!("{} vote {}", user, if d > 0 { "+vite" } else { "-vite" }))
                     }
                     ViewerCmd::Merchant(p) if cfg.allow_merchant_vote => {
                         *merch_votes.entry(p).or_insert(0) += 1;
-                        true
+                        (true, format!("{} achete {}", user, p.label()))
                     }
-                    _ => false,
+                    _ => (false, String::new()),
                 };
                 if counted {
-                    *voter_counts.entry(user).or_insert(0) += 1;
+                    *voter_counts.entry(user.clone()).or_insert(0) += 1;
+                    game.push_feed(action);
+                    game.tag_monster(&user);
                 }
             }
             let mut ranked: Vec<(String, u32)> = voter_counts.iter().map(|(k, v)| (k.clone(), *v)).collect();

@@ -60,6 +60,15 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
             }
         }
         draw_fx(game, mw, mh, sdx, &mut buf);
+        for m in &game.monsters {
+            if m.owner.is_empty() || m.x < 0 || m.y < 1 || m.x >= mw || m.y >= mh || !game.map.is_visible(m.x, m.y) {
+                continue;
+            }
+            let tag: String = m.owner.chars().take(12).collect();
+            let half = tag.chars().count() as i32 / 2;
+            let tx = (MCOL + sdx + m.x - half).clamp(MCOL + sdx, MCOL + sdx + mw - tag.chars().count() as i32);
+            let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;235;130;205m{}\x1b[0m", MROW + m.y - 1, tx, tag);
+        }
     }
     buf.push_str("\x1b[0m");
     draw_frame(game, cols, rows, mw, paused, speed_label, &mut buf);
@@ -954,6 +963,12 @@ fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
         let u: String = user.chars().take(14).collect();
         lines.push(format!("{}. {} ({})", i + 1, u, n));
     }
+    if !game.twitch_feed.is_empty() {
+        lines.push("actions:".to_string());
+        for a in game.twitch_feed.iter() {
+            lines.push(format!("\u{2022} {}", a.chars().take(26).collect::<String>()));
+        }
+    }
     let inner = lines.iter().map(|l| l.chars().count()).max().unwrap_or(8) as i32 + 1;
     let bh = lines.len() as i32 + 2;
     let oy = (mh - bh).max(0);
@@ -987,7 +1002,17 @@ fn draw_shop(game: &Game, mw: i32, buf: &mut String) {
     let sep = "\u{2500}".repeat(40);
     let afford = |p: i32| if game.hero.gold >= p { "" } else { "  (trop cher)" };
     let mut lines: Vec<String> = Vec::new();
-    lines.push(format!("Le marchand etale sa camelote.   Votre or : {}", game.hero.gold));
+    if game.shop_vote_secs > 0.0 {
+        let blink = (game.anim_t / 8) % 2 == 0;
+        let arrows = if blink { "\u{25b6}\u{25b6}\u{25b6}" } else { "   " };
+        lines.push(format!("{} CHAT, VOTEZ MAINTENANT — {:>2}s restantes {}", arrows, game.shop_vote_secs.ceil() as i32, arrows));
+        let total = 60.0f32;
+        let filled = ((game.shop_vote_secs / total) * 36.0).round().clamp(0.0, 36.0) as usize;
+        lines.push(format!("[{}{}]", "\u{2588}".repeat(filled), "\u{2591}".repeat(36 - filled)));
+    } else {
+        lines.push("Le marchand etale sa camelote.".to_string());
+    }
+    lines.push(format!("Votre or : {}", game.hero.gold));
     lines.push(sep.clone());
     match &m.weapon {
         Some((name, bonus, price)) => lines.push(format!("!arme    {:<18} ATQ+{:<2} {:>4}or [{}]{}", name, bonus, price, v[0], afford(*price))),
@@ -1024,8 +1049,15 @@ fn draw_shop(game: &Game, mw: i32, buf: &mut String) {
         buf.push('\u{2550}');
     }
     buf.push('\u{2557}');
+    let alert = game.shop_vote_secs > 0.0;
     for (i, l) in lines.iter().enumerate() {
-        let color = if i + 1 == lines.len() { (255, 225, 120) } else { (220, 220, 230) };
+        let color = if alert && i <= 1 {
+            (255, 120, 90)
+        } else if i + 1 == lines.len() {
+            (255, 225, 120)
+        } else {
+            (220, 220, 230)
+        };
         put(buf, MCOL + ox, MROW + oy + 1 + i as i32, border, "\u{2551} ");
         let mut content: String = l.chars().take(inner as usize - 1).collect();
         while (content.chars().count() as i32) < inner - 1 {
