@@ -1317,7 +1317,7 @@ impl Game {
         let foes = self.monsters.iter().filter(|m| self.map.is_visible(m.x, m.y)).count();
         let boss_near = self.monsters.iter().any(|m| m.boss && self.map.is_visible(m.x, m.y));
         let line = match self.last_action {
-            "etourdi" => "La tête tourne... je ne peux pas bouger.".to_string(),
+            "etourdi" => "J'ai la tête qui tourne... impossible de bouger.".to_string(),
             "esquive" => "Cette attaque, je la sens venir — je m'écarte.".to_string(),
             "fuite" | "repli" => format!("Trop amoché ({}%), je décroche.", hp_pct),
             "potion" => "Une gorgée, vite, avant le prochain coup.".to_string(),
@@ -1332,13 +1332,13 @@ impl Game {
                 crate::lore::Trait::Greedy => "De l'or. Hors de question de le laisser.".to_string(),
                 _ => "Ça brille, je vais voir.".to_string(),
             },
-            "combat" | "cleave" => format!("Au corps à corps. {} en vue.", foes.max(1)),
+            "combat" | "cleave" => format!("Je croise le fer — {} en face.", foes.max(1)),
             "charge" | "assaut" => "Je charge avant qu'il ne soit prêt.".to_string(),
             "nova" | "boule de feu" | "gel" | "chaine d'eclairs" | "eclair" => "Je libère l'énergie accumulée.".to_string(),
             "vortex" => "Tous ici. Maintenant.".to_string(),
             "possession" => "Tu te battras pour moi, désormais.".to_string(),
             "phase" => "Les murs ne me retiennent pas.".to_string(),
-            "volee" => "Une volée de flèches pour ouvrir.".to_string(),
+            "volee" => "Une volée de flèches pour ouvrir le bal.".to_string(),
             "furie" => "La rage prend le dessus.".to_string(),
             "levee" => "Relève-toi et sers-moi.".to_string(),
             "chatiment" => "Au nom de ce qui reste de lumière.".to_string(),
@@ -1346,7 +1346,7 @@ impl Game {
             "arene" => "L'arène ne se tait jamais. Encore un.".to_string(),
             "attente" => "Je guette, l'oreille tendue.".to_string(),
             _ => match self.identity.trait_kind {
-                crate::lore::Trait::Curious => "Qu'y a-t-il derrière celle-là ?".to_string(),
+                crate::lore::Trait::Curious => "Qu'est-ce qui se cache par là ?".to_string(),
                 crate::lore::Trait::Coward if foes > 0 => "Restons à distance.".to_string(),
                 _ => "J'avance dans le noir.".to_string(),
             },
