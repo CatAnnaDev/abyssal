@@ -114,11 +114,11 @@ fn write_obs(game: &Game) {
     let _ = std::fs::write(OBS_PATH, html);
 }
 
-fn daily_seed() -> (u64, String) {
+fn daily_seed() -> (u64, u64, String) {
     let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let day = secs / 86_400;
     let s = day.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0xABCD_1234_5678_9EF0;
-    (s | 1, format!("#{}", day))
+    (s | 1, day, format!("#{}", day))
 }
 
 fn leader<K: Copy>(votes: &HashMap<K, u32>) -> Option<K> {
@@ -580,7 +580,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
             g
         }
     };
-    game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone());
+    game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone(), profile.dailies.clone());
     let _ = stdout.execute(Clear(ClearType::All));
 
     let mut cfg = Config::load_or_create();
@@ -637,15 +637,16 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     }
                     KeyCode::Char('n') => {
                         game = build_game(map_w, map_h, &setup, profile.meta());
-                        game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone());
+                        game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone(), profile.dailies.clone());
                         let _ = stdout.execute(Clear(ClearType::All));
                     }
                     KeyCode::Char('d') => {
-                        let (ds, code) = daily_seed();
+                        let (ds, day, code) = daily_seed();
                         game = Game::new(map_w, map_h, ds);
                         game.daily = true;
+                        game.daily_day = day;
                         game.daily_code = code;
-                        game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone());
+                        game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone(), profile.dailies.clone());
                         let _ = stdout.execute(Clear(ClearType::All));
                     }
                     KeyCode::Char(' ') => paused = !paused,
@@ -694,7 +695,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     map_w = d.2;
                     map_h = d.3;
                     game = build_game(map_w, map_h, &setup, profile.meta());
-                    game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone());
+                    game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone(), profile.dailies.clone());
                     let _ = stdout.execute(Clear(ClearType::All));
                 }
                 _ => {}
@@ -884,6 +885,10 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                 profile.promote_nemesis(&name);
             }
             profile.record_ghost(game.make_ghost());
+            if game.daily {
+                profile.record_daily(game.daily_day, &game.daily_code, game.floor, game.last_score, &game.identity.name, game.class.label());
+                game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone(), profile.dailies.clone());
+            }
             profile.record_death(game.floor, game.last_score, game.hero.kills, game.hero.gold);
         }
         was_dead = dead_now;

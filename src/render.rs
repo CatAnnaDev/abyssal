@@ -371,8 +371,9 @@ fn draw_hall(game: &Game, cols: i32, rows: i32, buf: &mut String) {
     let ghosts = game.graveyard();
     let nemeses = game.known_nemeses();
     let feats = crate::lore::FEATS;
+    let board = game.daily_board();
     let bw = 56.min((cols - 4).max(24));
-    let body = ghosts.len() as i32 + nemeses.len() as i32 + feats.len() as i32 + 9;
+    let body = ghosts.len() as i32 + nemeses.len() as i32 + feats.len() as i32 + (board.len() as i32).min(3) + 11;
     let bh = body.clamp(12, (rows - 2).max(12));
     let ox = (cols - bw) / 2;
     let oy = (rows - bh) / 2;
@@ -412,6 +413,20 @@ fn draw_hall(game: &Game, cols: i32, rows: i32, buf: &mut String) {
                 put(buf, ox + 2, r, (225, 140, 205), &fit(&format!("{} (rang {}, {} morts inflige)", n.name, n.rank, n.hero_kills), bw - 4));
                 r += 1;
             }
+        }
+    }
+    if r < last - 1 && !board.is_empty() {
+        r += 1;
+        put(buf, ox + 2, r, (130, 200, 235), &fit(&format!("\u{2691} Defis du jour ({})", board.len()), bw - 4));
+        r += 1;
+        let mut top: Vec<_> = board.iter().collect();
+        top.sort_by(|a, b| b.best_score.cmp(&a.best_score));
+        for d in top.iter().take(3) {
+            if r >= last - 1 {
+                break;
+            }
+            put(buf, ox + 2, r, (150, 205, 230), &fit(&format!("{} · etage {} · score {} · {} ess.", d.code, d.best_floor, d.best_score, d.attempts), bw - 4));
+            r += 1;
         }
     }
     let earned = game.feats();
@@ -1393,6 +1408,15 @@ fn draw_death(game: &Game, mw: i32, mh: i32, buf: &mut String) {
     ];
     if game.daily {
         lines.push(format!("  DEFI {} — etage {}, score {}", game.daily_code, game.floor, game.last_score));
+        let board = game.daily_board();
+        if let Some(today) = board.iter().find(|d| d.code == game.daily_code) {
+            lines.push(format!("  meilleur du jour : etage {}, score {} ({} essais)", today.best_floor, today.best_score, today.attempts));
+        }
+        let mut best: Vec<_> = board.iter().collect();
+        best.sort_by(|a, b| b.best_score.cmp(&a.best_score));
+        if let Some(top) = best.first() {
+            lines.push(format!("  record defi a vie : score {} (defi {})", top.best_score, top.code));
+        }
         lines.push(String::new());
     }
     if !game.obituary.is_empty() {

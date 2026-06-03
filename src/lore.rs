@@ -130,6 +130,17 @@ pub struct Ghost {
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
+pub struct DailyResult {
+    pub day: u64,
+    pub code: String,
+    pub best_floor: i32,
+    pub best_score: i32,
+    pub attempts: u32,
+    pub name: String,
+    pub class: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct Nemesis {
     pub name: String,
     pub base: String,

@@ -111,7 +111,7 @@ Progress autoloads on launch (`abyssal.save.json`).
 - **Run mutators** (Sanguinaire, Cupidite, Fragile, Pullulement, Champions, Titans, Soif de Sang, Frenesie) that twist spawns, scaling and rewards.
 - **Ascension / NG+** and a persistent lifetime profile with milestones that unlock permanent starting bonuses.
 - **Feats** — lifetime achievements (first blood, boss slayer, nemesis hunter, grave robber, deep diver, exterminator, survivor, heart of the abyss, …) that toast when earned and are tracked across runs in the Hall of Souls (`h`).
-- **Daily challenge** (`d`) — a dungeon seeded from the date, identical for everyone that day; the death screen prints a shareable `DEFI #<day> — floor X, score Y` line.
+- **Daily challenge** (`d`) — a dungeon seeded from the date, identical for everyone that day; the death screen prints a shareable `DEFI #<day> — floor X, score Y` line, your best of the day and your all-time daily record. A **local leaderboard** of best score/floor per day is kept in the profile and shown in the Hall of Souls (`h`).
 
 ### Audio
 - **Procedural 8/16-bit chiptune**, generated at runtime with no audio files: synthesized SFX, plus an **adaptive** chill-pop track that reacts live — the **tempo ramps up smoothly as enemies approach** and a driving arpeggio fades in, peaking in combat and against bosses, all by shifting tempo and layering rather than hard-cutting tracks.

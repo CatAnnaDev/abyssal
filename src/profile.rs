@@ -1,4 +1,4 @@
-use crate::lore::{Ghost, Nemesis};
+use crate::lore::{DailyResult, Ghost, Nemesis};
 use serde::{Deserialize, Serialize};
 
 pub const PROFILE_PATH: &str = "abyssal.profile.json";
@@ -19,6 +19,8 @@ pub struct Profile {
     pub nemeses: Vec<Nemesis>,
     #[serde(default)]
     pub feats: Vec<String>,
+    #[serde(default)]
+    pub dailies: Vec<DailyResult>,
 }
 
 impl Profile {
@@ -77,6 +79,33 @@ impl Profile {
             v.push("talent de depart".to_string());
         }
         v
+    }
+
+    pub fn record_daily(&mut self, day: u64, code: &str, floor: i32, score: i32, name: &str, class: &str) {
+        if let Some(d) = self.dailies.iter_mut().find(|d| d.day == day) {
+            d.attempts += 1;
+            if score > d.best_score {
+                d.best_score = score;
+                d.best_floor = floor;
+                d.name = name.to_string();
+                d.class = class.to_string();
+            }
+        } else {
+            self.dailies.push(DailyResult {
+                day,
+                code: code.to_string(),
+                best_floor: floor,
+                best_score: score,
+                attempts: 1,
+                name: name.to_string(),
+                class: class.to_string(),
+            });
+        }
+        self.dailies.sort_by(|a, b| b.day.cmp(&a.day));
+        if self.dailies.len() > 90 {
+            self.dailies.truncate(90);
+        }
+        self.save();
     }
 
     pub fn record_feats(&mut self, ids: &[String]) {

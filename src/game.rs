@@ -608,6 +608,8 @@ pub struct Game {
     #[serde(default)]
     pub daily_code: String,
     #[serde(default)]
+    pub daily_day: u64,
+    #[serde(default)]
     pub boss_wave: i32,
     #[serde(default)]
     pub mutator_pref: i32,
@@ -643,6 +645,8 @@ pub struct Game {
     pub nemesis_defeated: Vec<String>,
     #[serde(skip)]
     pub nemesis_promoted: Option<String>,
+    #[serde(skip)]
+    daily_board: Vec<crate::lore::DailyResult>,
     #[serde(skip)]
     earned_feats: Vec<String>,
     #[serde(skip)]
@@ -817,6 +821,7 @@ impl Game {
             boss_rush,
             daily: false,
             daily_code: String::new(),
+            daily_day: 0,
             boss_wave: 0,
             mutator_pref,
             start_pet,
@@ -836,6 +841,7 @@ impl Game {
             nemesis_add: Vec::new(),
             nemesis_defeated: Vec::new(),
             nemesis_promoted: None,
+            daily_board: Vec::new(),
             earned_feats: Vec::new(),
             feats_pending: Vec::new(),
             last_action: "spawn",
@@ -1304,10 +1310,15 @@ impl Game {
         self.push_feed(format!("{} nomme l'heroine {}", user, clean));
     }
 
-    pub fn seed_lore(&mut self, ghosts: Vec<crate::lore::Ghost>, nemeses: Vec<crate::lore::Nemesis>, feats: Vec<String>) {
+    pub fn seed_lore(&mut self, ghosts: Vec<crate::lore::Ghost>, nemeses: Vec<crate::lore::Nemesis>, feats: Vec<String>, dailies: Vec<crate::lore::DailyResult>) {
         self.ghost_pool = ghosts.into_iter().filter(|g| g.name != self.identity.name).collect();
         self.nemesis_pool = nemeses;
         self.earned_feats = feats;
+        self.daily_board = dailies;
+    }
+
+    pub fn daily_board(&self) -> &[crate::lore::DailyResult] {
+        &self.daily_board
     }
 
     pub fn feats(&self) -> &[String] {
