@@ -507,10 +507,17 @@ impl Audio {
             return;
         }
         let lvl = self.music_level;
-        self.music[0].target = lvl;
-        let combat_layer = if mode != MusicMode::Calm { 1.0 } else { (self.intensity * 0.9).min(0.6) };
+        let boss = mode == MusicMode::Boss;
+        self.music[0].target = if boss { 0.0 } else { lvl };
+        let combat_layer = if boss {
+            0.0
+        } else if mode == MusicMode::Combat {
+            1.0
+        } else {
+            (self.intensity * 0.9).min(0.6)
+        };
         self.music[1].target = lvl * combat_layer;
-        self.music[2].target = if mode == MusicMode::Boss { lvl } else { 0.0 };
+        self.music[2].target = if boss { lvl } else { 0.0 };
     }
 
     pub fn set_intensity(&mut self, t: f32) {
