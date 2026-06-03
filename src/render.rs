@@ -955,6 +955,20 @@ fn draw_transition(floor: i32, mw: i32, mh: i32, buf: &mut String) {
     buf.push_str("\x1b[0m");
 }
 
+fn arrow_glyph(dx: i32, dy: i32) -> char {
+    match (dx.signum(), dy.signum()) {
+        (1, 0) => '\u{2192}',
+        (-1, 0) => '\u{2190}',
+        (0, 1) => '\u{2193}',
+        (0, -1) => '\u{2191}',
+        (1, 1) => '\u{2198}',
+        (1, -1) => '\u{2197}',
+        (-1, 1) => '\u{2199}',
+        (-1, -1) => '\u{2196}',
+        _ => '\u{00b7}',
+    }
+}
+
 fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut String) {
     use std::fmt::Write as _;
     let h = &game.hero;
@@ -965,39 +979,24 @@ fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut S
                 let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;{};{};{}m{}", MROW + y, MCOL + sdx + x, col.0, col.1, col.2, ch);
             }
         };
-        for y in 0..mh {
-            for x in 0..mw {
-                if !game.map.in_bounds(x, y) || !game.map.is_walkable(x, y) || !game.map.is_explored(x, y) {
-                    continue;
-                }
-                let d = field[game.map.idx(x, y)];
-                if d < 0 {
-                    mark(buf, x, y, (140, 40, 40), '\u{00d7}');
-                } else {
-                    let t = (d as f32 / 40.0).min(1.0);
-                    let col = (
-                        (80.0 + 150.0 * t) as u8,
-                        (200.0 - 110.0 * t) as u8,
-                        (230.0 - 160.0 * t) as u8,
-                    );
-                    let digit = std::char::from_digit((d % 10) as u32, 10).unwrap_or('?');
-                    mark(buf, x, y, col, digit);
-                }
-            }
+        for &(x, y) in &game.danger {
+            mark(buf, x, y, (210, 70, 70), '\u{2592}');
         }
-        let (sx, sy) = game.map.stairs;
-        mark(buf, sx, sy, (255, 240, 140), '>');
         for &(x, y) in &game.cast_danger {
-            mark(buf, x, y, (255, 150, 60), '!');
+            mark(buf, x, y, (235, 120, 60), '\u{2592}');
         }
         for &(x, y, _) in &game.hazard {
-            mark(buf, x, y, (235, 110, 40), 'H');
+            mark(buf, x, y, (235, 110, 40), '\u{2592}');
         }
-        for (x, y) in game.debug_path() {
-            mark(buf, x, y, (80, 230, 120), '\u{00b7}');
+        let path = game.debug_path();
+        let mut prev = (game.hero.x, game.hero.y);
+        for &(x, y) in &path {
+            let arrow = arrow_glyph(x - prev.0, y - prev.1);
+            mark(buf, x, y, (90, 235, 130), arrow);
+            prev = (x, y);
         }
         if let Some((gx, gy)) = game.debug_goal() {
-            mark(buf, gx, gy, (110, 255, 150), '\u{2573}');
+            mark(buf, gx, gy, (130, 255, 150), 'G');
         }
         for m in &game.monsters {
             if !game.map.is_explored(m.x, m.y) {
@@ -1015,9 +1014,6 @@ fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut S
                 ('z', (150, 150, 160))
             };
             mark(buf, m.x, m.y, col, ch);
-            if m.cast_wind > 0 {
-                mark(buf, m.cast_tx, m.cast_ty, (255, 90, 60), '\u{00d7}');
-            }
         }
     }
     let goalpos = game.debug_goal();
@@ -1051,6 +1047,7 @@ fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut S
         "== DEBUG (ctrl+d) ==".to_string(),
         format!("act:{}  goal:{}", game.last_action, goal),
         format!("pf:{} reach:{} gdist:{} steps:{}", game.pathfinder.label(), reach, gdist, game.debug_path().len()),
+        "legende: G=but, fleches=chemin, []=danger".to_string(),
         format!("style:{}  rush:{} w{}", game.style.label(), game.boss_rush, game.boss_wave),
         format!("music:{} int:{:.2} boss:{}", mode, game.music_intensity(), bossc),
         format!("floor:{} {} [{}]", game.floor, game.biome.label(), game.room_kind.label()),
