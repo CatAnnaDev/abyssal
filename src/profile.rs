@@ -1,3 +1,4 @@
+use crate::lore::{Ghost, Nemesis};
 use serde::{Deserialize, Serialize};
 
 pub const PROFILE_PATH: &str = "abyssal.profile.json";
@@ -12,6 +13,10 @@ pub struct Profile {
     pub total_gold: u64,
     #[serde(default)]
     pub ascension: i32,
+    #[serde(default)]
+    pub graveyard: Vec<Ghost>,
+    #[serde(default)]
+    pub nemeses: Vec<Nemesis>,
 }
 
 impl Profile {
@@ -70,6 +75,37 @@ impl Profile {
             v.push("talent de depart".to_string());
         }
         v
+    }
+
+    pub fn record_ghost(&mut self, ghost: Ghost) {
+        self.graveyard.push(ghost);
+        if self.graveyard.len() > 16 {
+            let drop = self.graveyard.len() - 16;
+            self.graveyard.drain(0..drop);
+        }
+        self.save();
+    }
+
+    pub fn add_nemesis(&mut self, nem: Nemesis) {
+        if let Some(existing) = self.nemeses.iter_mut().find(|n| n.name == nem.name) {
+            existing.rank += 1;
+        } else if self.nemeses.len() < 6 {
+            self.nemeses.push(nem);
+        }
+        self.save();
+    }
+
+    pub fn promote_nemesis(&mut self, name: &str) {
+        if let Some(n) = self.nemeses.iter_mut().find(|n| n.name == name) {
+            n.rank += 1;
+            n.hero_kills += 1;
+        }
+        self.save();
+    }
+
+    pub fn retire_nemesis(&mut self, name: &str) {
+        self.nemeses.retain(|n| n.name != name);
+        self.save();
     }
 
     pub fn record_death(&mut self, floor: i32, score: i32, kills: i32, gold: i32) {

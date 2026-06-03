@@ -628,6 +628,16 @@ pub struct Game {
     #[serde(skip)]
     pub thoughts: Vec<String>,
     #[serde(skip)]
+    ghost_pool: Vec<crate::lore::Ghost>,
+    #[serde(skip)]
+    nemesis_pool: Vec<crate::lore::Nemesis>,
+    #[serde(default)]
+    grave_ghost: Option<crate::lore::Ghost>,
+    #[serde(skip)]
+    pub nemesis_add: Vec<crate::lore::Nemesis>,
+    #[serde(skip)]
+    pub nemesis_defeated: Vec<String>,
+    #[serde(skip)]
     pub last_action: &'static str,
     #[serde(skip)]
     pub hitstop: i32,
@@ -806,6 +816,11 @@ impl Game {
             corruption: 0,
             obituary: String::new(),
             thoughts: Vec::new(),
+            ghost_pool: Vec::new(),
+            nemesis_pool: Vec::new(),
+            grave_ghost: None,
+            nemesis_add: Vec::new(),
+            nemesis_defeated: Vec::new(),
             last_action: "spawn",
             hitstop: 0,
             debug: false,
@@ -984,6 +999,25 @@ impl Game {
             self.push_log(format!("Un champion rode : {} !", name), (255, 150, 120));
         }
 
+        if !(self.boss_rush && self.floor >= 10) && !self.nemesis_pool.is_empty() && self.floor >= 3 && !floor_tiles.is_empty() && self.rng.chance(0.3) {
+            let ni = self.rng.below(self.nemesis_pool.len());
+            let nem = self.nemesis_pool[ni].clone();
+            let pick = self.rng.below(floor_tiles.len());
+            let (x, y) = floor_tiles.swap_remove(pick);
+            let mut m = Monster::specific(nem.glyph, self.floor, x, y);
+            m.promote();
+            let rank = nem.rank.max(1);
+            m.hp = (m.hp * (5 + rank) / 4).max(1);
+            m.max_hp = m.hp;
+            m.atk += 2 + rank;
+            m.xp_reward += 25 + self.floor + rank * 5;
+            m.gold_reward += 20 + rank * 8;
+            m.name = nem.name.clone();
+            m.nemesis = true;
+            self.monsters.push(m);
+            self.push_log(format!("{} vous a retrouve.", nem.name), (235, 120, 200));
+        }
+
         for _ in 0..item_count {
             if floor_tiles.is_empty() {
                 break;
@@ -1020,6 +1054,12 @@ impl Game {
         let companion_count = self.allies.iter().filter(|a| a.companion).count();
         if self.floor >= 3 && companion_count < 2 && self.rng.chance(0.05) {
             place_feature(&mut floor_tiles, &mut self.rng, FeatureKind::Lost, &mut self.features);
+        }
+        self.grave_ghost = None;
+        if !self.ghost_pool.is_empty() && self.floor >= 2 && self.rng.chance(0.3) {
+            let gi = self.rng.below(self.ghost_pool.len());
+            self.grave_ghost = Some(self.ghost_pool[gi].clone());
+            place_feature(&mut floor_tiles, &mut self.rng, FeatureKind::Grave, &mut self.features);
         }
         let chests = 1 + self.rng.below(2) + if self.event == FloorEvent::Treasure { 4 } else { 0 } + bonus_chests;
         for _ in 0..chests {
@@ -1173,6 +1213,23 @@ impl Game {
         if self.room_kind == RoomKind::Rift {
             self.push_log("FAILLE : un monde parallele, hostile et gorge de tresors...".into(), (210, 140, 240));
             self.grant_relic();
+        }
+    }
+
+    pub fn seed_lore(&mut self, ghosts: Vec<crate::lore::Ghost>, nemeses: Vec<crate::lore::Nemesis>) {
+        self.ghost_pool = ghosts.into_iter().filter(|g| g.name != self.identity.name).collect();
+        self.nemesis_pool = nemeses;
+    }
+
+    pub fn make_ghost(&self) -> crate::lore::Ghost {
+        crate::lore::Ghost {
+            name: self.identity.name.clone(),
+            origin: self.identity.origin.clone(),
+            class: self.class.label().to_string(),
+            floor: self.floor,
+            weapon: self.hero.weapon.clone(),
+            armor: self.hero.armor.clone(),
+            gold: self.hero.gold,
         }
     }
 
@@ -2734,6 +2791,11 @@ impl Game {
                 self.push_log(format!("Le {} de {} est terrasse !", name, m.owner), (220, 130, 200));
                 self.push_feed(format!("le {} de {} tombe", name, m.owner));
             }
+            if m.nemesis {
+                self.nemesis_defeated.push(m.name.clone());
+                self.fx.label(mx, my, "NEMESIS", (235, 120, 200));
+                self.push_log(format!("Vous reglez vos comptes avec {} !", m.name), (235, 120, 200));
+            }
             if self.total_kills == 1 {
                 self.unlock("first_blood", "Premier sang");
             }
@@ -3399,6 +3461,23 @@ impl Game {
                 if self.hero.hp <= 0 {
                     self.hero.hp = 0;
                     self.die("un piege");
+                }
+            }
+            FeatureKind::Grave => {
+                self.fx.burst(&mut self.rng, hx, hy, (185, 190, 205), 12, '\u{271d}');
+                self.fx.label(hx, hy, "TOMBE", (200, 205, 220));
+                if let Some(g) = self.grave_ghost.take() {
+                    let bonus = (g.gold / 2).max(10);
+                    self.hero.gold += bonus;
+                    self.hero.potions += 1;
+                    self.push_log(format!("Tombe de {} {} ({}). Vous recuperez {} or et une potion.", g.name, g.origin, g.class, bonus), (200, 205, 220));
+                    if self.rng.chance(0.5) {
+                        self.hero.weapon_bonus += 1;
+                        self.push_log(format!("Vous reprenez {} de {}. (+1 ATQ)", g.weapon, g.name), (210, 200, 150));
+                    }
+                } else {
+                    self.hero.gold += 10;
+                    self.push_log("Une tombe anonyme. Quelques pieces.".into(), (190, 195, 210));
                 }
             }
             FeatureKind::Gamble => {
@@ -4362,6 +4441,33 @@ impl Game {
         self.push_log(format!("\u{2638} VAGUE {} : {} surgit dans l'arene !", self.boss_wave + 1, bn), (255, 110, 90));
     }
 
+    fn record_escapee(&mut self) {
+        if self.boss_rush {
+            return;
+        }
+        let cand = self
+            .monsters
+            .iter()
+            .filter(|m| m.flees && !m.nemesis && !m.boss && m.hp < m.max_hp)
+            .min_by_key(|m| m.hp * 100 / m.max_hp.max(1));
+        if let Some(m) = cand {
+            if self.nemesis_pool.iter().any(|n| n.base == m.name) || self.nemesis_add.iter().any(|n| n.base == m.name) {
+                return;
+            }
+            if self.rng.chance(0.5) {
+                let nem = crate::lore::Nemesis {
+                    name: crate::lore::nemesis_name(&m.name, &mut self.rng),
+                    base: m.name.clone(),
+                    glyph: m.glyph,
+                    rank: 1,
+                    hero_kills: 0,
+                };
+                self.push_log(format!("{} s'echappe en jurant de revenir.", nem.name), (235, 120, 200));
+                self.nemesis_add.push(nem);
+            }
+        }
+    }
+
     fn log_floor_summary(&mut self) {
         let kills = self.hero.kills - self.floor_start_kills;
         let gold = self.hero.gold - self.floor_start_gold;
@@ -4383,6 +4489,7 @@ impl Game {
     }
 
     fn descend(&mut self) {
+        self.record_escapee();
         if self.objective == Objective::Swift && !self.objective_done && self.floor_turns <= self.objective_target {
             self.complete_objective();
         }

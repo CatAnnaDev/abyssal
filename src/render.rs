@@ -512,6 +512,7 @@ fn feature_color(kind: FeatureKind) -> Color {
         FeatureKind::Forge => (255, 170, 70),
         FeatureKind::Gamble => (235, 200, 120),
         FeatureKind::Lost => (255, 224, 150),
+        FeatureKind::Grave => (170, 175, 190),
     }
 }
 
@@ -890,6 +891,7 @@ fn cell_render(game: &Game, x: i32, y: i32, tint: (f32, f32, f32)) -> (char, Col
             FeatureKind::Forge => ('\u{2692}', (255, 170, 70)),
             FeatureKind::Gamble => ('\u{2684}', (235, 200, 120)),
             FeatureKind::Lost => ('\u{263a}', (255, 224, 150)),
+            FeatureKind::Grave => ('\u{271d}', (185, 190, 205)),
         };
         result = (ch, shade(col, light.max(0.8), (1.0, 1.0, 1.0)), bg_lit);
     }

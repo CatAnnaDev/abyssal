@@ -663,6 +663,8 @@ pub struct Monster {
     pub bleed: i32,
     #[serde(default)]
     pub owner: String,
+    #[serde(default)]
+    pub nemesis: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -676,6 +678,7 @@ pub enum FeatureKind {
     Forge,
     Gamble,
     Lost,
+    Grave,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
@@ -980,6 +983,7 @@ impl Monster {
             enraged: false,
             bleed: 0,
             owner: String::new(),
+            nemesis: false,
         }
     }
 
@@ -1062,6 +1066,7 @@ impl Monster {
             enraged: false,
             bleed: 0,
             owner: String::new(),
+            nemesis: false,
         }
     }
 
@@ -1100,6 +1105,7 @@ impl Monster {
             enraged: false,
             bleed: 0,
             owner: String::new(),
+            nemesis: false,
         }
     }
 
@@ -1136,6 +1142,7 @@ impl Monster {
             enraged: false,
             bleed: 0,
             owner: String::new(),
+            nemesis: false,
         }
     }
 }

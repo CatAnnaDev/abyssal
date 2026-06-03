@@ -509,6 +509,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
             g
         }
     };
+    game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone());
     let _ = stdout.execute(Clear(ClearType::All));
 
     let mut cfg = Config::load_or_create();
@@ -562,6 +563,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     }
                     KeyCode::Char('n') => {
                         game = build_game(map_w, map_h, &setup, profile.meta());
+                        game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone());
                         let _ = stdout.execute(Clear(ClearType::All));
                     }
                     KeyCode::Char(' ') => paused = !paused,
@@ -606,6 +608,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     map_w = d.2;
                     map_h = d.3;
                     game = build_game(map_w, map_h, &setup, profile.meta());
+                    game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone());
                     let _ = stdout.execute(Clear(ClearType::All));
                 }
                 _ => {}
@@ -712,6 +715,16 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                 while accumulator >= interval && steps < 64 {
                     game.update();
                     struck |= game.hero_struck;
+                    if !game.nemesis_add.is_empty() {
+                        for nem in game.nemesis_add.drain(..) {
+                            profile.add_nemesis(nem);
+                        }
+                    }
+                    if !game.nemesis_defeated.is_empty() {
+                        for name in game.nemesis_defeated.drain(..) {
+                            profile.retire_nemesis(&name);
+                        }
+                    }
                     accumulator -= interval;
                     steps += 1;
                     if game.hitstop > 0 {
@@ -756,6 +769,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         }
         let dead_now = matches!(game.phase, game::Phase::Dead(_));
         if dead_now && !was_dead {
+            profile.record_ghost(game.make_ghost());
             profile.record_death(game.floor, game.last_score, game.hero.kills, game.hero.gold);
         }
         was_dead = dead_now;
