@@ -70,6 +70,20 @@ fn write_obs(game: &Game) {
     } else {
         String::new()
     };
+    let mut tw = String::new();
+    if !game.twitch_channel.is_empty() {
+        tw.push_str(&format!("<div class=tw>#{}", esc(&game.twitch_channel)));
+        if game.bet_pool > 0 {
+            tw.push_str(&format!(" · {} paris", game.bet_pool));
+        }
+        if let Some((u, n)) = game.top_voters.first() {
+            tw.push_str(&format!(" · top {} ({})", esc(u), n));
+        }
+        tw.push_str("</div>");
+    }
+    if !game.bet_result.is_empty() {
+        tw.push_str(&format!("<div class=tw>{}</div>", esc(&game.bet_result)));
+    }
     let html = format!(
         "<!doctype html><html><head><meta charset=utf-8><meta http-equiv=refresh content=1>\
 <style>body{{margin:0;background:transparent;font-family:'Menlo','Consolas',monospace;color:#eee}}\
@@ -82,7 +96,8 @@ fn write_obs(game: &Game) {
 .thought{{font-style:italic;color:#a6d8ff;font-size:21px;margin-top:10px;max-width:380px}}\
 .feed{{margin-top:8px;color:#8a93a6;font-size:15px}}\
 .dead{{color:#ff5a5a;font-size:24px;font-weight:bold;margin-top:8px}}\
-.ob{{color:#e8c9a0;font-size:16px;max-width:400px;margin-top:4px}}</style></head><body><div class=card>\
+.ob{{color:#e8c9a0;font-size:16px;max-width:400px;margin-top:4px}}\
+.tw{{color:#c79bff;font-size:16px;margin-top:6px}}</style></head><body><div class=card>\
 <div class=name>{name}</div>\
 <div class=sub>{class} · {trait_} · {origin}</div>\
 <div class=row>Étage {floor} · {biome} · niv {level}</div>\
@@ -90,6 +105,7 @@ fn write_obs(game: &Game) {
 <div class=row>♥ {hp}/{maxhp} · ⚔ {atk} · ◈ {def} · {gold} or · {kills} kills · corr {corr}%</div>\
 {banner}\
 <div class=thought>{thought}</div>\
+{tw}\
 <div class=feed>{events}</div>\
 </div></body></html>",
         name = esc(&game.identity.name),
@@ -109,6 +125,7 @@ fn write_obs(game: &Game) {
         corr = game.corruption,
         banner = banner,
         thought = esc(thought),
+        tw = tw,
         events = events,
     );
     let _ = std::fs::write(OBS_PATH, html);
@@ -598,6 +615,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
     let mut last_chaos = Instant::now();
     let mut last_name = Instant::now();
     let mut last_obs = Instant::now();
+    let mut bets: HashMap<String, i32> = HashMap::new();
     let mut vote_clock = 0.0f32;
 
     let mut speed = setup.as_ref().map_or(1, |s| s.speed_idx.min(SPEEDS.len() - 1));
@@ -638,6 +656,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     KeyCode::Char('n') => {
                         game = build_game(map_w, map_h, &setup, profile.meta());
                         game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone(), profile.dailies.clone());
+                        bets.clear();
                         let _ = stdout.execute(Clear(ClearType::All));
                     }
                     KeyCode::Char('d') => {
@@ -647,6 +666,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                         game.daily_day = day;
                         game.daily_code = code;
                         game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone(), profile.dailies.clone());
+                        bets.clear();
                         let _ = stdout.execute(Clear(ClearType::All));
                     }
                     KeyCode::Char(' ') => paused = !paused,
@@ -758,6 +778,10 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                         }
                         (false, String::new())
                     }
+                    ViewerCmd::Bet(f) if cfg.allow_bet_vote => {
+                        bets.insert(user.clone(), f);
+                        (true, format!("{} parie etage {}", user, f))
+                    }
                     _ => (false, String::new()),
                 };
                 if counted {
@@ -770,6 +794,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
             ranked.sort_by(|a, b| b.1.cmp(&a.1));
             ranked.truncate(5);
             game.top_voters = ranked;
+            game.bet_pool = bets.len() as u32;
             game.twitch_channel = cfg.twitch_channel.trim().trim_start_matches('#').to_string();
             game.style_tally = [
                 style_votes.get(&Playstyle::Completionist).copied().unwrap_or(0),
@@ -889,7 +914,24 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                 profile.record_daily(game.daily_day, &game.daily_code, game.floor, game.last_score, &game.identity.name, game.class.label());
                 game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone(), profile.dailies.clone());
             }
+            if !bets.is_empty() {
+                let actual = game.floor + game.boss_wave;
+                let best = bets.values().map(|b| (*b - actual).abs()).min().unwrap_or(0);
+                let winners: Vec<String> = bets.iter().filter(|(_, v)| (**v - actual).abs() == best).map(|(u, _)| (*u).clone()).collect();
+                let shown: String = winners.iter().take(3).cloned().collect::<Vec<_>>().join(", ");
+                game.bet_result = if best == 0 {
+                    format!("Pronostic gagne pile (etage {}) : {}", actual, shown)
+                } else {
+                    format!("Pronostic (etage {}) : {} a {} d'ecart", actual, shown, best)
+                };
+                game.push_feed(format!("pari gagne: {}", shown));
+            }
             profile.record_death(game.floor, game.last_score, game.hero.kills, game.hero.gold);
+        }
+        if was_dead && !dead_now {
+            bets.clear();
+            game.bet_result.clear();
+            game.bet_pool = 0;
         }
         was_dead = dead_now;
 

@@ -11,6 +11,7 @@ pub enum ViewerCmd {
     Bless,
     Curse,
     Name(String),
+    Bet(i32),
 }
 
 pub fn connect(channel_name: &str) -> Receiver<(String, ViewerCmd)> {
@@ -89,6 +90,7 @@ pub fn parse_cmd(msg: &str) -> Option<ViewerCmd> {
                 Some(ViewerCmd::Name(arg.to_string()))
             }
         }
+        "bet" | "pari" | "mise" | "predict" => arg.parse::<i32>().ok().map(|n| ViewerCmd::Bet(n.clamp(1, 300))),
         _ => None,
     }
 }
@@ -109,6 +111,10 @@ mod tests {
         assert!(matches!(parse_cmd("2"), Some(ViewerCmd::Style(Playstyle::Combatant))));
         assert!(matches!(parse_cmd("!ARME"), Some(ViewerCmd::Merchant(MerchantPick::Weapon))));
         assert!(matches!(parse_cmd("!heal"), Some(ViewerCmd::Merchant(MerchantPick::Heal))));
+        assert!(matches!(parse_cmd("!bet 15"), Some(ViewerCmd::Bet(15))));
+        assert!(matches!(parse_cmd("!name Lyra"), Some(ViewerCmd::Name(_))));
+        assert!(matches!(parse_cmd("!bless"), Some(ViewerCmd::Bless)));
+        assert!(parse_cmd("!bet xyz").is_none());
         assert!(parse_cmd("hello world").is_none());
     }
 }

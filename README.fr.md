@@ -144,7 +144,8 @@ Le tout multiplié donne environ **156 milliards** de builds théoriques (≈ 1,
 - `music_preset` — style de musique : 0 = Auto (par biome), ou un preset fixe (Chill / Énergique / Sombre / Rétro 8-bit / Mystique)
 - `pathfinder` — algorithme de navigation de l'héroïne : 0 BFS, 1 A*, 2 Dijkstra (pondéré, évite le danger), 3 Greedy, 4 Diagonale (8 directions), 5 JPS (jump point search)
 - `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote`, `allow_chaos_vote` — l'intégration Twitch optionnelle
-- `obs_overlay` — si activé, écrit un `abyssal.obs.html` auto-rafraîchi (fond transparent, grosses polices) ~4×/s ; à ajouter comme **source Navigateur** OBS (fichier local) pour un overlay de stream propre à côté de la capture du terminal
+- `allow_bet_vote` — laisse les viewers `!bet <etage>` pronostiquer la profondeur de mort de l'héroïne
+- `obs_overlay` — si activé, écrit un `abyssal.obs.html` auto-rafraîchi (fond transparent, grosses polices) ~4×/s ; à ajouter comme **source Navigateur** OBS (fichier local) pour un overlay de stream propre à côté de la capture du terminal. La carte montre les stats de l'héroïne, sa pensée du moment, les derniers événements, et une ligne Twitch (canal, pool de paris, top chat, dernier résultat de pronostic)
 
 ## Sauvegardes & fichiers
 
@@ -163,8 +164,9 @@ Avec `twitch_enabled` activé, le jeu se connecte anonymement (lecture seule, sa
 - `!faster` / `!slower` — ajustent la vitesse (si `allow_speed_vote`)
 - `!bless` / `!curse` — bénissent ou maudissent l'héroïne (petit buff / debuff aléatoire, cooldown partagé ; si `allow_chaos_vote`)
 - `!name <x>` — rebaptisent l'héroïne (si `allow_chaos_vote`)
+- `!bet <etage>` — pronostiquent l'étage où l'héroïne meurt ; à la mort, les plus proches gagnent, annoncés dans le panneau Twitch et l'overlay OBS (si `allow_bet_vote`)
 
-Les votes sont comptés sur `vote_window_secs` ; chaque viewer compte une fois par fenêtre. Les commandes chaos (`bless`/`curse`/`name`) sont limitées en fréquence pour éviter le spam.
+Les votes sont comptés sur `vote_window_secs` ; chaque viewer compte une fois par fenêtre. Les commandes chaos (`bless`/`curse`/`name`) sont limitées en fréquence pour éviter le spam. Le pool de pronostics est remis à zéro au début de chaque run.
 
 ## Comment ça marche
 

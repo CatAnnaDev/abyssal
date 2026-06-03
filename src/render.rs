@@ -1210,6 +1210,12 @@ fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
         lines.push(format!("!2 combat  {:<8} {}", bar(st[1]), st[1]));
         lines.push(format!("!3 rush    {:<8} {}", bar(st[2]), st[2]));
     }
+    if game.bet_pool > 0 {
+        lines.push(format!("paris: {} (!bet <etage>)", game.bet_pool));
+    }
+    if !game.bet_result.is_empty() {
+        lines.push(game.bet_result.chars().take(28).collect());
+    }
     if !game.top_voters.is_empty() {
         lines.push("top chat:".to_string());
     }

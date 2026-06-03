@@ -703,6 +703,10 @@ pub struct Game {
     #[serde(skip)]
     pub shop_vote_secs: f32,
     #[serde(skip)]
+    pub bet_pool: u32,
+    #[serde(skip)]
+    pub bet_result: String,
+    #[serde(skip)]
     pub twitch_feed: Vec<String>,
     #[serde(skip)]
     pub merchant_votes: [u32; 7],
@@ -871,6 +875,8 @@ impl Game {
             shop_timer: 0,
             shop_preview: false,
             shop_vote_secs: 0.0,
+            bet_pool: 0,
+            bet_result: String::new(),
             twitch_feed: Vec::new(),
             merchant_votes: [0; 7],
             style_tally: [0; 3],

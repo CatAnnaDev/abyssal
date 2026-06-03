@@ -24,6 +24,8 @@ pub struct Config {
     pub pathfinder: i32,
     #[serde(default = "yes")]
     pub allow_chaos_vote: bool,
+    #[serde(default = "yes")]
+    pub allow_bet_vote: bool,
     #[serde(default)]
     pub obs_overlay: bool,
 }
@@ -56,6 +58,7 @@ impl Default for Config {
             music_preset: 0,
             pathfinder: 0,
             allow_chaos_vote: true,
+            allow_bet_vote: true,
             obs_overlay: false,
         }
     }

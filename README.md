@@ -154,7 +154,8 @@ Multiplied together that is roughly **180 billion** theoretical builds (≈ 1.8 
 - `music_preset` — music style: 0 = Auto (per biome), or a fixed preset (Chill / Energique / Sombre / Retro 8-bit / Mystique)
 - `pathfinder` — heroine navigation algorithm: 0 BFS, 1 A*, 2 Dijkstra (weighted, danger-aware), 3 Greedy, 4 Diagonal (8-way), 5 JPS (jump point search)
 - `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote`, `allow_chaos_vote` — the optional Twitch integration
-- `obs_overlay` — when true, writes a self-refreshing `abyssal.obs.html` (transparent background, large fonts) ~4×/s; add it as an OBS **Browser source** (Local file) for a clean streaming overlay alongside the terminal capture
+- `allow_bet_vote` — let viewers `!bet <floor>` on the heroine's death depth
+- `obs_overlay` — when true, writes a self-refreshing `abyssal.obs.html` (transparent background, large fonts) ~4×/s; add it as an OBS **Browser source** (Local file) for a clean streaming overlay alongside the terminal capture. The card shows the heroine's stats, current thought, recent events, and a Twitch line (channel, bet pool, top chatter, last prediction result)
 
 ## Saves & files
 
@@ -173,8 +174,9 @@ With `twitch_enabled` on, the game connects anonymously (read-only, no token) to
 - `!faster` / `!slower` — nudge the speed (if `allow_speed_vote`)
 - `!bless` / `!curse` — bless or curse the heroine (small random buff / debuff, shared cooldown; if `allow_chaos_vote`)
 - `!name <x>` — rebaptize the heroine (if `allow_chaos_vote`)
+- `!bet <floor>` — predict how deep the heroine dies; on death the closest guesses win, announced in the Twitch panel and the OBS overlay (if `allow_bet_vote`)
 
-Votes are tallied over `vote_window_secs`; each viewer counts once per window. The chaos commands (`bless`/`curse`/`name`) are rate-limited so chat can't spam them.
+Votes are tallied over `vote_window_secs`; each viewer counts once per window. The chaos commands (`bless`/`curse`/`name`) are rate-limited so chat can't spam them. The prediction pool resets at the start of each new run.
 
 ## How it works
 
