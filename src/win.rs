@@ -241,7 +241,12 @@ pub fn run() {
     audio.muted = !cfg.sound_enabled;
     let votes = if cfg.twitch_active() { Some(twitch::connect(&cfg.twitch_channel)) } else { None };
 
-    let mut window = match Window::new("Abyssal", w, h, WindowOptions { scale: Scale::X2, resize: false, ..WindowOptions::default() }) {
+    let scale = match cfg.window_scale {
+        2 => Scale::X2,
+        4 => Scale::X4,
+        _ => Scale::X1,
+    };
+    let mut window = match Window::new("Abyssal", w, h, WindowOptions { scale, resize: false, ..WindowOptions::default() }) {
         Ok(win) => win,
         Err(e) => {
             eprintln!("Impossible d'ouvrir la fenetre : {}", e);
