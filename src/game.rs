@@ -1,6 +1,6 @@
 use crate::ai::{nearest_goal, step_toward};
 use crate::audio::Sound;
-use crate::entity::{Affix, Ally, Color, Element, Feature, FeatureKind, Hero, HeroClass, Item, ItemKind, Merchant, Monster, Pet, PetKind, Relic, ScrollKind, Talent};
+use crate::entity::{ally_role_label, Affix, Ally, Color, Element, Feature, FeatureKind, Hero, HeroClass, Item, ItemKind, Merchant, Monster, Pet, PetKind, Relic, ScrollKind, Talent, ALLY_HUNTER, ALLY_MEDIC};
 use crate::fx::{Fx, Particle};
 use crate::map::{Map, Tile};
 use crate::rng::Rng;
@@ -46,6 +46,8 @@ pub enum Biome {
     Frostvault,
     Emberdepths,
     Abyss,
+    Fungal,
+    Forge,
 }
 
 impl Biome {
@@ -56,6 +58,8 @@ impl Biome {
             Biome::Frostvault => "Glacier",
             Biome::Emberdepths => "Tref-fonds",
             Biome::Abyss => "Abime",
+            Biome::Fungal => "Jardins Fongiques",
+            Biome::Forge => "Forge en Ruine",
         }
     }
 
@@ -66,6 +70,8 @@ impl Biome {
             Biome::Frostvault => (0.82, 0.96, 1.22),
             Biome::Emberdepths => (1.22, 0.84, 0.66),
             Biome::Abyss => (1.04, 0.8, 1.2),
+            Biome::Fungal => (0.82, 1.18, 0.92),
+            Biome::Forge => (1.2, 0.96, 0.74),
         }
     }
 
@@ -76,6 +82,8 @@ impl Biome {
             Biome::Frostvault => Some(Element::Ice),
             Biome::Emberdepths => Some(Element::Fire),
             Biome::Abyss => Some(Element::Lightning),
+            Biome::Fungal => Some(Element::Poison),
+            Biome::Forge => Some(Element::Fire),
         }
     }
 
@@ -86,6 +94,16 @@ impl Biome {
             Biome::Frostvault => 2,
             Biome::Emberdepths => 3,
             Biome::Abyss => 4,
+            Biome::Fungal => 0,
+            Biome::Forge => 2,
+        }
+    }
+
+    pub fn music_id(self) -> i32 {
+        match self {
+            Biome::Fungal => 1,
+            Biome::Forge => 3,
+            other => other.style_id(),
         }
     }
 
@@ -96,6 +114,8 @@ impl Biome {
             Biome::Frostvault => &['s', 'a', 'k', 'g', 'm', 'M'],
             Biome::Emberdepths => &['w', 'D', 'o', 'i', 'e', 'z'],
             Biome::Abyss => &['D', 'Y', 'x', 'A', 'Q', 'B'],
+            Biome::Fungal => &['j', 'v', 'k', 'G', 'c', 'n'],
+            Biome::Forge => &['P', 'o', 'i', 'e', 'z', 'O'],
         }
     }
 
@@ -106,6 +126,8 @@ impl Biome {
             Biome::Frostvault => "Un froid mordant fige votre souffle.",
             Biome::Emberdepths => "La chaleur fait onduler l'air, le sol gronde.",
             Biome::Abyss => "Le vide murmure des choses sans nom.",
+            Biome::Fungal => "Des spores luminescentes flottent dans une moiteur sucree.",
+            Biome::Forge => "Des enclumes froides et des fourneaux morts jonchent la ruine.",
         }
     }
 
@@ -116,6 +138,8 @@ impl Biome {
             Biome::Frostvault => ('s', "Seigneur de Givre", Element::Ice),
             Biome::Emberdepths => ('w', "Archimage de Braise", Element::Fire),
             Biome::Abyss => ('D', "Heraut de l'Abime", Element::Lightning),
+            Biome::Fungal => ('G', "Coeur-Spore Ancien", Element::Poison),
+            Biome::Forge => ('P', "Golem de Forge", Element::Fire),
         }
     }
 }
@@ -722,7 +746,8 @@ impl Game {
         if self.floor >= 2 && self.rng.chance(0.16) {
             place_feature(&mut floor_tiles, &mut self.rng, FeatureKind::Gamble, &mut self.features);
         }
-        if self.floor >= 3 && !self.allies.iter().any(|a| a.companion) && self.rng.chance(0.04) {
+        let companion_count = self.allies.iter().filter(|a| a.companion).count();
+        if self.floor >= 3 && companion_count < 2 && self.rng.chance(0.05) {
             place_feature(&mut floor_tiles, &mut self.rng, FeatureKind::Lost, &mut self.features);
         }
         let chests = 1 + self.rng.below(2) + if self.event == FloorEvent::Treasure { 4 } else { 0 } + bonus_chests;
@@ -752,6 +777,19 @@ impl Game {
                 self.monsters.push(b);
                 self.push_log(format!("\u{2620} {} garde l'escalier...", bn), (255, 150, 90));
             }
+        }
+
+        if self.room_kind == RoomKind::Rift && self.floor % 5 != 0 && !floor_tiles.is_empty() {
+            let pick = self.rng.below(floor_tiles.len());
+            let (bx, by) = floor_tiles.swap_remove(pick);
+            let mut wb = Monster::boss(self.floor + 3, bx, by);
+            wb.hp = wb.hp * 3 / 2;
+            wb.max_hp = wb.hp;
+            wb.name = format!("{} de la Faille", wb.name);
+            wb.color = (210, 140, 240);
+            let bn = wb.name.clone();
+            self.monsters.push(wb);
+            self.push_log(format!("\u{2638} GARDIEN DE LA FAILLE : {} rode dans le monde parallele !", bn), (210, 140, 240));
         }
 
         self.merchant = None;
@@ -900,6 +938,8 @@ impl Game {
             Biome::Frostvault => ('*', (210, 225, 245), 0.12),
             Biome::Emberdepths => ('\u{2218}', (240, 150, 70), -0.10),
             Biome::Abyss => ('\u{00b7}', (175, 125, 215), 0.0),
+            Biome::Fungal => ('\u{00b0}', (140, 230, 150), -0.06),
+            Biome::Forge => ('\u{2218}', (235, 160, 90), -0.08),
         };
         self.fx.particles.push(Particle {
             x: x as f32,
@@ -1612,11 +1652,57 @@ impl Game {
                 continue;
             }
             let (ax, ay, atk) = (self.allies[i].x, self.allies[i].y, self.allies[i].atk);
+            let is_companion = self.allies[i].companion;
+            let role = self.allies[i].role;
+            if is_companion && role == ALLY_MEDIC && self.hero.hp * 3 < self.hero.max_hp * 2 {
+                let adj = (self.hero.x - ax).abs().max((self.hero.y - ay).abs()) <= 1;
+                if adj {
+                    let heal = 6 + self.floor / 2 + self.allies[i].level * 2;
+                    self.hero.hp = (self.hero.hp + heal).min(self.hero.max_hp);
+                    self.fx.label(self.hero.x, self.hero.y, "+soin", (170, 240, 200));
+                    self.fx.burst(&mut self.rng, ax, ay, (170, 240, 200), 6, '\u{2665}');
+                    i += 1;
+                    continue;
+                }
+            }
+            let mons_killed = |g: &mut Game, j: usize, idx: usize| {
+                if j < g.monsters.len() && g.monsters[j].hp <= 0 {
+                    g.allies[idx].kills += 1;
+                    if g.allies[idx].companion && g.allies[idx].kills % 4 == 0 {
+                        g.allies[idx].level_up();
+                        let nm = g.allies[idx].name.clone();
+                        let lv = g.allies[idx].level;
+                        g.push_log(format!("{} progresse (niv. {}).", nm, lv), (200, 230, 170));
+                    }
+                }
+            };
             if let Some(j) = self.monsters.iter().position(|m| (m.x - ax).abs() + (m.y - ay).abs() == 1) {
                 let (dmg, crit) = resolve(atk, self.monsters[j].def, &mut self.rng, 0.08);
                 self.hit_monster(j, dmg, crit, Element::Physical);
+                mons_killed(self, j, i);
                 i += 1;
                 continue;
+            }
+            if is_companion && role == ALLY_HUNTER {
+                let shot = self
+                    .monsters
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, m)| {
+                        let d = (m.x - ax).abs().max((m.y - ay).abs());
+                        d >= 2 && d <= 4 && self.map.is_visible(m.x, m.y) && self.map.line_of_sight(ax, ay, m.x, m.y)
+                    })
+                    .min_by_key(|(_, m)| (m.x - ax).abs() + (m.y - ay).abs())
+                    .map(|(j, _)| j);
+                if let Some(j) = shot {
+                    let (dmg, crit) = resolve(atk, self.monsters[j].def, &mut self.rng, 0.12);
+                    let (mx, my) = (self.monsters[j].x, self.monsters[j].y);
+                    self.fx.projectile(ax, ay, mx, my, '\u{2192}', (235, 225, 150));
+                    self.hit_monster(j, dmg, crit, Element::Physical);
+                    mons_killed(self, j, i);
+                    i += 1;
+                    continue;
+                }
             }
             let target = self
                 .monsters
@@ -1831,6 +1917,11 @@ impl Game {
             dmg = (dmg * 3 / 2).max(1);
             self.monsters[idx].stun = 0;
         }
+        let low = self.monsters[idx].hp * 5 < self.monsters[idx].max_hp && !self.monsters[idx].boss;
+        let executed = low && (self.hero.has_affix(Affix::Keen) || self.rng.chance(0.3));
+        if executed {
+            dmg = (dmg * 3 / 2).max(1);
+        }
         self.monsters[idx].hp -= dmg;
         let (mx, my) = (self.monsters[idx].x, self.monsters[idx].y);
         let color = self.monsters[idx].color;
@@ -1848,6 +1939,9 @@ impl Game {
         if shatter {
             self.fx.label(mx, my, "BRISE!", (160, 220, 255));
             self.fx.burst(&mut self.rng, mx, my, (180, 230, 255), 12, '\u{2744}');
+        }
+        if executed && self.monsters[idx].hp > 0 {
+            self.fx.label(mx, my, "EXECUTE!", (235, 120, 120));
         }
         let spark = if element == Element::Physical { (235, 235, 245) } else { element.color() };
         self.fx.burst(&mut self.rng, mx, my, spark, if crit { 10 } else { 3 }, '\u{00b7}');
@@ -1874,6 +1968,14 @@ impl Game {
             }
             if self.hero.has_relic(Relic::Ember) {
                 self.monsters[idx].poison = self.monsters[idx].poison.max(3);
+            }
+            if self.hero.has_affix(Affix::Bleed) || (crit && self.rng.chance(0.5)) {
+                self.monsters[idx].bleed = (self.monsters[idx].bleed + 3).min(12);
+                self.fx.label(mx, my, "saigne", (220, 80, 80));
+            }
+            if self.hero.has_affix(Affix::Sunder) && self.monsters[idx].def > 0 {
+                self.monsters[idx].def -= 1;
+                self.fx.label(mx, my, "garde-", (210, 180, 120));
             }
         }
         if self.monsters[idx].hp <= 0 {
@@ -1931,6 +2033,9 @@ impl Game {
                     p.max_hp += 5;
                     p.hp = p.max_hp;
                     p.atk += 2;
+                }
+                for a in self.allies.iter_mut().filter(|a| a.companion) {
+                    a.level_up();
                 }
             }
         } else {
@@ -2523,10 +2628,11 @@ impl Game {
                     .unwrap_or((hx, hy));
                 let ally = Ally::companion(self.floor, spot.0, spot.1, &mut self.rng);
                 let nm = ally.name.clone();
+                let rl = ally_role_label(ally.role);
                 self.allies.push(ally);
                 self.fx.burst(&mut self.rng, hx, hy, (255, 224, 150), 18, '\u{2665}');
                 self.fx.label(hx, hy, "COMPAGNON", (255, 224, 150));
-                self.push_log(format!("{}, perdu dans le donjon, vous rejoint et se battra a vos cotes !", nm), (255, 224, 150));
+                self.push_log(format!("{} ({}), perdu dans le donjon, vous rejoint et combattra a vos cotes !", nm, rl), (255, 224, 150));
                 self.unlock("compagnon", "Compagnon - une ame sauvee");
             }
             FeatureKind::Trap => {
@@ -2611,7 +2717,7 @@ impl Game {
                     self.push_log(format!("Forge rare ({} or) : {} ameliore (+{} DEF).", cost, self.hero.armor, amt), (255, 200, 110));
                 }
                 if self.hero.weapon_affix == Affix::None || self.hero.armor_affix == Affix::None {
-                    let affixes = [Affix::Fire, Affix::Frost, Affix::Venom, Affix::Shock, Affix::Lifesteal, Affix::Keen, Affix::Regen, Affix::Thorns];
+                    let affixes = Affix::SET_POOL;
                     let existing = [self.hero.weapon_affix, self.hero.armor_affix, self.hero.ring, self.hero.amulet]
                         .into_iter()
                         .find(|&a| a != Affix::None);
@@ -2775,6 +2881,14 @@ impl Game {
                         let (jx, jy) = (self.monsters[j].x, self.monsters[j].y);
                         self.fx.burst(&mut self.rng, jx, jy, (150, 220, 90), 5, '\u{2735}');
                     }
+                }
+            }
+            if self.monsters[i].bleed > 0 {
+                self.monsters[i].bleed -= 1;
+                let tick = 2 + self.monsters[i].max_hp / 40;
+                if self.monsters[i].hp > 1 {
+                    self.monsters[i].hp = (self.monsters[i].hp - tick).max(1);
+                    self.fx.damage_el(mx, my, tick, false, (220, 80, 80));
                 }
             }
             if self.monsters[i].stun > 0 {
@@ -3317,12 +3431,14 @@ impl Game {
 
     fn roll_biome(&mut self) -> Biome {
         let f = self.floor;
-        let weights: [(Biome, i32); 5] = [
+        let weights: [(Biome, i32); 7] = [
             (Biome::Caverns, (20 - f).max(2)),
             (Biome::Catacombs, (16 - (f - 5).abs()).max(2)),
             (Biome::Frostvault, (13 - (f - 11).abs()).max(1)),
             (Biome::Emberdepths, (13 - (f - 16).abs()).max(1)),
             (Biome::Abyss, (f - 6).max(1)),
+            (Biome::Fungal, (11 - (f - 8).abs()).max(1)),
+            (Biome::Forge, (12 - (f - 14).abs()).max(1)),
         ];
         let total: i32 = weights.iter().map(|(_, w)| w).sum();
         let mut roll = self.rng.below(total.max(1) as usize) as i32;

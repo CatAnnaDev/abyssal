@@ -42,6 +42,8 @@ pub struct Map {
     spawn: (i32, i32),
     walkable_total: i32,
     explored_walkable: i32,
+    #[serde(default)]
+    decor: Vec<u8>,
 }
 
 impl Map {
@@ -62,6 +64,7 @@ impl Map {
             spawn: (1, 1),
             walkable_total: 0,
             explored_walkable: 0,
+            decor: vec![0u8; count],
         };
 
         match style {
@@ -82,6 +85,7 @@ impl Map {
         }
         map.fallback_if_tiny(rng);
         map.place_spawn_and_stairs();
+        map.scatter_decor(style, rng);
         map.walkable_total = map.tiles.iter().filter(|&&t| t != Tile::Wall).count() as i32;
         map
     }
@@ -346,6 +350,36 @@ impl Map {
             }
         }
         best
+    }
+
+    fn scatter_decor(&mut self, style: i32, rng: &mut Rng) {
+        let palette: &[u8] = match style {
+            0 => &[1, 1, 2],
+            1 => &[3, 4, 4],
+            2 => &[5, 6, 2],
+            3 => &[7, 7, 4],
+            _ => &[8, 4, 3],
+        };
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let i = self.idx(x, y);
+                if self.tiles[i] == Tile::Floor && rng.chance(0.14) {
+                    self.decor[i] = palette[rng.below(palette.len())];
+                }
+            }
+        }
+    }
+
+    pub fn decor_at(&self, x: i32, y: i32) -> u8 {
+        if !self.in_bounds(x, y) {
+            return 0;
+        }
+        let i = self.idx(x, y);
+        if i < self.decor.len() {
+            self.decor[i]
+        } else {
+            0
+        }
     }
 
     pub fn discovery_percent(&self) -> i32 {

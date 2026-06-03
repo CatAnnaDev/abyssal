@@ -464,7 +464,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
             heartbeat_acc = 0.0;
         }
         game.low_hp_pulse *= 0.85;
-        audio.set_biome(game.biome.style_id());
+        audio.set_biome(game.biome.music_id());
         audio.set_music_mode(game.music_mode());
         audio.tick();
         game.anim_t = game.anim_t.wrapping_add(1);

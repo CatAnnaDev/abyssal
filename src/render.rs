@@ -285,6 +285,12 @@ fn draw_panel(game: &Game, cols: i32, rows: i32, mw: i32, buf: &mut String) {
                 line(buf, &mut er, (255, 210, 120), w);
             }
         }
+        if let Some(p) = game.pet.as_ref() {
+            line(buf, &mut er, (140, 230, 185), format!("\u{2726} {} niv{} {}/{}", p.name, p.level, p.hp, p.max_hp));
+        }
+        for a in game.allies.iter().filter(|a| a.companion) {
+            line(buf, &mut er, (255, 224, 150), format!("\u{2665} {} ({}) n{} {}/{}", a.name, crate::entity::ally_role_label(a.role), a.level, a.hp, a.max_hp));
+        }
     }
 
     let jy = 2 + hh + eq;
@@ -413,6 +419,8 @@ fn biome_palette(biome: Biome) -> ((Color, Color), (Color, Color)) {
         Biome::Frostvault => (((152, 172, 202), (60, 80, 104)), ((70, 86, 104), (26, 33, 44))),
         Biome::Emberdepths => (((162, 112, 86), (88, 52, 40)), ((80, 58, 54), (32, 23, 21))),
         Biome::Abyss => (((142, 110, 162), (70, 56, 88)), ((66, 58, 82), (28, 24, 40))),
+        Biome::Fungal => (((110, 158, 118), (48, 78, 56)), ((52, 72, 58), (22, 34, 26))),
+        Biome::Forge => (((168, 130, 96), (92, 64, 42)), ((78, 62, 52), (32, 26, 22))),
     }
 }
 
@@ -456,6 +464,20 @@ fn overlay_sprite(cell: &mut [[Color; 4]; 4], pat: &[&str; 4], color: Color, ox:
                 cell[ty as usize][tx as usize] = c;
             }
         }
+    }
+}
+
+fn decor_glyph(kind: u8) -> (char, Color) {
+    match kind {
+        1 => ('"', (90, 140, 80)),
+        2 => ('\u{2248}', (80, 120, 160)),
+        3 => (',', (170, 160, 140)),
+        4 => ('\u{2237}', (90, 90, 100)),
+        5 => ('\u{2727}', (150, 200, 230)),
+        6 => ('\u{00b0}', (200, 215, 230)),
+        7 => ('\u{2219}', (210, 120, 60)),
+        8 => ('\u{00b7}', (160, 110, 190)),
+        _ => (' ', (0, 0, 0)),
     }
 }
 
@@ -791,11 +813,18 @@ fn cell_render(game: &Game, x: i32, y: i32, tint: (f32, f32, f32)) -> (char, Col
     let light = (1.2 - (dx * dx + dy * dy).sqrt() * 0.085).clamp(0.34, 1.0);
 
     let ((wall_fg, wall_bg), (floor_fg, floor_bg)) = biome_palette(game.biome);
-    let (terrain_fg, terrain_bg, terrain_ch) = match tile {
+    let (mut terrain_fg, terrain_bg, mut terrain_ch) = match tile {
         Tile::Wall => (wall_fg, wall_bg, ' '),
         Tile::Floor => (floor_fg, floor_bg, '\u{00b7}'),
         Tile::StairsDown => ((255, 240, 140), (46, 42, 30), '>'),
     };
+    if tile == Tile::Floor {
+        let (dch, dfg) = decor_glyph(game.map.decor_at(x, y));
+        if dch != ' ' {
+            terrain_ch = dch;
+            terrain_fg = dfg;
+        }
+    }
     let bg_lit = shade(terrain_bg, light, tint);
     let mut result = (terrain_ch, shade(terrain_fg, light, tint), bg_lit);
 

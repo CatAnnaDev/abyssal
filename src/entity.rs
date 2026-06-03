@@ -403,9 +403,24 @@ pub enum Affix {
     Keen,
     Regen,
     Thorns,
+    Bleed,
+    Sunder,
 }
 
 impl Affix {
+    pub const SET_POOL: [Affix; 10] = [
+        Affix::Fire,
+        Affix::Frost,
+        Affix::Venom,
+        Affix::Shock,
+        Affix::Lifesteal,
+        Affix::Keen,
+        Affix::Regen,
+        Affix::Thorns,
+        Affix::Bleed,
+        Affix::Sunder,
+    ];
+
     pub fn label(self) -> &'static str {
         match self {
             Affix::None => "",
@@ -417,6 +432,8 @@ impl Affix {
             Affix::Keen => "affute",
             Affix::Regen => "vivifiant",
             Affix::Thorns => "epineux",
+            Affix::Bleed => "saignant",
+            Affix::Sunder => "brise-garde",
         }
     }
 
@@ -525,7 +542,7 @@ impl Hero {
     pub fn set_bonus(&self) -> i32 {
         let slots = [self.weapon_affix, self.armor_affix, self.ring, self.amulet];
         let mut best = 0;
-        for a in [Affix::Fire, Affix::Frost, Affix::Venom, Affix::Shock, Affix::Lifesteal, Affix::Keen, Affix::Regen, Affix::Thorns] {
+        for a in Affix::SET_POOL {
             let n = slots.iter().filter(|&&s| s == a).count() as i32;
             if n > best {
                 best = n;
@@ -540,7 +557,7 @@ impl Hero {
 
     pub fn set_affix(&self) -> Option<Affix> {
         let slots = [self.weapon_affix, self.armor_affix, self.ring, self.amulet];
-        for a in [Affix::Fire, Affix::Frost, Affix::Venom, Affix::Shock, Affix::Lifesteal, Affix::Keen, Affix::Regen, Affix::Thorns] {
+        for a in Affix::SET_POOL {
             if slots.iter().filter(|&&s| s == a).count() >= 2 {
                 return Some(a);
             }
@@ -631,6 +648,8 @@ pub struct Monster {
     pub summoner: bool,
     #[serde(default)]
     pub enraged: bool,
+    #[serde(default)]
+    pub bleed: i32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -722,18 +741,36 @@ pub struct Ally {
     pub companion: bool,
     #[serde(default)]
     pub name: String,
+    #[serde(default)]
+    pub role: u8,
+    #[serde(default)]
+    pub level: i32,
+    #[serde(default)]
+    pub kills: i32,
 }
 
-const LOST_NAMES: &[(&str, char)] = &[
-    ("Garde Aldric", 'G'),
-    ("Soeur Mirel", 'M'),
-    ("Traqueur Vael", 'V'),
-    ("Lame Orin", 'O'),
-    ("Sentinelle Kael", 'K'),
-    ("Erudit Brann", 'B'),
-    ("Chasseresse Lys", 'L'),
-    ("Vagabond Dorn", 'D'),
+pub const ALLY_GUARD: u8 = 0;
+pub const ALLY_HUNTER: u8 = 1;
+pub const ALLY_MEDIC: u8 = 2;
+
+const LOST_NAMES: &[(&str, char, u8)] = &[
+    ("Garde Aldric", 'G', ALLY_GUARD),
+    ("Soeur Mirel", 'M', ALLY_MEDIC),
+    ("Traqueur Vael", 'V', ALLY_HUNTER),
+    ("Lame Orin", 'O', ALLY_GUARD),
+    ("Sentinelle Kael", 'K', ALLY_GUARD),
+    ("Erudit Brann", 'B', ALLY_MEDIC),
+    ("Chasseresse Lys", 'L', ALLY_HUNTER),
+    ("Vagabond Dorn", 'D', ALLY_HUNTER),
 ];
+
+pub fn ally_role_label(role: u8) -> &'static str {
+    match role {
+        ALLY_HUNTER => "archer",
+        ALLY_MEDIC => "guerisseur",
+        _ => "garde",
+    }
+}
 
 impl Ally {
     pub fn raised(floor: i32, x: i32, y: i32, src: &Monster) -> Ally {
@@ -750,6 +787,9 @@ impl Ally {
             color: (180, 200, 175),
             companion: false,
             name: String::new(),
+            role: ALLY_GUARD,
+            level: 1,
+            kills: 0,
         }
     }
 
@@ -767,25 +807,42 @@ impl Ally {
             color: (205, 210, 195),
             companion: false,
             name: String::new(),
+            role: ALLY_GUARD,
+            level: 1,
+            kills: 0,
         }
     }
 
     pub fn companion(floor: i32, x: i32, y: i32, rng: &mut Rng) -> Ally {
         let depth = floor.max(1);
-        let (name, glyph) = LOST_NAMES[rng.below(LOST_NAMES.len())];
-        let hp = 40 + depth * 5;
+        let (name, glyph, role) = LOST_NAMES[rng.below(LOST_NAMES.len())];
+        let (hp, atk, color) = match role {
+            ALLY_HUNTER => (34 + depth * 4, 11 + depth, (210, 200, 140)),
+            ALLY_MEDIC => (38 + depth * 4, 6 + depth, (180, 235, 200)),
+            _ => (56 + depth * 6, 8 + depth, (255, 224, 150)),
+        };
         Ally {
             x,
             y,
             hp,
             max_hp: hp,
-            atk: 9 + depth,
+            atk,
             ttl: i32::MAX,
             glyph,
-            color: (255, 224, 150),
+            color,
             companion: true,
             name: name.to_string(),
+            role,
+            level: 1,
+            kills: 0,
         }
+    }
+
+    pub fn level_up(&mut self) {
+        self.level += 1;
+        self.max_hp += 6 + self.max_hp / 12;
+        self.hp = self.max_hp;
+        self.atk += 2;
     }
 }
 
@@ -894,6 +951,7 @@ impl Monster {
             bomber: kind.glyph == 'z',
             summoner: kind.glyph == 'S',
             enraged: false,
+            bleed: 0,
         }
     }
 
@@ -974,6 +1032,7 @@ impl Monster {
             bomber: false,
             summoner: false,
             enraged: false,
+            bleed: 0,
         }
     }
 
@@ -1010,6 +1069,7 @@ impl Monster {
             bomber: false,
             summoner: false,
             enraged: false,
+            bleed: 0,
         }
     }
 
@@ -1044,6 +1104,7 @@ impl Monster {
             bomber: false,
             summoner: false,
             enraged: false,
+            bleed: 0,
         }
     }
 }
@@ -1055,6 +1116,9 @@ const BOSSES: &[(&str, char, Color)] = &[
     ("Hydre des Tunnels", '\u{2126}', (90, 220, 200)),
     ("Archidemon", '\u{2126}', (240, 70, 60)),
     ("Dragon Ancien", '\u{2126}', (245, 165, 40)),
+    ("Colosse de Forge", '\u{2126}', (235, 150, 80)),
+    ("Mere-Spore", '\u{2126}', (130, 225, 140)),
+    ("Tisseur du Vide", '\u{2126}', (170, 120, 220)),
 ];
 
 #[derive(Serialize, Deserialize)]
@@ -1086,7 +1150,7 @@ fn rarity_pick(rng: &mut Rng, color: Color, bonus: i32, pool: &[Affix]) -> (Colo
     (color, bonus, affix)
 }
 
-const WEAPON_AFFIXES: &[Affix] = &[Affix::Fire, Affix::Frost, Affix::Venom, Affix::Shock, Affix::Lifesteal, Affix::Keen];
+const WEAPON_AFFIXES: &[Affix] = &[Affix::Fire, Affix::Frost, Affix::Venom, Affix::Shock, Affix::Lifesteal, Affix::Keen, Affix::Bleed, Affix::Sunder];
 const ARMOR_AFFIXES: &[Affix] = &[Affix::Regen, Affix::Thorns];
 
 #[derive(Serialize, Deserialize)]
