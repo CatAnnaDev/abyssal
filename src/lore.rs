@@ -48,7 +48,7 @@ impl Trait {
 }
 
 const FIRST: [&str; 24] = [
-    "Kael", "Mira", "Doran", "Sable", "Veyra", "Orin", "Lys", "Thane", "Nyx", "Cael", "Bram", "Esca", "Vorn", "Ilka", "Garr", "Selka", "Rhune", "Adda", "Toll", "Yseult", "Dren", "Mox", "Anouk", "Pell",
+    "Mira", "Veyra", "Lys", "Nyx", "Esca", "Ilka", "Selka", "Adda", "Yseult", "Anouk", "Sable", "Lyra", "Wren", "Vela", "Thessa", "Maeve", "Isolde", "Nessa", "Runa", "Kira", "Sora", "Orin", "Rhune", "Cael",
 ];
 const SECOND: [&str; 16] = ["", "", "", "el", "is", "or", "wyn", "ax", "eth", "ra", "us", "in", "ka", "ov", "ael", "ys"];
 const ORIGIN: [&str; 14] = [
@@ -112,9 +112,9 @@ pub fn obituary(id: &Identity, class: &str, cause: &str, floor: i32, kills: i32,
 
 fn format_cause(cause: &str) -> String {
     if cause.is_empty() {
-        "vaincu par l'abysse".to_string()
+        "vaincue par l'abysse".to_string()
     } else {
-        format!("vaincu par {}", cause)
+        format!("vaincue par {}", cause)
     }
 }
 

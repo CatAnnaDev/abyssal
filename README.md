@@ -4,7 +4,7 @@
 
 A fully autonomous, watch-only roguelike for the terminal, written in Rust.
 
-An AI hero descends alone into an endless procedurally generated abyss: it explores, fights, loots, levels up, learns talents, trades with rare merchants, dodges telegraphed boss attacks, dies, and starts again — all on its own. You don't play. You watch.
+An AI heroine descends alone into an endless procedurally generated abyss: she explores, fights, loots, levels up, learns talents, trades with rare merchants, dodges telegraphed boss attacks, dies, and starts again — all on her own. You don't play. You watch.
 
 ![Abyssal in action](assets/demo.gif)
 
@@ -18,7 +18,7 @@ Combat — floating damage, elemental hits and kill combos against biome-flavore
 
 ![Combat](assets/02-combat.png)
 
-Boss movesets — bosses cycle telegraphed attacks (here a charge) and flash the danger tiles red; deeper moves leave lingering hazards the hero must avoid.
+Boss movesets — bosses cycle telegraphed attacks (here a charge) and flash the danger tiles red; deeper moves leave lingering hazards the heroine must avoid.
 
 ![Boss telegraph](assets/03-boss.png)
 
@@ -54,13 +54,13 @@ The game plays itself. Input is optional:
 | --- | --- |
 | `space` | pause / resume |
 | `+` / `-` | faster / slower (lent → ultra) |
-| `m` / `1` `2` `3` | cycle / set the hero's mindset |
+| `m` / `1` `2` `3` | cycle / set the heroine's mindset |
 | `a` | mute / unmute sound |
 | `o` | open the in-game options menu (pauses the game) |
 | `g` | toggle sprite view (half-block pixel-art) / classic glyph map |
 | `z` | cycle sprite-view zoom |
 | `k` | open / close the bestiary codex |
-| `h` | open / close the Hall of Souls (past heroes + active nemeses) |
+| `h` | open / close the Hall of Souls (past heroines + active nemeses) |
 | `b` | (debug) spawn a test merchant |
 | `s` / `l` | save / load |
 | `n` | new run |
@@ -76,17 +76,17 @@ Progress autoloads on launch (`abyssal.save.json`).
 - **Branching descents** — at each stairway the AI weighs 2–3 paths (treasure / challenge / warren / rest), heading for a Rest branch when wounded.
 - **Rift rooms** — rare purple "parallel world" floors packed with elites and loot, a guaranteed relic on entry, and an over-leveled "Guardian of the Rift".
 - **Features & events** — curse altars, shrines, blessing fountains, mimic chests, a rare Forge, gamble shrines, ghost graves, traps (some stunning) and per-floor events.
-- **Abyss corruption** — a gauge that climbs with depth (and ascension): the deeper the run, the more it inflates monster HP and damage, and past a threshold foes start spawning enraged. Shown live in the hero panel.
+- **Abyss corruption** — a gauge that climbs with depth (and ascension): the deeper the run, the more it inflates monster HP and damage, and past a threshold foes start spawning enraged. Shown live in the heroine panel.
 - **Two render modes** (`g`) — classic colored glyphs, or a half-block pixel-art sprite camera with detailed 8×8 procedural sprites (outlines + shading), particles and floating damage, and a wide zoom range from far-out to close-up (`z`).
 
 ### Lives, not just runs
-- **Procedural identity** — every hero is born with a name, an origin and a personality trait (brave, greedy, coward, reckless, curious, vengeful) that actually bends the AI: a coward bails and heals early, a reckless one fights to the last sliver of HP, a greedy one never leaves gold behind.
-- **Thought log** — a live first-person narration along the bottom of the screen tells you *why* the hero acts as it does (*"Too hurt (18%), I'm pulling out."*, *"The boss is mine."*, *"My head's spinning… I can't move."*) — built for watching and streaming.
+- **Procedural identity** — every heroine is born with a name, an origin and a personality trait (brave, greedy, coward, reckless, curious, vengeful) that actually bends the AI: a coward bails and heals early, a reckless one fights to the last sliver of HP, a greedy one never leaves gold behind.
+- **Thought log** — a live first-person narration along the bottom of the screen tells you *why* the heroine acts as she does (*"Too hurt (18%), I'm pulling out."*, *"The boss is mine."*, *"My head's spinning… I can't move."*) — built for watching and streaming.
 - **Procedural obituary** — the death screen writes a one-of-a-kind epitaph referencing the run: name, origin, trait, depth reached, kills, and how it ended.
 - **Nemeses** — wound a fleeing monster and let it escape, and it can return across runs, named and ranked up, hunting you down; killing it settles the score and retires it. Persisted in your lifetime profile.
-- **Ghost graves** — fallen heroes are buried in the abyss. Later runs can find a past hero's grave and reclaim their gold, a potion and a piece of their gear.
+- **Ghost graves** — fallen heroines are buried in the abyss. Later runs can find a past heroine's grave and reclaim their gold, a potion and a piece of their gear.
 
-### Heroes, classes & gear
+### Heroines, classes & gear
 - **Twenty classes** (Warrior, Rogue, Mage, Paladin, Necromancer, Ranger, Berserker, Elementalist, Monk, Druid, Templar, Warlock, Shaman, Valkyrie, Spellblade, Sentinel, Reaper, Spectre, Maelstrom, Lich) — each with its own weapon/armor, crit, cleave/bolts and a cooldown ability.
 - **Active abilities** — charge, blink-strike, ice/elemental nova, smite-heal, raise-dead, arrow volley, whirlwind, plus **spectral** ones: Vortex (pull every nearby monster to you), Possession (turn a monster into an ally) and Phase (blink through walls).
 - **Gear** — 5 weapon families (light / heavy / staff / fists / bows) and 4 armor families (cloth / leather / plate / mail), each with 5–6 tiers; rings, amulets, scrolls, rarity and affixes, set bonuses, and a live loadout panel.
@@ -101,11 +101,11 @@ Progress autoloads on launch (`abyssal.save.json`).
 
 ### Allies
 - **Lost human companions** — rare survivors who join you with a role (guard / huntress / medic), follow across floors, level up and fight at your side (up to two).
-- **Familiars** — striker, mender (heals you) or guardian, leveling up with the hero.
+- **Familiars** — striker, mender (heals you) or guardian, leveling up with the heroine.
 - **Summoned allies** — the Necromancer/Lich raise or possess foes into temporary fighters.
 
 ### Modes & meta
-- **Six AI playstyles** — completionist, fighter, rusher, looter, cautious, hunter — each reshaping the hero's behavior.
+- **Six AI playstyles** — completionist, fighter, rusher, looter, cautious, hunter — each reshaping the heroine's behavior.
 - **Boss Rush variant** — floors 1–9 to gear up, then floor 10 becomes an endless arena: a stronger boss surges in the instant one dies (no descent, no saving), wave counter driving difficulty and score.
 - **Run mutators** (Sanguinaire, Cupidite, Fragile, Pullulement, Champions, Titans, Soif de Sang, Frenesie) that twist spawns, scaling and rewards.
 - **Ascension / NG+** and a persistent lifetime profile with milestones that unlock permanent starting bonuses.
@@ -115,7 +115,7 @@ Progress autoloads on launch (`abyssal.save.json`).
 - **Procedural 8/16-bit chiptune**, generated at runtime with no audio files: synthesized SFX, plus an **adaptive** chill-pop track that reacts live — the **tempo ramps up smoothly as enemies approach** and a driving arpeggio fades in, peaking in combat and against bosses, all by shifting tempo and layering rather than hard-cutting tracks.
 
 ### Twitch (optional)
-- Viewers vote on the hero's mindset and merchant purchases, shown in a live on-screen **panel** (channel, mindset-vote bars, top chatters, a feed of recent actions).
+- Viewers vote on the heroine's mindset and merchant purchases, shown in a live on-screen **panel** (channel, mindset-vote bars, top chatters, a feed of recent actions).
 - **Viewer pseudos land on mobs** — an active chatter "adopts" a monster, whose name floats above it on the map.
 - The **merchant shows a clear "VOTE NOW" call-to-action** with a countdown while the vote window is open.
 - All Twitch options are adjustable from the in-game options menu.
@@ -150,7 +150,7 @@ Multiplied together that is roughly **180 billion** theoretical builds (≈ 1.8 
 - `sound_enabled` / `ambient_enabled` — SFX and the music track on/off
 - `master_volume` / `ambient_volume` — SFX and music levels, 0.0–2.0 (also tweakable in the in-game options menu `o`)
 - `music_preset` — music style: 0 = Auto (per biome), or a fixed preset (Chill / Energique / Sombre / Retro 8-bit / Mystique)
-- `pathfinder` — hero navigation algorithm: 0 BFS, 1 A*, 2 Dijkstra (weighted, danger-aware), 3 Greedy, 4 Diagonal (8-way)
+- `pathfinder` — heroine navigation algorithm: 0 BFS, 1 A*, 2 Dijkstra (weighted, danger-aware), 3 Greedy, 4 Diagonal (8-way), 5 JPS (jump point search)
 - `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote` — the optional Twitch integration (off by default)
 
 ## Saves & files
@@ -165,7 +165,7 @@ All three live next to the binary and are git-ignored.
 
 With `twitch_enabled` on, the game connects anonymously (read-only, no token) to `twitch_channel`'s chat and viewers can influence the run:
 
-- `!1` / `!2` / `!3` — vote the hero's mindset (completionist / fighter / rusher)
+- `!1` / `!2` / `!3` — vote the heroine's mindset (completionist / fighter / rusher)
 - `!arme` / `!armure` / `!potion` / `!soin` / `!reroll` / `!purge` — vote the merchant purchase when a trader is up
 - `!faster` / `!slower` — nudge the speed (if `allow_speed_vote`)
 
@@ -177,8 +177,8 @@ Everything is generated and rendered at runtime — no art, audio, or data files
 
 - `map.rs` — world generation v2: per-biome algorithms (cellular-automata caves, BSP-style rooms, great halls, room+cave hybrids, loop labyrinths), connectivity flood-fill, round rooms, pillars, Bresenham line-of-sight FOV, discovery metering
 - `ai.rs` — BFS pathfinding (`step_toward`, `nearest_goal`)
-- `entity.rs` — hero, classes, monsters (bestiary), items, affixes, relics, talents, pets/allies, elements
-- `game.rs` — the simulation: turn order, the hero's priority-based AI (dodge → heal → ability → bolt → scroll → attack → hunt/loot/feature/merchant/explore/descend), combat, biomes, branching, mutators, bosses
+- `entity.rs` — heroine, classes, monsters (bestiary), items, affixes, relics, talents, pets/allies, elements
+- `game.rs` — the simulation: turn order, the heroine's priority-based AI (dodge → heal → ability → bolt → scroll → attack → hunt/loot/feature/merchant/explore/descend), combat, biomes, branching, mutators, bosses
 - `render.rs` — manual ANSI truecolor rendering: lit tiles with torch falloff + per-biome tint, the framed panel, the half-block sprite renderer, overlays
 - `fx.rs` — floating text, particles, projectiles, screen shake, combos, transitions
 - `audio.rs` — a tiny chiptune synth (square/triangle/sine/noise + ADSR) feeding `rodio`; SFX and the layered adaptive music are computed as raw samples

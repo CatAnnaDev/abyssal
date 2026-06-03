@@ -247,7 +247,7 @@ fn draw_panel(game: &Game, cols: i32, rows: i32, mw: i32, buf: &mut String) {
     let iw = pin - 2;
     let h = &game.hero;
 
-    draw_box(buf, px, 2, pin, hh, "HEROS", FRAME);
+    draw_box(buf, px, 2, pin, hh, "HEROINE", FRAME);
     let mut r = 3;
     put(buf, ix, r, (235, 210, 140), &fit(&format!("{} · {}", game.identity.name, game.class.label()), iw));
     r += 1;
@@ -1356,11 +1356,11 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
 fn titre(level: i32) -> &'static str {
     match level {
         1 => "Novice",
-        2 | 3 => "Aventurier",
+        2 | 3 => "Aventuriere",
         4 | 5 => "Mercenaire",
-        6 | 7 => "Veteran",
-        8 | 9 => "Champion",
-        10..=12 => "Heros",
+        6 | 7 => "Veterane",
+        8 | 9 => "Championne",
+        10..=12 => "Heroine",
         _ => "Legende",
     }
 }
@@ -1379,7 +1379,7 @@ fn top_scores(game: &Game) -> String {
 
 fn draw_death(game: &Game, mw: i32, mh: i32, buf: &mut String) {
     let mut lines = vec![
-        "  V O U S   E T E S   M O R T  ".to_string(),
+        "  V O U S   E T E S   M O R T E  ".to_string(),
         String::new(),
         format!("  {}", game.identity.title()),
         format!("  {} · {} ({})", game.class.label(), game.identity.trait_kind.label(), game.last_cause),

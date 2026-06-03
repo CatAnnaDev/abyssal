@@ -1319,7 +1319,7 @@ impl Game {
         let line = match self.last_action {
             "etourdi" => "J'ai la tête qui tourne... impossible de bouger.".to_string(),
             "esquive" => "Cette attaque, je la sens venir — je m'écarte.".to_string(),
-            "fuite" | "repli" => format!("Trop amoché ({}%), je décroche.", hp_pct),
+            "fuite" | "repli" => format!("Trop amochée ({}%), je décroche.", hp_pct),
             "potion" => "Une gorgée, vite, avant le prochain coup.".to_string(),
             "chasse" | "traque" | "traque escalier" => {
                 if boss_near {
@@ -4156,7 +4156,7 @@ impl Game {
             }
         } else {
             self.fx.label(self.hero.x, self.hero.y, "esquive!", (120, 230, 160));
-            self.push_log("Le heros echappe au fracas !".into(), GOOD);
+            self.push_log("L'heroine echappe au fracas !".into(), GOOD);
         }
     }
 
@@ -4288,7 +4288,7 @@ impl Game {
             }
         } else {
             self.fx.label(self.hero.x, self.hero.y, "esquive!", (120, 230, 160));
-            self.push_log("Le heros esquive la charge !".into(), GOOD);
+            self.push_log("L'heroine esquive la charge !".into(), GOOD);
         }
     }
 
@@ -4317,7 +4317,7 @@ impl Game {
             }
         } else {
             self.fx.label(self.hero.x, self.hero.y, "esquive!", (120, 230, 160));
-            self.push_log("Le heros evite la salve !".into(), GOOD);
+            self.push_log("L'heroine evite la salve !".into(), GOOD);
         }
     }
 
@@ -4417,7 +4417,7 @@ impl Game {
         self.push_log(self.death_quip.clone(), (235, 180, 90));
         self.push_log(
             format!(
-                "VOUS ETES MORT. Etage {}, niveau {}, {} or, {} elimines.",
+                "VOUS ETES MORTE. Etage {}, niveau {}, {} or, {} elimines.",
                 self.floor, self.hero.level, self.hero.gold, self.hero.kills
             ),
             BAD,
@@ -4650,8 +4650,8 @@ impl Game {
 
 const QUIPS_TRAP: &[&str] = &[
     "a glisse sur un caillou. RIP.",
-    "s'est cogne a un coin de mur.",
-    "a marche sur le piege comme un vrai bleu.",
+    "s'est cognee a un coin de mur.",
+    "a marche sur le piege comme une vraie bleue.",
     "Indiana Jones n'aurait pas fait pire.",
     "le sol etait un sale menteur.",
     "mort idiote +100 (succes non debloque).",
@@ -4666,21 +4666,21 @@ const QUIPS_TRAP: &[&str] = &[
 ];
 
 const QUIPS_DOT: &[&str] = &[
-    "est parti en fumee, tel Ace a Marineford.",
+    "est partie en fumee, tel Ace a Marineford.",
     "a serieusement sous-estime le poison.",
     "fallait lire l'etiquette : non comestible.",
-    "consume de l'interieur. tres punk.",
+    "consumee de l'interieur. tres punk.",
     "a oublie que les DoT, ca tue aussi.",
-    "cuit a point. dommage.",
+    "cuite a point. dommage.",
     "a confondu antidote et apero.",
     "Zoro aurait coupe le poison en deux.",
     "brule lentement, comme ses espoirs.",
     "la regen ? quelle regen ?",
-    "intoxique. cinq etoiles, reviendrai pas.",
+    "intoxiquee. cinq etoiles, reviendrai pas.",
 ];
 
 const QUIPS_MONSTER: &[&str] = &[
-    "« je suis devenu trop confiant. »",
+    "« je suis devenue trop confiante. »",
     "a oublie d'esquiver. Gon est decu.",
     "Continue ? 9... 8... 7...",
     "la hype etait pourtant reelle.",
@@ -4709,7 +4709,7 @@ const QUIPS_MIMIC: &[&str] = &[
 ];
 
 const QUIPS_BOSS: &[&str] = &[
-    "vaincu par le boss. l'arc narratif s'arrete la.",
+    "vaincue par le boss. l'arc narratif s'arrete la.",
     "le boss avait une phase 2. evidemment.",
     "pas assez stuff pour ce DPS check.",
     "a vu le pattern... une fois de trop.",

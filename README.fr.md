@@ -4,7 +4,7 @@
 
 Un roguelike **entièrement autonome** pour le terminal, à regarder plutôt qu'à jouer, écrit en Rust.
 
-Un héros IA descend seul dans un abîme infini généré procéduralement : il explore, combat, ramasse, monte de niveau, apprend des talents, marchande, esquive les attaques télégraphiées des boss, meurt, et recommence — tout seul. Tu ne joues pas. Tu regardes.
+Une héroïne IA descend seule dans un abîme infini généré procéduralement : elle explore, combat, ramasse, monte de niveau, apprend des talents, marchande, esquive les attaques télégraphiées des boss, meurt, et recommence — toute seule. Tu ne joues pas. Tu regardes.
 
 ![Abyssal en action](assets/demo.gif)
 
@@ -54,7 +54,7 @@ Le jeu se joue tout seul. Les entrées sont optionnelles :
 | --- | --- |
 | `espace` | pause / reprise |
 | `+` / `-` | plus vite / moins vite (lent → ultra) |
-| `m` / `1` `2` `3` | changer / fixer l'état d'esprit du héros |
+| `m` / `1` `2` `3` | changer / fixer l'état d'esprit de l'héroïne |
 | `a` | couper / réactiver le son |
 | `o` | ouvrir le menu d'options en jeu (met le jeu en pause) |
 | `g` | basculer vue sprite (pixel-art demi-blocs) / carte glyphes classique |
@@ -77,8 +77,8 @@ La progression se charge automatiquement au lancement (`abyssal.save.json`).
 - **Features & événements** — autels de malédiction, sanctuaires, fontaines, coffres mimic, une Forge rare, sanctuaires de pari, et événements d'étage.
 - **Deux modes de rendu** (`g`) — glyphes colorés classiques, ou une caméra sprite pixel-art en demi-blocs avec des sprites procéduraux 8×8 détaillés (contours + ombrage), particules et dégâts flottants, et une large plage de zoom (du dézoom large au gros plan, touche `z`).
 
-### Héros, classes & équipement
-- **Vingt classes** (Guerrier, Voleur, Mage, Paladin, Nécromancien, Rôdeur, Berserker, Élémentaliste, Moine, Druide, Templier, Occultiste, Chaman, Valkyrie, Lame-Sort, Sentinelle, Faucheur, Spectre, Maelstrom, Liche) — chacune avec arme/armure, crit, cleave/bolts et une capacité en cooldown.
+### Héroïne, classes & équipement
+- **Vingt classes** (Guerrière, Voleuse, Mage, Paladine, Nécromancienne, Rôdeuse, Berserker, Élémentaliste, Moine, Druidesse, Templière, Occultiste, Chamane, Valkyrie, Lame-Sort, Sentinelle, Faucheuse, Spectre, Maelström, Liche) — chacune avec arme/armure, crit, cleave/bolts et une capacité en cooldown.
 - **Capacités actives** — charge, assaut-éclair, nova de glace/élémentaire, châtiment-soin, levée des morts, volée de flèches, furie, plus les **spectrales** : Vortex (attire à toi tous les monstres proches), Possession (transforme un monstre en allié) et Phase (téléportation à travers les murs).
 - **Équipement** — 5 familles d'armes (légère / lourde / magique / poings / arcs) et 4 d'armures (tissu / cuir / plaque / mailles), 5–6 paliers chacune ; anneaux, amulettes, parchemins, rareté et affixes, bonus de set, et un panneau d'équipement en direct.
 - **Reliques** — drops uniques (vol de vie, esquive spectrale, chaîne d'éclairs, coups enflammés, +PV max, levée des morts, furie à bas PV, cupidité) et reliques antiques à usage unique (Œil Antique révèle tout l'étage à travers les murs, Sablier fige les non-boss, Calice de Vie soigne et donne +PV max).
@@ -92,11 +92,11 @@ La progression se charge automatiquement au lancement (`abyssal.save.json`).
 
 ### Alliés
 - **Compagnons humains perdus** — survivants rares qui vous rejoignent avec un rôle (garde / archère / guérisseur), vous suivent d'étage en étage, montent en niveau et combattent (jusqu'à deux).
-- **Familiers** — fauve, esprit (te soigne) ou golem, qui montent en niveau avec le héros.
-- **Alliés invoqués** — le Nécromancien/la Liche relèvent ou asservissent les ennemis en combattants temporaires.
+- **Familiers** — fauve, esprit (te soigne) ou golem, qui montent en niveau avec l'héroïne.
+- **Alliés invoqués** — la Nécromancienne/la Liche relèvent ou asservissent les ennemis en combattants temporaires.
 
 ### Modes & méta
-- **Six états d'esprit** — complétionniste, combattant, rusher, pilleur, prudent, traqueur — chacun changeant le comportement du héros.
+- **Six états d'esprit** — complétionniste, combattant, rusher, pilleur, prudent, traqueur — chacun changeant le comportement de l'héroïne.
 - **Variante Boss Rush** — étages 1–9 pour se stuffer, puis l'étage 10 devient une arène sans fin : un boss plus fort surgit dès qu'un meurt (pas de descente, pas de sauvegarde), un compteur de vagues pilotant difficulté et score.
 - **Mutateurs de run** (Sanguinaire, Cupidité, Fragile, Pullulement, Champions, Titans, Soif de Sang, Frénésie) qui modifient spawns, scaling et récompenses.
 - **Ascension / NG+** et un profil persistant à vie avec des jalons qui débloquent des bonus de départ permanents.
@@ -105,7 +105,7 @@ La progression se charge automatiquement au lancement (`abyssal.save.json`).
 - **Chiptune 8/16-bit procédural**, généré au runtime sans fichier audio : SFX synthétisés, plus une musique chill-pop **adaptative** qui réagit en direct — le **tempo monte progressivement quand les ennemis approchent** et un arpège entraînant se fond dedans, culminant en combat et contre les boss, le tout en jouant sur le tempo et le layering plutôt qu'en coupant les pistes.
 
 ### Twitch (optionnel)
-- Les viewers votent l'état d'esprit du héros et les achats au marchand, affichés dans un **panneau** en direct (canal, barres de votes, top du chat, fil des actions récentes).
+- Les viewers votent l'état d'esprit de l'héroïne et les achats au marchand, affichés dans un **panneau** en direct (canal, barres de votes, top du chat, fil des actions récentes).
 - **Les pseudos des viewers apparaissent sur les mobs** — un chatteur actif « adopte » un monstre dont le nom flotte au-dessus de lui sur la carte.
 - Le **marchand affiche un appel clair « VOTEZ MAINTENANT »** avec un décompte pendant la fenêtre de vote.
 - Toutes les options Twitch sont réglables dans le menu d'options en jeu.
@@ -140,7 +140,7 @@ Le tout multiplié donne environ **156 milliards** de builds théoriques (≈ 1,
 - `sound_enabled` / `ambient_enabled` — SFX et piste musicale activés/désactivés
 - `master_volume` / `ambient_volume` — niveaux SFX et musique, 0.0–2.0 (réglables aussi dans le menu d'options en jeu `o`)
 - `music_preset` — style de musique : 0 = Auto (par biome), ou un preset fixe (Chill / Énergique / Sombre / Rétro 8-bit / Mystique)
-- `pathfinder` — algorithme de navigation du héros : 0 BFS, 1 A*, 2 Dijkstra (pondéré, évite le danger), 3 Greedy, 4 Diagonale (8 directions)
+- `pathfinder` — algorithme de navigation de l'héroïne : 0 BFS, 1 A*, 2 Dijkstra (pondéré, évite le danger), 3 Greedy, 4 Diagonale (8 directions)
 - `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote` — l'intégration Twitch optionnelle (désactivée par défaut)
 
 ## Sauvegardes & fichiers
@@ -155,7 +155,7 @@ Les trois sont à côté du binaire et ignorés par git.
 
 Avec `twitch_enabled` activé, le jeu se connecte anonymement (lecture seule, sans token) au chat de `twitch_channel` et les viewers influencent la run :
 
-- `!1` / `!2` / `!3` — votent l'état d'esprit du héros (complétionniste / combattant / rusher)
+- `!1` / `!2` / `!3` — votent l'état d'esprit de l'héroïne (complétionniste / combattant / rusher)
 - `!arme` / `!armure` / `!potion` / `!soin` / `!reroll` / `!purge` — votent l'achat quand un marchand est présent
 - `!faster` / `!slower` — ajustent la vitesse (si `allow_speed_vote`)
 
@@ -167,8 +167,8 @@ Tout est généré et rendu au runtime — aucun fichier d'art, d'audio ou de do
 
 - `map.rs` — génération de monde v2 : algorithmes par biome (grottes en automate cellulaire, salles façon BSP, grandes halles, hybrides salles+grottes, labyrinthes à boucles), flood-fill de connectivité, salles rondes, piliers, FOV en ligne de mire (Bresenham), mesure de découverte
 - `ai.rs` — pathfinding BFS (`step_toward`, `nearest_goal`)
-- `entity.rs` — héros, classes, monstres (bestiaire), objets, affixes, reliques, talents, familiers/alliés, éléments
-- `game.rs` — la simulation : ordre des tours, l'IA du héros par priorités (esquive → soin → capacité → éclair → parchemin → attaque → chasse/butin/feature/marchand/exploration/descente), combat, biomes, ramifications, mutateurs, boss
+- `entity.rs` — héroïne, classes, monstres (bestiaire), objets, affixes, reliques, talents, familiers/alliés, éléments
+- `game.rs` — la simulation : ordre des tours, l'IA de l'héroïne par priorités (esquive → soin → capacité → éclair → parchemin → attaque → chasse/butin/feature/marchand/exploration/descente), combat, biomes, ramifications, mutateurs, boss
 - `render.rs` — rendu ANSI truecolor manuel : tuiles éclairées avec falloff de torche + teinte par biome, le panneau encadré, le rendu sprite en demi-blocs, les overlays
 - `fx.rs` — texte flottant, particules, projectiles, secousses d'écran, combos, transitions
 - `audio.rs` — un mini synthé chiptune (carré/triangle/sinus/bruit + ADSR) qui alimente `rodio` ; SFX et musique adaptative en couches calculés en échantillons bruts
