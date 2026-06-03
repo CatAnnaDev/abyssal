@@ -5,7 +5,7 @@ use crate::profile;
 use crate::render;
 use crate::twitch::{self, ViewerCmd};
 use font8x8::UnicodeFonts;
-use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
+use minifb::{Key, KeyRepeat, Scale, ScaleMode, Window, WindowOptions};
 use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -246,7 +246,12 @@ pub fn run() {
         4 => Scale::X4,
         _ => Scale::X1,
     };
-    let mut window = match Window::new("Abyssal", w, h, WindowOptions { scale, resize: false, ..WindowOptions::default() }) {
+    let mut window = match Window::new(
+        "Abyssal",
+        w,
+        h,
+        WindowOptions { scale, scale_mode: ScaleMode::AspectRatioStretch, resize: true, ..WindowOptions::default() },
+    ) {
         Ok(win) => win,
         Err(e) => {
             eprintln!("Impossible d'ouvrir la fenetre : {}", e);
