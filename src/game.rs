@@ -638,6 +638,10 @@ pub struct Game {
     #[serde(skip)]
     pub nemesis_defeated: Vec<String>,
     #[serde(skip)]
+    earned_feats: Vec<String>,
+    #[serde(skip)]
+    pub feats_pending: Vec<String>,
+    #[serde(skip)]
     pub last_action: &'static str,
     #[serde(skip)]
     pub hitstop: i32,
@@ -823,6 +827,8 @@ impl Game {
             grave_ghost: None,
             nemesis_add: Vec::new(),
             nemesis_defeated: Vec::new(),
+            earned_feats: Vec::new(),
+            feats_pending: Vec::new(),
             last_action: "spawn",
             hitstop: 0,
             debug: false,
@@ -1229,9 +1235,58 @@ impl Game {
         }
     }
 
-    pub fn seed_lore(&mut self, ghosts: Vec<crate::lore::Ghost>, nemeses: Vec<crate::lore::Nemesis>) {
+    pub fn seed_lore(&mut self, ghosts: Vec<crate::lore::Ghost>, nemeses: Vec<crate::lore::Nemesis>, feats: Vec<String>) {
         self.ghost_pool = ghosts.into_iter().filter(|g| g.name != self.identity.name).collect();
         self.nemesis_pool = nemeses;
+        self.earned_feats = feats;
+    }
+
+    pub fn feats(&self) -> &[String] {
+        &self.earned_feats
+    }
+
+    fn award_feat(&mut self, id: &str) {
+        if self.earned_feats.iter().any(|f| f == id) {
+            return;
+        }
+        self.earned_feats.push(id.to_string());
+        self.feats_pending.push(id.to_string());
+        let name = crate::lore::feat_name(id);
+        self.push_log(format!("HAUT FAIT : {}", name), (255, 215, 120));
+        self.fx.label(self.hero.x, self.hero.y, "HAUT FAIT", (255, 215, 120));
+        self.fx.burst(&mut self.rng, self.hero.x, self.hero.y, (255, 215, 120), 14, '\u{2605}');
+        self.sfx.push(Sound::Talent);
+        self.hud_note = format!("Haut fait : {}", name);
+    }
+
+    fn check_feats(&mut self) {
+        if self.total_kills >= 1 {
+            self.award_feat("premier_sang");
+        }
+        if self.total_kills >= 100 {
+            self.award_feat("exterminateur");
+        }
+        if self.floor >= 10 {
+            self.award_feat("plongeur_10");
+        }
+        if self.floor >= 20 {
+            self.award_feat("speleologue");
+        }
+        if self.hero.gold >= 500 {
+            self.award_feat("nabab");
+        }
+        if self.hero.relics.len() >= 4 {
+            self.award_feat("collectionneur");
+        }
+        if self.ascension >= 1 {
+            self.award_feat("ame_ascendante");
+        }
+        if self.corruption >= 100 {
+            self.award_feat("coeur_de_labime");
+        }
+        if self.hero.hp > 0 && self.hero.hp * 10 <= self.hero.max_hp {
+            self.award_feat("rescape");
+        }
     }
 
     pub fn graveyard(&self) -> &[crate::lore::Ghost] {
@@ -1540,6 +1595,7 @@ impl Game {
         }
         self.hero_turn();
         self.narrate();
+        self.check_feats();
         self.best_gold = self.best_gold.max(self.hero.gold);
         if matches!(self.phase, Phase::Dead(_)) {
             return;
@@ -2826,6 +2882,7 @@ impl Game {
                 self.fx.label(mx, my, "BOSS VAINCU", (255, 220, 90));
                 self.push_log(format!("BOSS VAINCU : {} ! (+{} XP)", name, m.xp_reward), WARN);
                 self.unlock("boss", "Tueur de boss");
+                self.award_feat("tueur_de_boss");
                 if self.boss_rush && self.floor >= 10 {
                     self.spawn_rush_boss();
                 }
@@ -2840,6 +2897,7 @@ impl Game {
                 self.nemesis_defeated.push(m.name.clone());
                 self.fx.label(mx, my, "NEMESIS", (235, 120, 200));
                 self.push_log(format!("Vous reglez vos comptes avec {} !", m.name), (235, 120, 200));
+                self.award_feat("chasseur_de_nemesis");
             }
             if self.total_kills == 1 {
                 self.unlock("first_blood", "Premier sang");
@@ -3535,6 +3593,7 @@ impl Game {
             FeatureKind::Grave => {
                 self.fx.burst(&mut self.rng, hx, hy, (185, 190, 205), 12, '\u{271d}');
                 self.fx.label(hx, hy, "TOMBE", (200, 205, 220));
+                self.award_feat("pilleur_de_tombe");
                 if let Some(g) = self.grave_ghost.take() {
                     let bonus = (g.gold / 2).max(10);
                     self.hero.gold += bonus;

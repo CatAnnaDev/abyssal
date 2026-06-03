@@ -509,7 +509,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
             g
         }
     };
-    game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone());
+    game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone());
     let _ = stdout.execute(Clear(ClearType::All));
 
     let mut cfg = Config::load_or_create();
@@ -563,7 +563,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     }
                     KeyCode::Char('n') => {
                         game = build_game(map_w, map_h, &setup, profile.meta());
-                        game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone());
+                        game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone());
                         let _ = stdout.execute(Clear(ClearType::All));
                     }
                     KeyCode::Char(' ') => paused = !paused,
@@ -612,7 +612,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     map_w = d.2;
                     map_h = d.3;
                     game = build_game(map_w, map_h, &setup, profile.meta());
-                    game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone());
+                    game.seed_lore(profile.graveyard.clone(), profile.nemeses.clone(), profile.feats.clone());
                     let _ = stdout.execute(Clear(ClearType::All));
                 }
                 _ => {}
@@ -728,6 +728,10 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                         for name in game.nemesis_defeated.drain(..) {
                             profile.retire_nemesis(&name);
                         }
+                    }
+                    if !game.feats_pending.is_empty() {
+                        let pend: Vec<String> = game.feats_pending.drain(..).collect();
+                        profile.record_feats(&pend);
                     }
                     accumulator -= interval;
                     steps += 1;

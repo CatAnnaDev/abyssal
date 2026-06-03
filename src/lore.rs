@@ -167,3 +167,22 @@ const EPITHET: [&str; 12] = [
 pub fn nemesis_name(base: &str, rng: &mut Rng) -> String {
     format!("{} {}", base, EPITHET[rng.below(EPITHET.len())])
 }
+
+pub const FEATS: &[(&str, &str, &str)] = &[
+    ("premier_sang", "Premier sang", "Tuer une premiere creature"),
+    ("tueur_de_boss", "Tueur de boss", "Abattre un boss d'etage"),
+    ("chasseur_de_nemesis", "Chasseur de nemesis", "Regler son compte a une nemesis"),
+    ("pilleur_de_tombe", "Pilleur de tombe", "Profaner la tombe d'un ancien"),
+    ("plongeur_10", "Plongeur", "Atteindre l'etage 10"),
+    ("speleologue", "Speleologue", "Atteindre l'etage 20"),
+    ("exterminateur", "Exterminateur", "100 victimes en une descente"),
+    ("rescape", "Rescape", "Survivre sous 10% de PV"),
+    ("coeur_de_labime", "Coeur de l'abime", "Tenir a 100% de corruption"),
+    ("nabab", "Nabab", "Amasser 500 or"),
+    ("collectionneur", "Collectionneur", "Porter 4 reliques"),
+    ("ame_ascendante", "Ame ascendante", "Atteindre l'ascension I"),
+];
+
+pub fn feat_name(id: &str) -> &'static str {
+    FEATS.iter().find(|f| f.0 == id).map(|f| f.1).unwrap_or("haut fait")
+}

@@ -369,9 +369,10 @@ fn draw_codex(game: &Game, cols: i32, rows: i32, buf: &mut String) {
 fn draw_hall(game: &Game, cols: i32, rows: i32, buf: &mut String) {
     let ghosts = game.graveyard();
     let nemeses = game.known_nemeses();
+    let feats = crate::lore::FEATS;
     let bw = 56.min((cols - 4).max(24));
-    let body = ghosts.len() as i32 + nemeses.len() as i32 + 6;
-    let bh = body.clamp(10, (rows - 2).max(10));
+    let body = ghosts.len() as i32 + nemeses.len() as i32 + feats.len() as i32 + 9;
+    let bh = body.clamp(12, (rows - 2).max(12));
     let ox = (cols - bw) / 2;
     let oy = (rows - bh) / 2;
     let blank: String = " ".repeat(bw as usize);
@@ -401,14 +402,32 @@ fn draw_hall(game: &Game, cols: i32, rows: i32, buf: &mut String) {
         r += 1;
         if nemeses.is_empty() {
             put(buf, ox + 2, r, (120, 120, 130), &fit("aucune rancune en cours.", bw - 4));
+            r += 1;
         } else {
             for n in nemeses {
-                if r >= last {
+                if r >= last - 2 {
                     break;
                 }
                 put(buf, ox + 2, r, (225, 140, 205), &fit(&format!("{} (rang {}, {} morts inflige)", n.name, n.rank, n.hero_kills), bw - 4));
                 r += 1;
             }
+        }
+    }
+    let earned = game.feats();
+    if r < last - 1 {
+        r += 1;
+        put(buf, ox + 2, r, (255, 215, 120), &fit(&format!("\u{2605} Hauts faits ({}/{})", earned.len(), feats.len()), bw - 4));
+        r += 1;
+        for (id, name, desc) in feats {
+            if r >= last {
+                break;
+            }
+            if earned.iter().any(|f| f == id) {
+                put(buf, ox + 2, r, (255, 215, 120), &fit(&format!("\u{2605} {} — {}", name, desc), bw - 4));
+            } else {
+                put(buf, ox + 2, r, (110, 110, 120), &fit(&format!("\u{2606} ??? — {}", desc), bw - 4));
+            }
+            r += 1;
         }
     }
 }

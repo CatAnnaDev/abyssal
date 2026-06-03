@@ -17,6 +17,8 @@ pub struct Profile {
     pub graveyard: Vec<Ghost>,
     #[serde(default)]
     pub nemeses: Vec<Nemesis>,
+    #[serde(default)]
+    pub feats: Vec<String>,
 }
 
 impl Profile {
@@ -75,6 +77,19 @@ impl Profile {
             v.push("talent de depart".to_string());
         }
         v
+    }
+
+    pub fn record_feats(&mut self, ids: &[String]) {
+        let mut changed = false;
+        for id in ids {
+            if !self.feats.iter().any(|f| f == id) {
+                self.feats.push(id.clone());
+                changed = true;
+            }
+        }
+        if changed {
+            self.save();
+        }
     }
 
     pub fn record_ghost(&mut self, ghost: Ghost) {
