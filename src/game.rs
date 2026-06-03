@@ -1244,6 +1244,66 @@ impl Game {
         }
     }
 
+    pub fn twitch_bless(&mut self, user: &str) {
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        match self.rng.below(4) {
+            0 => {
+                let heal = (self.hero.max_hp / 5).max(8);
+                self.hero.hp = (self.hero.hp + heal).min(self.hero.max_hp);
+                self.push_log(format!("{} benit l'heroine : +{} PV.", user, heal), GOOD);
+            }
+            1 => {
+                self.hero.rage = self.hero.rage.max(18);
+                self.push_log(format!("{} benit l'heroine : RAGE !", user), (235, 120, 90));
+            }
+            2 => {
+                self.hero.shield = self.hero.shield.max(16);
+                self.push_log(format!("{} benit l'heroine : bouclier !", user), (150, 200, 240));
+            }
+            _ => {
+                self.hero.gold += 20;
+                self.push_log(format!("{} benit l'heroine : +20 or.", user), GOLD);
+            }
+        }
+        self.fx.burst(&mut self.rng, hx, hy, (255, 225, 140), 12, '\u{2727}');
+        self.fx.label(hx, hy, "BENIE", (255, 225, 140));
+        self.push_feed(format!("{} benit l'heroine", user));
+        self.sfx.push(Sound::Quaff);
+    }
+
+    pub fn twitch_curse(&mut self, user: &str) {
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        match self.rng.below(3) {
+            0 => {
+                self.hero.poison = self.hero.poison.max(4);
+                self.push_log(format!("{} maudit l'heroine : poison !", user), (150, 210, 110));
+            }
+            1 => {
+                self.hero.burn = self.hero.burn.max(4);
+                self.push_log(format!("{} maudit l'heroine : brulure !", user), (235, 130, 70));
+            }
+            _ => {
+                let loss = (self.hero.gold / 10).min(40);
+                self.hero.gold -= loss;
+                self.push_log(format!("{} maudit l'heroine : -{} or.", user, loss), DIM);
+            }
+        }
+        self.fx.burst(&mut self.rng, hx, hy, (180, 90, 200), 12, '\u{2716}');
+        self.fx.label(hx, hy, "MAUDITE", (200, 110, 220));
+        self.push_feed(format!("{} maudit l'heroine", user));
+    }
+
+    pub fn twitch_rename(&mut self, user: &str, name: &str) {
+        let clean: String = name.chars().filter(|c| c.is_alphanumeric() || *c == '-' || *c == '\'').take(14).collect();
+        if clean.is_empty() {
+            return;
+        }
+        let old = self.identity.name.clone();
+        self.identity.name = clean.clone();
+        self.push_log(format!("{} rebaptise {} en {}.", user, old, clean), (200, 205, 235));
+        self.push_feed(format!("{} nomme l'heroine {}", user, clean));
+    }
+
     pub fn seed_lore(&mut self, ghosts: Vec<crate::lore::Ghost>, nemeses: Vec<crate::lore::Nemesis>, feats: Vec<String>) {
         self.ghost_pool = ghosts.into_iter().filter(|g| g.name != self.identity.name).collect();
         self.nemesis_pool = nemeses;

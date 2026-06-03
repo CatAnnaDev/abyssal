@@ -153,7 +153,7 @@ Multiplied together that is roughly **180 billion** theoretical builds (≈ 1.8 
 - `master_volume` / `ambient_volume` — SFX and music levels, 0.0–2.0 (also tweakable in the in-game options menu `o`)
 - `music_preset` — music style: 0 = Auto (per biome), or a fixed preset (Chill / Energique / Sombre / Retro 8-bit / Mystique)
 - `pathfinder` — heroine navigation algorithm: 0 BFS, 1 A*, 2 Dijkstra (weighted, danger-aware), 3 Greedy, 4 Diagonal (8-way), 5 JPS (jump point search)
-- `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote` — the optional Twitch integration (off by default)
+- `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote`, `allow_chaos_vote` — the optional Twitch integration
 
 ## Saves & files
 
@@ -170,8 +170,10 @@ With `twitch_enabled` on, the game connects anonymously (read-only, no token) to
 - `!1` / `!2` / `!3` — vote the heroine's mindset (completionist / fighter / rusher)
 - `!arme` / `!armure` / `!potion` / `!soin` / `!reroll` / `!purge` — vote the merchant purchase when a trader is up
 - `!faster` / `!slower` — nudge the speed (if `allow_speed_vote`)
+- `!bless` / `!curse` — bless or curse the heroine (small random buff / debuff, shared cooldown; if `allow_chaos_vote`)
+- `!name <x>` — rebaptize the heroine (if `allow_chaos_vote`)
 
-Votes are tallied over `vote_window_secs`; each viewer counts once per window.
+Votes are tallied over `vote_window_secs`; each viewer counts once per window. The chaos commands (`bless`/`curse`/`name`) are rate-limited so chat can't spam them.
 
 ## How it works
 

@@ -22,6 +22,8 @@ pub struct Config {
     pub music_preset: i32,
     #[serde(default)]
     pub pathfinder: i32,
+    #[serde(default = "yes")]
+    pub allow_chaos_vote: bool,
 }
 
 fn yes() -> bool {
@@ -51,6 +53,7 @@ impl Default for Config {
             ambient_volume: 0.5,
             music_preset: 0,
             pathfinder: 0,
+            allow_chaos_vote: true,
         }
     }
 }

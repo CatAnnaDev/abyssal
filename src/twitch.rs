@@ -8,6 +8,9 @@ pub enum ViewerCmd {
     Style(Playstyle),
     Speed(i32),
     Merchant(MerchantPick),
+    Bless,
+    Curse,
+    Name(String),
 }
 
 pub fn connect(channel_name: &str) -> Receiver<(String, ViewerCmd)> {
@@ -60,9 +63,11 @@ pub fn privmsg_body(line: &str) -> Option<&str> {
 }
 
 pub fn parse_cmd(msg: &str) -> Option<ViewerCmd> {
-    let m = msg.trim().to_lowercase();
-    let m = m.trim_start_matches('!');
-    match m {
+    let raw = msg.trim().trim_start_matches('!');
+    let mut parts = raw.splitn(2, char::is_whitespace);
+    let head = parts.next()?.to_lowercase();
+    let arg = parts.next().unwrap_or("").trim();
+    match head.as_str() {
         "1" | "comp" | "completionniste" | "explore" => Some(ViewerCmd::Style(Playstyle::Completionist)),
         "2" | "combat" | "combattant" | "fight" => Some(ViewerCmd::Style(Playstyle::Combatant)),
         "3" | "rush" | "rusher" | "stairs" => Some(ViewerCmd::Style(Playstyle::Rusher)),
@@ -75,6 +80,15 @@ pub fn parse_cmd(msg: &str) -> Option<ViewerCmd> {
         "reroll" | "roll" => Some(ViewerCmd::Merchant(MerchantPick::Reroll)),
         "purge" | "cleanse" | "clean" => Some(ViewerCmd::Merchant(MerchantPick::Cleanse)),
         "skip" | "rien" | "pass" => Some(ViewerCmd::Merchant(MerchantPick::Skip)),
+        "bless" | "benir" | "benediction" | "buff" => Some(ViewerCmd::Bless),
+        "curse" | "malediction" | "maudire" | "debuff" => Some(ViewerCmd::Curse),
+        "name" | "nom" | "rename" | "baptise" => {
+            if arg.is_empty() {
+                None
+            } else {
+                Some(ViewerCmd::Name(arg.to_string()))
+            }
+        }
         _ => None,
     }
 }

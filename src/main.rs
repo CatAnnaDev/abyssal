@@ -531,6 +531,8 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
     let mut merch_votes: HashMap<MerchantPick, u32> = HashMap::new();
     let mut voter_counts: HashMap<String, u32> = HashMap::new();
     let mut speed_votes: i32 = 0;
+    let mut last_chaos = Instant::now();
+    let mut last_name = Instant::now();
     let mut vote_clock = 0.0f32;
 
     let mut speed = setup.as_ref().map_or(1, |s| s.speed_idx.min(SPEEDS.len() - 1));
@@ -668,6 +670,27 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     ViewerCmd::Merchant(p) if cfg.allow_merchant_vote => {
                         *merch_votes.entry(p).or_insert(0) += 1;
                         (true, format!("{} achete {}", user, p.label()))
+                    }
+                    ViewerCmd::Bless if cfg.allow_chaos_vote => {
+                        if last_chaos.elapsed() >= Duration::from_secs(15) {
+                            game.twitch_bless(&user);
+                            last_chaos = Instant::now();
+                        }
+                        (false, String::new())
+                    }
+                    ViewerCmd::Curse if cfg.allow_chaos_vote => {
+                        if last_chaos.elapsed() >= Duration::from_secs(15) {
+                            game.twitch_curse(&user);
+                            last_chaos = Instant::now();
+                        }
+                        (false, String::new())
+                    }
+                    ViewerCmd::Name(n) if cfg.allow_chaos_vote => {
+                        if last_name.elapsed() >= Duration::from_secs(30) {
+                            game.twitch_rename(&user, &n);
+                            last_name = Instant::now();
+                        }
+                        (false, String::new())
                     }
                     _ => (false, String::new()),
                 };

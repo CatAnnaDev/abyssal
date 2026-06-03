@@ -160,8 +160,10 @@ Avec `twitch_enabled` activé, le jeu se connecte anonymement (lecture seule, sa
 - `!1` / `!2` / `!3` — votent l'état d'esprit de l'héroïne (complétionniste / combattant / rusher)
 - `!arme` / `!armure` / `!potion` / `!soin` / `!reroll` / `!purge` — votent l'achat quand un marchand est présent
 - `!faster` / `!slower` — ajustent la vitesse (si `allow_speed_vote`)
+- `!bless` / `!curse` — bénissent ou maudissent l'héroïne (petit buff / debuff aléatoire, cooldown partagé ; si `allow_chaos_vote`)
+- `!name <x>` — rebaptisent l'héroïne (si `allow_chaos_vote`)
 
-Les votes sont comptés sur `vote_window_secs` ; chaque viewer compte une fois par fenêtre.
+Les votes sont comptés sur `vote_window_secs` ; chaque viewer compte une fois par fenêtre. Les commandes chaos (`bless`/`curse`/`name`) sont limitées en fréquence pour éviter le spam.
 
 ## Comment ça marche
 
