@@ -1079,6 +1079,23 @@ fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut S
         let txt: String = l.chars().take(maxw).collect();
         let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;10;12;18m\x1b[38;2;120;240;160m {:<width$}\x1b[0m", MROW + 1 + i as i32, MCOL + sdx + 1, txt, width = maxw);
     }
+    let stats = game.debug_pf_stats();
+    if !stats.is_empty() && mw > 30 {
+        let cw = 24i32;
+        let cx = MCOL + sdx + mw - cw - 1;
+        let mut srow = vec!["-- pathfinder cout/temps --".to_string()];
+        for (pf, nodes, ns) in stats {
+            let cur = if pf == game.pathfinder { '\u{25b6}' } else { ' ' };
+            srow.push(format!("{}{:<9}{:>4}n {:>6.1}us", cur, pf.label(), nodes, ns as f64 / 1000.0));
+        }
+        for (i, l) in srow.iter().enumerate() {
+            if i as i32 + 1 >= mh {
+                break;
+            }
+            let txt: String = l.chars().take(cw as usize).collect();
+            let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;10;12;18m\x1b[38;2;150;210;255m {:<width$}\x1b[0m", MROW + 1 + i as i32, cx, txt, width = cw as usize);
+        }
+    }
 }
 
 fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {

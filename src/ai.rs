@@ -37,17 +37,17 @@ impl Pathfinder {
 pub fn step_to(pf: Pathfinder, map: &Map, sx: i32, sy: i32, gx: i32, gy: i32, blocked: &[(i32, i32)]) -> Option<(i32, i32)> {
     match pf {
         Pathfinder::Bfs => step_toward(map, sx, sy, blocked, |x, y| x == gx && y == gy),
-        Pathfinder::AStar => best_first(map, sx, sy, gx, gy, blocked, true, true, false, false, true),
-        Pathfinder::Greedy => best_first(map, sx, sy, gx, gy, blocked, false, true, false, false, true),
-        Pathfinder::Dijkstra => best_first(map, sx, sy, gx, gy, blocked, true, false, false, true, false),
-        Pathfinder::Diagonal => best_first(map, sx, sy, gx, gy, blocked, true, true, true, false, true),
+        Pathfinder::AStar => best_first(map, sx, sy, gx, gy, blocked, true, true, false, false, true).0,
+        Pathfinder::Greedy => best_first(map, sx, sy, gx, gy, blocked, false, true, false, false, true).0,
+        Pathfinder::Dijkstra => best_first(map, sx, sy, gx, gy, blocked, true, false, false, true, false).0,
+        Pathfinder::Diagonal => best_first(map, sx, sy, gx, gy, blocked, true, true, true, false, true).0,
     }
 }
 
 #[allow(clippy::too_many_arguments)]
-fn best_first(map: &Map, sx: i32, sy: i32, gx: i32, gy: i32, costly: &[(i32, i32)], use_g: bool, use_h: bool, diag: bool, weighted: bool, hard_block: bool) -> Option<(i32, i32)> {
+fn best_first(map: &Map, sx: i32, sy: i32, gx: i32, gy: i32, costly: &[(i32, i32)], use_g: bool, use_h: bool, diag: bool, weighted: bool, hard_block: bool) -> (Option<(i32, i32)>, u32) {
     if sx == gx && sy == gy {
-        return None;
+        return (None, 0);
     }
     let w = map.width;
     let n = (map.width * map.height) as usize;
@@ -65,11 +65,13 @@ fn best_first(map: &Map, sx: i32, sy: i32, gx: i32, gy: i32, costly: &[(i32, i32
             ((x - gx).abs() + (y - gy).abs()) * 10
         }
     };
+    let mut nodes = 0u32;
     while let Some(Reverse((_, ci))) = heap.pop() {
+        nodes += 1;
         let cx = ci % w;
         let cy = ci / w;
         if cx == gx && cy == gy {
-            return Some(reconstruct(&came, start as i32, ci, w, sx, sy));
+            return (Some(reconstruct(&came, start as i32, ci, w, sx, sy)), nodes);
         }
         for &(dx, dy) in dirs {
             let nx = cx + dx;
@@ -82,10 +84,8 @@ fn best_first(map: &Map, sx: i32, sy: i32, gx: i32, gy: i32, costly: &[(i32, i32
                 continue;
             }
             let is_costly = costly.iter().any(|&(bx, by)| bx == nx && by == ny);
-            if is_costly && !goal {
-                if hard_block {
-                    continue;
-                }
+            if is_costly && !goal && hard_block {
+                continue;
             }
             let base = if dx != 0 && dy != 0 { 14 } else { 10 };
             let extra = if weighted && is_costly { 200 } else { 0 };
@@ -99,7 +99,50 @@ fn best_first(map: &Map, sx: i32, sy: i32, gx: i32, gy: i32, costly: &[(i32, i32
             }
         }
     }
-    None
+    (None, nodes)
+}
+
+fn bfs_count(map: &Map, sx: i32, sy: i32, gx: i32, gy: i32, blocked: &[(i32, i32)]) -> u32 {
+    if sx == gx && sy == gy {
+        return 0;
+    }
+    let w = map.width;
+    let mut seen = vec![false; (map.width * map.height) as usize];
+    seen[(sy * w + sx) as usize] = true;
+    let mut queue = VecDeque::new();
+    queue.push_back((sx, sy));
+    let mut nodes = 0u32;
+    while let Some((cx, cy)) = queue.pop_front() {
+        nodes += 1;
+        if cx == gx && cy == gy {
+            return nodes;
+        }
+        for (dx, dy) in STEPS {
+            let nx = cx + dx;
+            let ny = cy + dy;
+            if !map.in_bounds(nx, ny) {
+                continue;
+            }
+            let ni = (ny * w + nx) as usize;
+            let goal = nx == gx && ny == gy;
+            if seen[ni] || (!goal && (!map.is_walkable(nx, ny) || blocked.iter().any(|&(bx, by)| bx == nx && by == ny))) {
+                continue;
+            }
+            seen[ni] = true;
+            queue.push_back((nx, ny));
+        }
+    }
+    nodes
+}
+
+pub fn search_cost(pf: Pathfinder, map: &Map, sx: i32, sy: i32, gx: i32, gy: i32, blocked: &[(i32, i32)]) -> u32 {
+    match pf {
+        Pathfinder::Bfs => bfs_count(map, sx, sy, gx, gy, blocked),
+        Pathfinder::AStar => best_first(map, sx, sy, gx, gy, blocked, true, true, false, false, true).1,
+        Pathfinder::Greedy => best_first(map, sx, sy, gx, gy, blocked, false, true, false, false, true).1,
+        Pathfinder::Dijkstra => best_first(map, sx, sy, gx, gy, blocked, true, false, false, true, false).1,
+        Pathfinder::Diagonal => best_first(map, sx, sy, gx, gy, blocked, true, true, true, false, true).1,
+    }
 }
 
 fn reconstruct(came: &[i32], start: i32, goal: i32, w: i32, sx: i32, sy: i32) -> (i32, i32) {
