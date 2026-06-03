@@ -44,7 +44,7 @@ Bestiary — toggle `k` for a codex of discovered monsters with their element, b
 cargo run --release
 ```
 
-A roomy pre-game menu lets you configure the run across ten axes — class, playstyle (completionist / fighter / rusher / looter / cautious / hunter), difficulty, starting boon, variant (Normal or Boss Rush), mutators (random / none / guaranteed), starting familiar, simulation speed, display (glyphs or sprites) and sound — each with a description of what it adds or removes. Or just leave it all on the defaults / random and watch.
+Abyssal opens in **its own window** (via `minifb` — Windows, macOS, Linux X11 & Wayland), no terminal needed. The world is drawn with full-resolution procedural sprites and the HUD with an 8×8 bitmap font; it autoloads your save (or starts a fresh random run). Press `n` for a new run, `d` for the daily challenge.
 
 ## Controls
 

@@ -44,7 +44,7 @@ Bestiaire — touche `k` pour un codex des monstres découverts avec leur élém
 cargo run --release
 ```
 
-Un grand menu d'avant-partie permet de configurer la run sur dix axes — classe, état d'esprit (complétionniste / combattant / rusher / pilleur / prudent / traqueur), difficulté, trait de départ, variante (Normal ou Boss Rush), mutateurs (aléatoire / aucun / garanti), familier de départ, vitesse de simulation, affichage (glyphes ou sprites) et son — chacun avec une description de ce qu'il apporte ou retire. Ou laisse tout par défaut / au hasard et regarde.
+Abyssal s'ouvre dans **sa propre fenêtre** (via `minifb` — Windows, macOS, Linux X11 & Wayland), sans terminal. Le monde est dessiné en sprites procéduraux pleine résolution et le HUD avec une police bitmap 8×8 ; la sauvegarde se recharge automatiquement (ou démarre une run aléatoire). Touche `n` pour une nouvelle run, `d` pour le défi du jour.
 
 ## Contrôles
 
