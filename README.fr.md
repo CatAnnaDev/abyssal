@@ -70,6 +70,7 @@ La progression se charge automatiquement au lancement (`abyssal.save.json`).
 
 - Donjons procéduraux (salles, couloirs), champ de vision en ligne de mire et compteur de découverte
 - Descentes ramifiées : à chaque escalier l'IA pèse 2–3 voies selon son état d'esprit (et fonce vers une salle de repos si elle est blessée), chacune menant à un biome et un type de salle (trésor / défi / nuée / repos)
+- Salles Faille — un étage de monde parallèle rare (une « Faille » teintée de violet) gorgé d'élites et de butin : plus de monstres avec un taux d'élite très élevé, objets et coffres supplémentaires, et une relique garantie à l'entrée ; gros risque, grosse récompense
 - Cinq biomes (Cavernes, Catacombes, Glacier, Tréfonds, Abîme), chacun avec sa palette, sa teinte d'éclairage, sa faune biaisée, un danger ambiant, un champion thématique et sa tonalité musicale
 - Deux modes de rendu (touche `g`) : la carte en glyphes colorés classique, ou une vue « sprite » pixel-art en demi-blocs — caméra centrée sur le héros, sprites procéduraux par archétype, icônes d'objets distinctes, petit balancement, particules et dégâts flottants, le tout dans n'importe quel terminal truecolor sans fichier (zoom avec `z`)
 - Huit classes de héros (Guerrier / Voleur / Mage / Paladin / Nécromancien / Rôdeur / Berserker / Élémentaliste), armes/armures/crit/cleave/bolts distincts, plus une capacité active déclenchée par l'IA en cooldown (charge, assaut-éclair, nova de glace, châtiment-soin, levée des morts, volée de flèches, furie tournoyante, nova élémentaire)

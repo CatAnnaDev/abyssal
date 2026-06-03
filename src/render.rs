@@ -14,7 +14,9 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
 
     let mw = game.map.width;
     let mh = game.map.height;
-    let tint = if game.event == FloorEvent::Inferno {
+    let tint = if game.room_kind == crate::game::RoomKind::Rift {
+        (1.15, 0.7, 1.25)
+    } else if game.event == FloorEvent::Inferno {
         (1.22, 0.82, 0.66)
     } else {
         game.biome.tint()

@@ -127,6 +127,7 @@ pub enum RoomKind {
     Challenge,
     Rest,
     Warren,
+    Rift,
 }
 
 impl RoomKind {
@@ -137,6 +138,7 @@ impl RoomKind {
             RoomKind::Challenge => "defi",
             RoomKind::Rest => "repos",
             RoomKind::Warren => "nuee",
+            RoomKind::Rift => "FAILLE",
         }
     }
 }
@@ -620,6 +622,11 @@ impl Game {
             RoomKind::Rest => {
                 monster_count = (monster_count / 3).max(1);
             }
+            RoomKind::Rift => {
+                monster_count += 5;
+                item_count += 6;
+                bonus_chests += 3;
+            }
             RoomKind::Standard => {}
         }
         if self.floor >= 3 {
@@ -650,6 +657,8 @@ impl Game {
             elite_chance = (elite_chance + 0.2).min(0.6);
         } else if self.room_kind == RoomKind::Warren {
             elite_chance *= 0.4;
+        } else if self.room_kind == RoomKind::Rift {
+            elite_chance = (elite_chance + 0.45).min(0.85);
         }
         elite_chance = (elite_chance + self.mut_elite_add()).min(0.75);
         let promote: Vec<bool> = (0..self.monsters.len()).map(|_| self.rng.chance(elite_chance)).collect();
@@ -815,6 +824,10 @@ impl Game {
             self.hero.burn = 0;
             self.hero.poison = 0;
             self.push_log("Une salle de repos : vous reprenez votre souffle.".into(), GOOD);
+        }
+        if self.room_kind == RoomKind::Rift {
+            self.push_log("FAILLE : un monde parallele, hostile et gorge de tresors...".into(), (210, 140, 240));
+            self.grant_relic();
         }
     }
 
@@ -3278,6 +3291,9 @@ impl Game {
     }
 
     fn roll_room(&mut self) -> RoomKind {
+        if self.floor >= 5 && self.rng.chance(0.05) {
+            return RoomKind::Rift;
+        }
         match self.rng.below(100) {
             0..=38 => RoomKind::Standard,
             39..=58 => RoomKind::Treasure,
@@ -3288,6 +3304,9 @@ impl Game {
     }
 
     fn room_appeal(&self, room: RoomKind) -> i32 {
+        if room == RoomKind::Rift {
+            return if self.hp_fraction() < 0.45 { 1 } else { 6 };
+        }
         match self.style {
             Playstyle::Completionist => match room {
                 RoomKind::Treasure => 4,
@@ -3295,6 +3314,7 @@ impl Game {
                 RoomKind::Warren => 2,
                 RoomKind::Standard => 1,
                 RoomKind::Rest => 0,
+                RoomKind::Rift => 6,
             },
             Playstyle::Combatant => match room {
                 RoomKind::Challenge => 4,
@@ -3302,6 +3322,7 @@ impl Game {
                 RoomKind::Treasure => 1,
                 RoomKind::Standard => 1,
                 RoomKind::Rest => 0,
+                RoomKind::Rift => 6,
             },
             Playstyle::Rusher => match room {
                 RoomKind::Rest => 3,
@@ -3309,6 +3330,7 @@ impl Game {
                 RoomKind::Treasure => 1,
                 RoomKind::Warren => 0,
                 RoomKind::Challenge => 0,
+                RoomKind::Rift => 4,
             },
         }
     }
@@ -3345,6 +3367,9 @@ impl Game {
             }
         }
         self.push_log(line, (170, 205, 150));
+        if room == RoomKind::Rift {
+            self.push_log("Une FAILLE s'ouvre vers un monde parallele !".into(), (210, 140, 240));
+        }
     }
 
     fn descend(&mut self) {

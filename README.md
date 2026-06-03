@@ -70,6 +70,7 @@ Progress autoloads on launch (`abyssal.save.json`).
 
 - Procedural dungeons with rooms, corridors, LOS field-of-view and a discovery meter
 - Branching descents: at every stairway the AI weighs 2–3 paths by mindset (and heads for a Rest branch when wounded), each leading to a biome and a room type (treasure / challenge / warren / rest)
+- Rift rooms — a rare parallel-world floor (a purple-tinted "Faille") packed with elites and loot: more monsters with a sharply higher elite rate, extra items and chests, and a guaranteed relic on entry; high risk, high reward
 - Five biomes (Caverns, Catacombs, Frostvault, Emberdepths, Abyss), each with its own palette, lighting tint, biased fauna, ambient hazard, a themed champion mini-boss, and musical key
 - Two render modes (toggle with `g`): the classic colored-glyph map, or a half-block pixel-art "sprite" view — a hero-centred camera with procedural per-archetype sprites, distinct item/feature icons, an idle bob, particles and floating damage, all drawn in any truecolor terminal with no asset files (zoom with `z`)
 - Eight hero classes (Warrior / Rogue / Mage / Paladin / Necromancer / Ranger / Berserker / Elementalist) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown (charge, blink-strike, ice nova, smite-heal, raise-dead, arrow volley, whirlwind fury, elemental nova)
