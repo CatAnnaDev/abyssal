@@ -565,6 +565,8 @@ pub struct Game {
     #[serde(default)]
     pub boss_rush: bool,
     #[serde(default)]
+    pub boss_wave: i32,
+    #[serde(default)]
     pub mutator_pref: i32,
     #[serde(default)]
     pub start_pet: bool,
@@ -718,6 +720,7 @@ impl Game {
             mutators: Vec::new(),
             ascension: meta.4,
             boss_rush,
+            boss_wave: 0,
             mutator_pref,
             start_pet,
             meta_hp: meta.0,
@@ -1578,6 +1581,10 @@ impl Game {
                 return;
             }
         }
+        if self.boss_rush && self.floor >= 10 && self.act_hunt(true) {
+            self.last_action = "arene";
+            return;
+        }
         match self.style {
             Playstyle::Completionist => self.turn_completionist(),
             Playstyle::Combatant => self.turn_combatant(),
@@ -1733,6 +1740,9 @@ impl Game {
     }
 
     fn on_stairs(&self) -> bool {
+        if self.boss_rush && self.floor >= 10 {
+            return false;
+        }
         self.map.tile(self.hero.x, self.hero.y) == Tile::StairsDown
     }
 
@@ -2311,6 +2321,9 @@ impl Game {
                 self.fx.label(mx, my, "BOSS VAINCU", (255, 220, 90));
                 self.push_log(format!("BOSS VAINCU : {} ! (+{} XP)", name, m.xp_reward), WARN);
                 self.unlock("boss", "Tueur de boss");
+                if self.boss_rush && self.floor >= 10 {
+                    self.spawn_rush_boss();
+                }
             } else if m.elite {
                 self.push_log(format!("Elite vaincu : {} ! (+{} XP)", name, m.xp_reward), GOOD);
             }
@@ -3741,9 +3754,10 @@ impl Game {
     }
 
     fn die(&mut self, cause: &str) {
-        self.best_floor = self.best_floor.max(self.floor);
+        let depth = self.floor + self.boss_wave;
+        self.best_floor = self.best_floor.max(depth);
         self.best_gold = self.best_gold.max(self.hero.gold);
-        let base = self.floor * 1000 + self.hero.gold + self.hero.kills * 10;
+        let base = depth * 1000 + self.hero.gold + self.hero.kills * 10;
         let score = (base as f32 * (1.0 + 0.25 * self.ascension as f32)) as i32;
         self.last_score = score;
         self.high_scores.push(score);
@@ -3880,6 +3894,41 @@ impl Game {
         if room == RoomKind::Rift {
             self.push_log("Une FAILLE s'ouvre vers un monde parallele !".into(), (210, 140, 240));
         }
+    }
+
+    fn spawn_rush_boss(&mut self) {
+        self.boss_wave += 1;
+        let lvl = self.floor + self.boss_wave * 2;
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let mut far: Vec<(i32, i32)> = Vec::new();
+        let mut any: Vec<(i32, i32)> = Vec::new();
+        for y in 0..self.map.height {
+            for x in 0..self.map.width {
+                if self.map.is_walkable(x, y) && self.monster_at(x, y).is_none() && !(x == hx && y == hy) {
+                    any.push((x, y));
+                    if (x - hx).abs() + (y - hy).abs() >= 6 {
+                        far.push((x, y));
+                    }
+                }
+            }
+        }
+        let pool = if !far.is_empty() { &far } else { &any };
+        if pool.is_empty() {
+            return;
+        }
+        let (bx, by) = pool[self.rng.below(pool.len())];
+        let mut b = if self.boss_wave % 5 == 0 {
+            Monster::final_boss(lvl, bx, by)
+        } else {
+            Monster::boss(lvl, bx, by)
+        };
+        b.aggro = true;
+        b.name = format!("{} (vague {})", b.name, self.boss_wave + 1);
+        let bn = b.name.clone();
+        self.monsters.push(b);
+        self.best_floor = self.best_floor.max(self.floor + self.boss_wave);
+        self.fx.label(bx, by, "NOUVEAU BOSS", (255, 110, 90));
+        self.push_log(format!("\u{2638} VAGUE {} : {} surgit dans l'arene !", self.boss_wave + 1, bn), (255, 110, 90));
     }
 
     fn log_floor_summary(&mut self) {

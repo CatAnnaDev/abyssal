@@ -119,9 +119,9 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
     };
     let asc = if game.ascension > 0 { format!("  ·  Asc.{}", game.ascension) } else { String::new() };
     let rush = if game.boss_rush {
-        if game.floor >= 10 { "  ·  BOSS RUSH" } else { "  ·  Boss Rush(10)" }
+        if game.floor >= 10 { format!("  ·  BOSS RUSH vague {}", game.boss_wave + 1) } else { "  ·  Boss Rush(10)".to_string() }
     } else {
-        ""
+        String::new()
     };
     let title = format!(
         " ABYSSAL  ·  etage {} {}  ·  {}  ·  run #{}  ·  {}{}{}{} ",
