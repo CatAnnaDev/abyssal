@@ -144,6 +144,89 @@ pub fn step_to(pf: Pathfinder, map: &Map, sx: i32, sy: i32, gx: i32, gy: i32, bl
     }
 }
 
+pub fn path_to(pf: Pathfinder, map: &Map, sx: i32, sy: i32, gx: i32, gy: i32, blocked: &[(i32, i32)]) -> Vec<(i32, i32)> {
+    if sx == gx && sy == gy || !map.in_bounds(sx, sy) {
+        return Vec::new();
+    }
+    let w = map.width;
+    let n = (map.width * map.height) as usize;
+    let diag = pf == Pathfinder::Diagonal;
+    let (use_g, use_h, weighted, hard_block) = match pf {
+        Pathfinder::Bfs => (true, false, false, true),
+        Pathfinder::AStar => (true, true, false, true),
+        Pathfinder::Greedy => (false, true, false, true),
+        Pathfinder::Dijkstra => (true, false, true, false),
+        Pathfinder::Diagonal => (true, true, false, true),
+    };
+    let dirs: &[(i32, i32)] = if diag { &STEPS8 } else { &STEPS };
+    SCRATCH.with(|s| {
+        let s = &mut *s.borrow_mut();
+        s.begin(n, blocked, w);
+        let start = (sy * w + sx) as usize;
+        s.relax(start, 0, start as i32);
+        s.heap.push(Reverse((0, start as i32)));
+        let mut goal_i = -1i32;
+        while let Some(Reverse((_, ci))) = s.heap.pop() {
+            let cu = ci as usize;
+            if s.closed[cu] == s.vgen {
+                continue;
+            }
+            s.closed[cu] = s.vgen;
+            let cx = ci % w;
+            let cy = ci / w;
+            if cx == gx && cy == gy {
+                goal_i = ci;
+                break;
+            }
+            let cg = s.g[cu];
+            for &(dx, dy) in dirs {
+                let nx = cx + dx;
+                let ny = cy + dy;
+                if !map.in_bounds(nx, ny) {
+                    continue;
+                }
+                let goal = nx == gx && ny == gy;
+                if !goal && !map.is_walkable(nx, ny) {
+                    continue;
+                }
+                let ni = (ny * w + nx) as usize;
+                let costly = s.is_block(ni);
+                if costly && !goal && hard_block {
+                    continue;
+                }
+                let base = if dx != 0 && dy != 0 { 14 } else { 10 };
+                let extra = if weighted && costly { 200 } else { 0 };
+                let ng = cg.saturating_add(base + extra);
+                if ng < s.gval(ni) {
+                    s.relax(ni, ng, ci);
+                    let hh = if use_h {
+                        if diag {
+                            (nx - gx).abs().max((ny - gy).abs()) * 10
+                        } else {
+                            ((nx - gx).abs() + (ny - gy).abs()) * 10
+                        }
+                    } else {
+                        0
+                    };
+                    let pri = (if use_g { ng } else { 0 }).saturating_add(hh);
+                    s.heap.push(Reverse((pri, ni as i32)));
+                }
+            }
+        }
+        if goal_i < 0 {
+            return Vec::new();
+        }
+        let mut rev = Vec::new();
+        let mut cur = goal_i;
+        while cur != start as i32 {
+            rev.push((cur % w, cur / w));
+            cur = s.came[cur as usize];
+        }
+        rev.reverse();
+        rev
+    })
+}
+
 pub fn search_cost(pf: Pathfinder, map: &Map, sx: i32, sy: i32, gx: i32, gy: i32, blocked: &[(i32, i32)]) -> u32 {
     match pf {
         Pathfinder::Bfs => bfs_point(map, sx, sy, gx, gy, blocked).1,

@@ -627,6 +627,16 @@ pub struct Game {
     pub debug: bool,
     #[serde(skip)]
     pub nav_target: Option<(i32, i32)>,
+    #[serde(skip)]
+    nav_cache: Vec<(i32, i32)>,
+    #[serde(skip)]
+    nav_idx: usize,
+    #[serde(skip)]
+    nav_cache_goal: Option<(i32, i32)>,
+    #[serde(skip)]
+    nav_cache_pf: crate::ai::Pathfinder,
+    #[serde(skip)]
+    nav_cache_age: i32,
     #[serde(default)]
     pub pathfinder: crate::ai::Pathfinder,
     pub style: Playstyle,
@@ -788,6 +798,11 @@ impl Game {
             hitstop: 0,
             debug: false,
             nav_target: None,
+            nav_cache: Vec::new(),
+            nav_idx: 0,
+            nav_cache_goal: None,
+            nav_cache_pf: crate::ai::Pathfinder::default(),
+            nav_cache_age: 0,
             pathfinder: crate::ai::Pathfinder::default(),
             style,
             class,
@@ -1197,7 +1212,29 @@ impl Game {
 
     fn hero_nav(&mut self, gx: i32, gy: i32, open: &[(i32, i32)]) -> Option<(i32, i32)> {
         self.nav_target = Some((gx, gy));
-        step_to(self.pathfinder, &self.map, self.hero.x, self.hero.y, gx, gy, open)
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let cache_ok = open.is_empty()
+            && self.nav_cache_goal == Some((gx, gy))
+            && self.nav_cache_pf == self.pathfinder
+            && self.nav_cache_age < 24;
+        if cache_ok {
+            while self.nav_idx < self.nav_cache.len() && self.nav_cache[self.nav_idx] == (hx, hy) {
+                self.nav_idx += 1;
+            }
+            if let Some(&(nx, ny)) = self.nav_cache.get(self.nav_idx) {
+                let adj = (nx - hx).abs().max((ny - hy).abs()) <= 1 && (nx != hx || ny != hy);
+                if adj && self.map.is_walkable(nx, ny) {
+                    self.nav_cache_age += 1;
+                    return Some((nx - hx, ny - hy));
+                }
+            }
+        }
+        self.nav_cache = crate::ai::path_to(self.pathfinder, &self.map, hx, hy, gx, gy, open);
+        self.nav_idx = 0;
+        self.nav_cache_goal = Some((gx, gy));
+        self.nav_cache_pf = self.pathfinder;
+        self.nav_cache_age = 0;
+        self.nav_cache.first().map(|&(nx, ny)| (nx - hx, ny - hy))
     }
 
     pub fn debug_field(&self) -> Vec<i32> {
@@ -3517,6 +3554,8 @@ impl Game {
     fn monster_turns(&mut self) {
         self.cast_danger.clear();
         let count = self.monsters.len();
+        let chase_field = bfs_field(&self.map, self.hero.x, self.hero.y, &[]);
+        let fw = self.map.width;
         for i in 0..count {
             if i >= self.monsters.len() {
                 break;
@@ -3727,19 +3766,38 @@ impl Game {
                 }
             }
 
-            let blocked: Vec<(i32, i32)> = self
-                .monsters
-                .iter()
-                .enumerate()
-                .filter(|(j, _)| *j != i)
-                .map(|(_, m)| (m.x, m.y))
-                .collect();
-            if let Some((dx, dy)) = step_toward(&self.map, mx, my, &blocked, |x, y| x == hx && y == hy) {
-                let tx = mx + dx;
-                let ty = my + dy;
-                if !(tx == hx && ty == hy) && self.monster_at(tx, ty).is_none() {
-                    self.monsters[i].x = tx;
-                    self.monsters[i].y = ty;
+            let d = chase_field[(my * fw + mx) as usize];
+            let mut moved = false;
+            if d > 1 {
+                for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                    let (nx, ny) = (mx + dx, my + dy);
+                    if self.map.in_bounds(nx, ny)
+                        && chase_field[(ny * fw + nx) as usize] == d - 1
+                        && !(nx == hx && ny == hy)
+                        && self.monster_at(nx, ny).is_none()
+                    {
+                        self.monsters[i].x = nx;
+                        self.monsters[i].y = ny;
+                        moved = true;
+                        break;
+                    }
+                }
+            }
+            if !moved && d != 1 {
+                let blocked: Vec<(i32, i32)> = self
+                    .monsters
+                    .iter()
+                    .enumerate()
+                    .filter(|(j, _)| *j != i)
+                    .map(|(_, m)| (m.x, m.y))
+                    .collect();
+                if let Some((dx, dy)) = step_toward(&self.map, mx, my, &blocked, |x, y| x == hx && y == hy) {
+                    let tx = mx + dx;
+                    let ty = my + dy;
+                    if !(tx == hx && ty == hy) && self.monster_at(tx, ty).is_none() {
+                        self.monsters[i].x = tx;
+                        self.monsters[i].y = ty;
+                    }
                 }
             }
         }
@@ -4432,6 +4490,7 @@ mod setup_opts {
         assert!(g2.mutators.is_empty(), "mutator_pref=1 should disable mutators");
     }
 }
+
 
 
 

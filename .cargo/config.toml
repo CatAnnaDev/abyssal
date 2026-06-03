@@ -1,0 +1,14 @@
+# Optimisations CPU optionnelles (desactivees par defaut).
+#
+# `target-cpu=native` laisse LLVM auto-vectoriser les boucles de tableaux
+# (synthese audio, blending du rendu) pour TON processeur exact, sans `unsafe`.
+# Le gain est marginal ici (le jeu n'est pas CPU-bound) et surtout le binaire
+# produit devient NON PORTABLE : il peut planter (SIGILL) sur une machine au CPU
+# different. C'est pourquoi c'est laisse commente sur ce repo public.
+#
+# Pour l'activer en local, decommente les deux lignes ci-dessous,
+# ou compile ponctuellement avec :
+#   RUSTFLAGS="-C target-cpu=native" cargo build --release
+#
+# [build]
+# rustflags = ["-C", "target-cpu=native"]
