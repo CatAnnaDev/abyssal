@@ -142,8 +142,9 @@ Le tout multiplié donne environ **156 milliards** de builds théoriques (≈ 1,
 - `sound_enabled` / `ambient_enabled` — SFX et piste musicale activés/désactivés
 - `master_volume` / `ambient_volume` — niveaux SFX et musique, 0.0–2.0 (réglables aussi dans le menu d'options en jeu `o`)
 - `music_preset` — style de musique : 0 = Auto (par biome), ou un preset fixe (Chill / Énergique / Sombre / Rétro 8-bit / Mystique)
-- `pathfinder` — algorithme de navigation de l'héroïne : 0 BFS, 1 A*, 2 Dijkstra (pondéré, évite le danger), 3 Greedy, 4 Diagonale (8 directions)
-- `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote` — l'intégration Twitch optionnelle (désactivée par défaut)
+- `pathfinder` — algorithme de navigation de l'héroïne : 0 BFS, 1 A*, 2 Dijkstra (pondéré, évite le danger), 3 Greedy, 4 Diagonale (8 directions), 5 JPS (jump point search)
+- `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote`, `allow_chaos_vote` — l'intégration Twitch optionnelle
+- `obs_overlay` — si activé, écrit un `abyssal.obs.html` auto-rafraîchi (fond transparent, grosses polices) ~4×/s ; à ajouter comme **source Navigateur** OBS (fichier local) pour un overlay de stream propre à côté de la capture du terminal
 
 ## Sauvegardes & fichiers
 

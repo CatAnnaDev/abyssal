@@ -50,6 +50,70 @@ fn seed() -> u64 {
         .unwrap_or(0x9E37_79B9_7F4A_7C15)
 }
 
+const OBS_PATH: &str = "abyssal.obs.html";
+
+fn esc(s: &str) -> String {
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
+}
+
+fn write_obs(game: &Game) {
+    let h = &game.hero;
+    let hp_pct = (h.hp.max(0) * 100 / h.max_hp.max(1)).clamp(0, 100);
+    let dead = matches!(game.phase, game::Phase::Dead(_));
+    let thought = game.thoughts.last().map(|s| s.as_str()).unwrap_or("");
+    let mut events = String::new();
+    for line in game.log.iter().rev().take(4) {
+        events.push_str(&format!("<div class=ev>{}</div>", esc(&line.text)));
+    }
+    let banner = if dead {
+        format!("<div class=dead>MORTE — {}</div><div class=ob>{}</div>", esc(&game.last_cause), esc(&game.obituary))
+    } else {
+        String::new()
+    };
+    let html = format!(
+        "<!doctype html><html><head><meta charset=utf-8><meta http-equiv=refresh content=1>\
+<style>body{{margin:0;background:transparent;font-family:'Menlo','Consolas',monospace;color:#eee}}\
+.card{{display:inline-block;background:rgba(8,8,14,.74);border:2px solid #46b6ff;border-radius:12px;padding:16px 20px}}\
+.name{{font-size:32px;font-weight:bold;color:#ffd76e}}\
+.sub{{font-size:18px;color:#9fb2c8;margin-bottom:6px}}\
+.row{{font-size:20px;margin-top:6px}}\
+.hpbar{{height:14px;width:340px;background:#2a2a33;border-radius:7px;overflow:hidden;margin-top:8px}}\
+.hpfill{{height:100%;background:linear-gradient(90deg,#5ed27a,#9be88c)}}\
+.thought{{font-style:italic;color:#a6d8ff;font-size:21px;margin-top:10px;max-width:380px}}\
+.feed{{margin-top:8px;color:#8a93a6;font-size:15px}}\
+.dead{{color:#ff5a5a;font-size:24px;font-weight:bold;margin-top:8px}}\
+.ob{{color:#e8c9a0;font-size:16px;max-width:400px;margin-top:4px}}</style></head><body><div class=card>\
+<div class=name>{name}</div>\
+<div class=sub>{class} · {trait_} · {origin}</div>\
+<div class=row>Étage {floor} · {biome} · niv {level}</div>\
+<div class=hpbar><div class=hpfill style=\"width:{hp_pct}%\"></div></div>\
+<div class=row>♥ {hp}/{maxhp} · ⚔ {atk} · ◈ {def} · {gold} or · {kills} kills · corr {corr}%</div>\
+{banner}\
+<div class=thought>{thought}</div>\
+<div class=feed>{events}</div>\
+</div></body></html>",
+        name = esc(&game.identity.name),
+        class = esc(game.class.label()),
+        trait_ = esc(game.identity.trait_kind.label()),
+        origin = esc(&game.identity.origin),
+        floor = game.floor,
+        biome = esc(game.biome.label()),
+        level = h.level,
+        hp_pct = hp_pct,
+        hp = h.hp.max(0),
+        maxhp = h.max_hp,
+        atk = h.atk(),
+        def = h.def(),
+        gold = h.gold,
+        kills = h.kills,
+        corr = game.corruption,
+        banner = banner,
+        thought = esc(thought),
+        events = events,
+    );
+    let _ = std::fs::write(OBS_PATH, html);
+}
+
 fn daily_seed() -> (u64, String) {
     let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let day = secs / 86_400;
@@ -533,6 +597,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
     let mut speed_votes: i32 = 0;
     let mut last_chaos = Instant::now();
     let mut last_name = Instant::now();
+    let mut last_obs = Instant::now();
     let mut vote_clock = 0.0f32;
 
     let mut speed = setup.as_ref().map_or(1, |s| s.speed_idx.min(SPEEDS.len() - 1));
@@ -824,6 +889,11 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         was_dead = dead_now;
 
         render::draw(&game, cols, rows, paused, SPEEDS[speed].0, sprite_mode, sprite_zooms[zoom_idx], stdout);
+
+        if cfg.obs_overlay && last_obs.elapsed() >= Duration::from_millis(250) {
+            write_obs(&game);
+            last_obs = Instant::now();
+        }
 
         std::thread::sleep(Duration::from_millis(12));
         if struck {

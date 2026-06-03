@@ -154,6 +154,7 @@ Multiplied together that is roughly **180 billion** theoretical builds (≈ 1.8 
 - `music_preset` — music style: 0 = Auto (per biome), or a fixed preset (Chill / Energique / Sombre / Retro 8-bit / Mystique)
 - `pathfinder` — heroine navigation algorithm: 0 BFS, 1 A*, 2 Dijkstra (weighted, danger-aware), 3 Greedy, 4 Diagonal (8-way), 5 JPS (jump point search)
 - `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote`, `allow_chaos_vote` — the optional Twitch integration
+- `obs_overlay` — when true, writes a self-refreshing `abyssal.obs.html` (transparent background, large fonts) ~4×/s; add it as an OBS **Browser source** (Local file) for a clean streaming overlay alongside the terminal capture
 
 ## Saves & files
 
