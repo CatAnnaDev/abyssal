@@ -331,6 +331,16 @@ const STYLES: [Style; 5] = [
     Style { key: -5, minor: true, bpm: 76.0, pad: Wave::Sine, lead: Wave::Square, drums: 1 },
 ];
 
+const PRESET_STYLES: [Style; 5] = [
+    Style { key: 0, minor: false, bpm: 76.0, pad: Wave::Sine, lead: Wave::Tri, drums: 0 },
+    Style { key: 2, minor: false, bpm: 118.0, pad: Wave::Square, lead: Wave::Square, drums: 2 },
+    Style { key: -5, minor: true, bpm: 80.0, pad: Wave::Square, lead: Wave::Square, drums: 1 },
+    Style { key: 0, minor: false, bpm: 100.0, pad: Wave::Square, lead: Wave::Square, drums: 1 },
+    Style { key: -2, minor: true, bpm: 88.0, pad: Wave::Sine, lead: Wave::Sine, drums: 0 },
+];
+
+pub const MUSIC_PRESETS: [&str; 6] = ["Auto (biome)", "Chill", "Energique", "Sombre", "Retro 8-bit", "Mystique"];
+
 const MAJOR_CHORDS: [[i32; 4]; 8] = [
     [60, 64, 67, 71],
     [55, 59, 62, 67],
@@ -354,8 +364,12 @@ const MINOR_CHORDS: [[i32; 4]; 8] = [
 ];
 const MINOR_BASS: [i32; 8] = [45, 41, 36, 43, 38, 45, 40, 45];
 
-fn music_stem(stem: Stem, sid: i32) -> Vec<f32> {
-    let st = &STYLES[(sid.max(0) as usize) % STYLES.len()];
+fn music_stem(stem: Stem, sid: i32, preset: i32) -> Vec<f32> {
+    let st = if preset > 0 {
+        &PRESET_STYLES[(preset - 1) as usize % PRESET_STYLES.len()]
+    } else {
+        &STYLES[(sid.max(0) as usize) % STYLES.len()]
+    };
     let beat = SR as f32 * 60.0 / st.bpm;
     let eighth = beat / 2.0;
     let bars = 8usize;
@@ -442,11 +456,12 @@ pub struct Audio {
     speed_cur: f32,
     intensity: f32,
     intensity_target: f32,
+    preset: i32,
     pub muted: bool,
 }
 
 impl Audio {
-    pub fn new(ambient_on: bool, master_volume: f32, ambient_volume: f32) -> Self {
+    pub fn new(ambient_on: bool, master_volume: f32, ambient_volume: f32, preset: i32) -> Self {
         let volume = master_volume.clamp(0.0, 2.0);
         let music_level = ambient_volume.clamp(0.0, 2.0);
         let voice = 0i32;
@@ -458,19 +473,46 @@ impl Audio {
                         if let Ok(sink) = Sink::try_new(&handle) {
                             let start = if i == 0 { music_level } else { 0.0 };
                             sink.set_volume(start);
-                            sink.append(SamplesBuffer::new(1, SR, music_stem(stem, voice)).repeat_infinite());
+                            sink.append(SamplesBuffer::new(1, SR, music_stem(stem, voice, preset)).repeat_infinite());
                             music.push(StemSink { sink, cur: start, target: start });
                         }
                     }
                 }
-                Audio { _stream: Some(stream), handle: Some(handle), music, music_level, voice, volume, speed_cur: 1.0, intensity: 0.0, intensity_target: 0.0, muted: false }
+                Audio { _stream: Some(stream), handle: Some(handle), music, music_level, voice, volume, speed_cur: 1.0, intensity: 0.0, intensity_target: 0.0, preset, muted: false }
             }
-            Err(_) => Audio { _stream: None, handle: None, music: Vec::new(), music_level, voice, volume, speed_cur: 1.0, intensity: 0.0, intensity_target: 0.0, muted: false },
+            Err(_) => Audio { _stream: None, handle: None, music: Vec::new(), music_level, voice, volume, speed_cur: 1.0, intensity: 0.0, intensity_target: 0.0, preset, muted: false },
         }
     }
 
+    fn rebuild_stems(&mut self) {
+        if self.music.len() < 3 {
+            return;
+        }
+        let stems = [Stem::Base, Stem::Combat, Stem::Boss];
+        let muted = self.muted;
+        let (voice, preset) = (self.voice, self.preset);
+        for (i, st) in self.music.iter_mut().enumerate() {
+            st.sink.clear();
+            st.sink.set_volume(st.cur);
+            st.sink.append(SamplesBuffer::new(1, SR, music_stem(stems[i], voice, preset)).repeat_infinite());
+            if muted {
+                st.sink.pause();
+            } else {
+                st.sink.play();
+            }
+        }
+    }
+
+    pub fn set_preset(&mut self, preset: i32) {
+        if preset == self.preset {
+            return;
+        }
+        self.preset = preset;
+        self.rebuild_stems();
+    }
+
     pub fn set_biome(&mut self, style: i32) {
-        if self.voice == style || self.music.len() < 3 {
+        if self.preset > 0 || self.voice == style || self.music.len() < 3 {
             return;
         }
         self.voice = style;
@@ -479,7 +521,7 @@ impl Audio {
         for (i, st) in self.music.iter_mut().enumerate() {
             st.sink.clear();
             st.sink.set_volume(st.cur);
-            st.sink.append(SamplesBuffer::new(1, SR, music_stem(stems[i], style)).repeat_infinite());
+            st.sink.append(SamplesBuffer::new(1, SR, music_stem(stems[i], style, 0)).repeat_infinite());
             if muted {
                 st.sink.pause();
             } else {
@@ -619,9 +661,9 @@ mod preview {
 
         let biomes = ["caverns", "catacombs", "frostvault", "emberdepths", "abyss"];
         for (sid, bname) in biomes.iter().enumerate() {
-            let base = music_stem(Stem::Base, sid as i32);
-            let combat = music_stem(Stem::Combat, sid as i32);
-            let boss = music_stem(Stem::Boss, sid as i32);
+            let base = music_stem(Stem::Base, sid as i32, 0);
+            let combat = music_stem(Stem::Combat, sid as i32, 0);
+            let boss = music_stem(Stem::Boss, sid as i32, 0);
             let mix = |layers: &[&Vec<f32>]| -> Vec<f32> {
                 let mut out = vec![0.0f32; base.len()];
                 for layer in layers {

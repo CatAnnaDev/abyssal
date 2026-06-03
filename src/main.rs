@@ -348,11 +348,12 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
     use std::fmt::Write as _;
     use std::io::Write as _;
     let mut sel = 0i32;
-    let nrows = 9i32;
+    let nrows = 10i32;
     let apply = |cfg: &Config, audio: &mut audio::Audio| {
         let music = if cfg.ambient_enabled { cfg.ambient_volume } else { 0.0 };
         audio.set_levels(cfg.master_volume, music);
         audio.set_muted(!cfg.sound_enabled);
+        audio.set_preset(cfg.music_preset);
     };
     let bar = |v: f32| -> String {
         let n = (v / 2.0 * 12.0).round() as i32;
@@ -394,6 +395,7 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
         let labels = [
             "Volume SFX",
             "Volume musique",
+            "Style musique",
             "Musique active",
             "Son (sourdine)",
             "Twitch (relance)",
@@ -402,9 +404,11 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
             "Votes vitesse",
             "Fenetre de vote",
         ];
+        let preset = (cfg.music_preset.rem_euclid(audio::MUSIC_PRESETS.len() as i32)) as usize;
         let values = [
             format!("{} {:>4.1}", bar(cfg.master_volume), cfg.master_volume),
             format!("{} {:>4.1}", bar(cfg.ambient_volume), cfg.ambient_volume),
+            audio::MUSIC_PRESETS[preset].to_string(),
             if cfg.ambient_enabled { "Oui".into() } else { "Non".into() },
             if cfg.sound_enabled { "Actif".into() } else { "Coupe".into() },
             if cfg.twitch_enabled { "Oui".into() } else { "Non".into() },
@@ -446,12 +450,16 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
                         match sel {
                             0 => cfg.master_volume = (cfg.master_volume + 0.1 * dir as f32).clamp(0.0, 2.0),
                             1 => cfg.ambient_volume = (cfg.ambient_volume + 0.1 * dir as f32).clamp(0.0, 2.0),
-                            2 => cfg.ambient_enabled = !cfg.ambient_enabled,
-                            3 => cfg.sound_enabled = !cfg.sound_enabled,
-                            4 => cfg.twitch_enabled = !cfg.twitch_enabled,
-                            5 => cfg.allow_style_vote = !cfg.allow_style_vote,
-                            6 => cfg.allow_merchant_vote = !cfg.allow_merchant_vote,
-                            7 => cfg.allow_speed_vote = !cfg.allow_speed_vote,
+                            2 => {
+                                let n = audio::MUSIC_PRESETS.len() as i32;
+                                cfg.music_preset = (cfg.music_preset + dir).rem_euclid(n);
+                            }
+                            3 => cfg.ambient_enabled = !cfg.ambient_enabled,
+                            4 => cfg.sound_enabled = !cfg.sound_enabled,
+                            5 => cfg.twitch_enabled = !cfg.twitch_enabled,
+                            6 => cfg.allow_style_vote = !cfg.allow_style_vote,
+                            7 => cfg.allow_merchant_vote = !cfg.allow_merchant_vote,
+                            8 => cfg.allow_speed_vote = !cfg.allow_speed_vote,
                             _ => cfg.vote_window_secs = (cfg.vote_window_secs + dir as f32).clamp(2.0, 60.0),
                         }
                         apply(cfg, audio);
@@ -497,7 +505,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
     let _ = stdout.execute(Clear(ClearType::All));
 
     let mut cfg = Config::load_or_create();
-    let mut audio = audio::Audio::new(cfg.ambient_enabled, cfg.master_volume, cfg.ambient_volume);
+    let mut audio = audio::Audio::new(cfg.ambient_enabled, cfg.master_volume, cfg.ambient_volume, cfg.music_preset);
     audio.muted = !cfg.sound_enabled || setup.as_ref().map_or(false, |s| s.muted);
     let votes = if cfg.twitch_active() {
         Some(twitch::connect(&cfg.twitch_channel))

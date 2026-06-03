@@ -18,6 +18,8 @@ pub struct Config {
     pub master_volume: f32,
     #[serde(default = "default_ambient_volume")]
     pub ambient_volume: f32,
+    #[serde(default)]
+    pub music_preset: i32,
 }
 
 fn yes() -> bool {
@@ -45,6 +47,7 @@ impl Default for Config {
             ambient_enabled: true,
             master_volume: 0.5,
             ambient_volume: 0.5,
+            music_preset: 0,
         }
     }
 }

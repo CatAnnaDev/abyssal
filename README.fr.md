@@ -138,7 +138,8 @@ Le tout multiplié donne environ **156 milliards** de builds théoriques (≈ 1,
 `abyssal.config.json` est créé au premier lancement. Champs :
 
 - `sound_enabled` / `ambient_enabled` — SFX et piste musicale activés/désactivés
-- `master_volume` / `ambient_volume` — niveaux, 0.0–2.0 (le son se coupe aussi en jeu avec `a`)
+- `master_volume` / `ambient_volume` — niveaux SFX et musique, 0.0–2.0 (réglables aussi dans le menu d'options en jeu `o`)
+- `music_preset` — style de musique : 0 = Auto (par biome), ou un preset fixe (Chill / Énergique / Sombre / Rétro 8-bit / Mystique)
 - `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote` — l'intégration Twitch optionnelle (désactivée par défaut)
 
 ## Sauvegardes & fichiers
