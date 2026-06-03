@@ -412,23 +412,35 @@ pub enum Playstyle {
     Completionist,
     Combatant,
     Rusher,
+    Looter,
+    Cautious,
+    Hunter,
 }
 
 impl Playstyle {
+    pub const ALL: [Playstyle; 6] = [
+        Playstyle::Completionist,
+        Playstyle::Combatant,
+        Playstyle::Rusher,
+        Playstyle::Looter,
+        Playstyle::Cautious,
+        Playstyle::Hunter,
+    ];
+
     pub fn label(self) -> &'static str {
         match self {
             Playstyle::Completionist => "completionniste",
             Playstyle::Combatant => "combattant",
             Playstyle::Rusher => "rusher",
+            Playstyle::Looter => "pilleur",
+            Playstyle::Cautious => "prudent",
+            Playstyle::Hunter => "traqueur",
         }
     }
 
     pub fn next(self) -> Playstyle {
-        match self {
-            Playstyle::Completionist => Playstyle::Combatant,
-            Playstyle::Combatant => Playstyle::Rusher,
-            Playstyle::Rusher => Playstyle::Completionist,
-        }
+        let i = Playstyle::ALL.iter().position(|&p| p == self).unwrap_or(0);
+        Playstyle::ALL[(i + 1) % Playstyle::ALL.len()]
     }
 }
 
@@ -1283,11 +1295,8 @@ impl Game {
     }
 
     fn fov_radius(&self) -> i32 {
-        if self.event == FloorEvent::Fog {
-            4
-        } else {
-            FOV_RADIUS
-        }
+        let base = if self.event == FloorEvent::Fog { 4 } else { FOV_RADIUS };
+        base + if self.hero.has_talent(Talent::Eclaireur) { 2 } else { 0 }
     }
 
     fn consume_scroll(&mut self, k: ScrollKind) -> bool {
@@ -1528,6 +1537,9 @@ impl Game {
             Playstyle::Completionist => self.turn_completionist(),
             Playstyle::Combatant => self.turn_combatant(),
             Playstyle::Rusher => self.turn_rusher(),
+            Playstyle::Looter => self.turn_looter(),
+            Playstyle::Cautious => self.turn_cautious(),
+            Playstyle::Hunter => self.turn_hunter(),
         }
     }
 
@@ -1591,6 +1603,82 @@ impl Game {
         }
         if self.act_to_stairs() {
             self.last_action = "rush escalier";
+            return;
+        }
+        if self.act_explore() {
+            return;
+        }
+        self.last_action = "attente";
+    }
+
+    fn turn_looter(&mut self) {
+        if self.act_loot() {
+            return;
+        }
+        if self.act_feature() {
+            return;
+        }
+        if self.act_merchant() {
+            return;
+        }
+        if self.act_explore() {
+            return;
+        }
+        if self.on_stairs() {
+            self.last_action = "descente";
+            self.descend();
+            return;
+        }
+        if self.act_to_stairs() {
+            return;
+        }
+        self.last_action = "attente";
+    }
+
+    fn turn_cautious(&mut self) {
+        let threatened = self.monsters.iter().any(|m| self.map.is_visible(m.x, m.y) && (m.x - self.hero.x).abs() + (m.y - self.hero.y).abs() <= 5);
+        if self.act_feature() {
+            return;
+        }
+        if threatened {
+            if self.on_stairs() {
+                self.last_action = "descente";
+                self.descend();
+                return;
+            }
+            if self.act_to_stairs() {
+                self.last_action = "repli";
+                return;
+            }
+        }
+        if self.act_loot() {
+            return;
+        }
+        if self.act_explore() {
+            return;
+        }
+        if self.on_stairs() {
+            self.last_action = "descente";
+            self.descend();
+            return;
+        }
+        if self.act_to_stairs() {
+            return;
+        }
+        self.last_action = "attente";
+    }
+
+    fn turn_hunter(&mut self) {
+        if self.act_hunt(true) {
+            return;
+        }
+        if self.on_stairs() {
+            self.last_action = "descente";
+            self.descend();
+            return;
+        }
+        if self.act_to_stairs() {
+            self.last_action = "traque escalier";
             return;
         }
         if self.act_explore() {
@@ -2673,6 +2761,28 @@ impl Game {
                     self.push_log("OEIL ANTIQUE : la relique dissipe tout le brouillard de l'etage !".into(), (255, 236, 150));
                     self.unlock("oeil_antique", "Oeil Antique - relique de clairvoyance");
                 }
+                ItemKind::Hourglass => {
+                    let dur = 6 + self.floor / 4;
+                    for m in self.monsters.iter_mut().filter(|m| !m.boss) {
+                        m.stun = m.stun.max(dur);
+                    }
+                    self.sfx.push(Sound::Scroll);
+                    self.fx.burst(&mut self.rng, self.hero.x, self.hero.y, (150, 210, 235), 26, '\u{2604}');
+                    self.fx.label(self.hero.x, self.hero.y, "SABLIER", (150, 210, 235));
+                    self.push_log("SABLIER DU TEMPS : le temps se fige, l'etage est paralyse !".into(), (150, 210, 235));
+                    self.unlock("sablier", "Sablier du Temps - relique temporelle");
+                }
+                ItemKind::Chalice => {
+                    self.hero.max_hp += 12;
+                    self.hero.hp = self.hero.max_hp;
+                    self.hero.burn = 0;
+                    self.hero.poison = 0;
+                    self.sfx.push(Sound::LevelUp);
+                    self.fx.burst(&mut self.rng, self.hero.x, self.hero.y, (130, 235, 155), 26, '\u{2624}');
+                    self.fx.label(self.hero.x, self.hero.y, "CALICE", (130, 235, 155));
+                    self.push_log("CALICE DE VIE : soins complets, maux purges, +12 PV max permanents.".into(), (130, 235, 155));
+                    self.unlock("calice", "Calice de Vie - relique vitale");
+                }
             }
             if rarity == (255, 170, 60) {
                 self.unlock("legende", "Legende - objet legendaire");
@@ -2947,11 +3057,12 @@ impl Game {
     }
 
     fn hero_def_mult(&self, attacker: Element) -> f32 {
+        let steel = if self.hero.has_talent(Talent::Acier) { 0.85 } else { 1.0 };
         if attacker == Element::Physical {
-            return 1.0;
+            return steel;
         }
         let armor = self.hero.armor_element();
-        if armor == Element::Physical {
+        let elem = if armor == Element::Physical {
             1.0
         } else if armor == attacker {
             0.7
@@ -2959,7 +3070,8 @@ impl Game {
             1.3
         } else {
             1.0
-        }
+        };
+        elem * steel
     }
 
     fn hero_crit(&self) -> f32 {
@@ -3659,6 +3771,30 @@ impl Game {
                 RoomKind::Warren => 0,
                 RoomKind::Challenge => 0,
                 RoomKind::Rift => 4,
+            },
+            Playstyle::Looter => match room {
+                RoomKind::Treasure => 6,
+                RoomKind::Standard => 2,
+                RoomKind::Rest => 1,
+                RoomKind::Challenge => 1,
+                RoomKind::Warren => 0,
+                RoomKind::Rift => 5,
+            },
+            Playstyle::Cautious => match room {
+                RoomKind::Rest => 5,
+                RoomKind::Treasure => 3,
+                RoomKind::Standard => 2,
+                RoomKind::Challenge => 0,
+                RoomKind::Warren => 0,
+                RoomKind::Rift => 1,
+            },
+            Playstyle::Hunter => match room {
+                RoomKind::Challenge => 5,
+                RoomKind::Warren => 4,
+                RoomKind::Standard => 1,
+                RoomKind::Treasure => 1,
+                RoomKind::Rest => 0,
+                RoomKind::Rift => 6,
             },
         }
     }

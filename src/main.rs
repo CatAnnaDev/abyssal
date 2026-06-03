@@ -97,10 +97,13 @@ fn class_choices() -> Vec<(&'static str, Option<HeroClass>)> {
     }
     v
 }
-const M_MODES: [(&str, Playstyle); 3] = [
+const M_MODES: [(&str, Playstyle); 6] = [
     ("Completionniste", Playstyle::Completionist),
     ("Combattant", Playstyle::Combatant),
     ("Rusher", Playstyle::Rusher),
+    ("Pilleur", Playstyle::Looter),
+    ("Prudent", Playstyle::Cautious),
+    ("Traqueur", Playstyle::Hunter),
 ];
 const M_DIFFS: &[(&str, f32)] = game::DIFFICULTIES;
 const M_BOONS: [(&str, Boon); 4] = [

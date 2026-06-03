@@ -90,6 +90,7 @@ pub enum HeroClass {
     Valkyrie,
     Spellblade,
     Sentinel,
+    Reaper,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -136,10 +137,11 @@ pub const CLASSES: &[ClassDef] = &[
     ClassDef { class: HeroClass::Valkyrie,     label: "Valkyrie",      crit: 0.14, cleave: 2,   bolt: 999, bleeds: false, raises: false, weapon: WeaponClass::Heavy, armor: ArmorClass::Mail,    d_hp: 16, d_might: 2, d_guard: 2, ability: Ability::Charge },
     ClassDef { class: HeroClass::Spellblade,   label: "Lame-Sort",     crit: 0.20, cleave: 999, bolt: 1,   bleeds: true,  raises: false, weapon: WeaponClass::Light, armor: ArmorClass::Cloth,   d_hp: 4,  d_might: 5, d_guard: 0, ability: Ability::Blink },
     ClassDef { class: HeroClass::Sentinel,     label: "Sentinelle",    crit: 0.16, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Bow,   armor: ArmorClass::Mail,    d_hp: 12, d_might: 3, d_guard: 2, ability: Ability::Volley },
+    ClassDef { class: HeroClass::Reaper,       label: "Faucheur",      crit: 0.22, cleave: 2,   bolt: 999, bleeds: true,  raises: false, weapon: WeaponClass::Light, armor: ArmorClass::Leather, d_hp: 6,  d_might: 5, d_guard: 0, ability: Ability::Furie },
 ];
 
 impl HeroClass {
-    pub const ALL: [HeroClass; 16] = [
+    pub const ALL: [HeroClass; 17] = [
         HeroClass::Warrior,
         HeroClass::Rogue,
         HeroClass::Mage,
@@ -156,6 +158,7 @@ impl HeroClass {
         HeroClass::Valkyrie,
         HeroClass::Spellblade,
         HeroClass::Sentinel,
+        HeroClass::Reaper,
     ];
 
     pub fn def(self) -> &'static ClassDef {
@@ -240,16 +243,20 @@ pub enum Talent {
     Bourreau,
     Arcaniste,
     Regen,
+    Eclaireur,
+    Acier,
 }
 
 impl Talent {
-    pub const ALL: [Talent; 6] = [
+    pub const ALL: [Talent; 8] = [
         Talent::Berserk,
         Talent::Sangsue,
         Talent::Colosse,
         Talent::Bourreau,
         Talent::Arcaniste,
         Talent::Regen,
+        Talent::Eclaireur,
+        Talent::Acier,
     ];
 
     pub fn label(self) -> &'static str {
@@ -260,6 +267,8 @@ impl Talent {
             Talent::Bourreau => "Bourreau (cleave)",
             Talent::Arcaniste => "Arcaniste (eclair)",
             Talent::Regen => "Regeneration",
+            Talent::Eclaireur => "Eclaireur (+vision)",
+            Talent::Acier => "Peau d'Acier (-degats)",
         }
     }
 }
@@ -864,6 +873,8 @@ const BESTIARY: &[MonsterKind] = &[
     MonsterKind { glyph: 'y', color: (220, 110, 70),  name: "wyverne", hp: 58, atk: 19, def: 4, xp: 54, gold: 60, min_floor: 10, ranged: false, element: Element::Fire },
     MonsterKind { glyph: 'E', color: (250, 230, 120), name: "foudroyeur", hp: 40, atk: 17, def: 2, xp: 42, gold: 40, min_floor: 9, ranged: true, element: Element::Lightning },
     MonsterKind { glyph: 'I', color: (180, 130, 200), name: "essaim", hp: 18, atk: 9, def: 1, xp: 13, gold: 8, min_floor: 5, ranged: false, element: Element::Poison },
+    MonsterKind { glyph: 'F', color: (190, 210, 230), name: "fantome", hp: 22, atk: 12, def: 1, xp: 20, gold: 14, min_floor: 6, ranged: false, element: Element::Ice },
+    MonsterKind { glyph: 'V', color: (200, 80, 110),  name: "vampire", hp: 50, atk: 18, def: 4, xp: 50, gold: 60, min_floor: 11, ranged: false, element: Element::Physical },
 ];
 
 pub fn bestiary() -> Vec<(char, Color, &'static str, &'static str, i32, &'static str)> {
@@ -1095,6 +1106,8 @@ pub enum ItemKind {
     Amulet(i32, Affix),
     Scroll(ScrollKind),
     AncientEye,
+    Hourglass,
+    Chalice,
 }
 
 fn roll_rarity(rng: &mut Rng, floor: i32, pool: &[Affix]) -> (Color, i32, Affix) {
@@ -1168,8 +1181,12 @@ impl Merchant {
 
 impl Item {
     pub fn roll(floor: i32, x: i32, y: i32, rng: &mut Rng) -> Item {
-        if floor >= 4 && rng.chance(0.012) {
-            return Item { x, y, glyph: '\u{2609}', color: (255, 236, 150), kind: ItemKind::AncientEye };
+        if floor >= 4 && rng.chance(0.02) {
+            return match rng.below(3) {
+                0 => Item { x, y, glyph: '\u{2609}', color: (255, 236, 150), kind: ItemKind::AncientEye },
+                1 => Item { x, y, glyph: '\u{2604}', color: (150, 210, 235), kind: ItemKind::Hourglass },
+                _ => Item { x, y, glyph: '\u{2624}', color: (130, 235, 155), kind: ItemKind::Chalice },
+            };
         }
         let r = rng.unit();
         if r < 0.32 {

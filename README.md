@@ -44,7 +44,7 @@ Bestiary — toggle `k` for a codex of discovered monsters with their element, b
 cargo run --release
 ```
 
-A pre-game menu lets you pick a class, a playstyle (completionist / fighter / rusher), a difficulty, and a starting boon — or just let it roll random and watch.
+A pre-game menu lets you pick a class, a playstyle (completionist / fighter / rusher / looter / cautious / hunter), a difficulty, and a starting boon — or just let it roll random and watch.
 
 ## Controls
 
@@ -73,15 +73,17 @@ Progress autoloads on launch (`abyssal.save.json`).
 - Rift rooms — a rare parallel-world floor (a purple-tinted "Faille") packed with elites and loot: more monsters with a sharply higher elite rate, extra items and chests, and a guaranteed relic on entry; high risk, high reward
 - Ten biomes (Caverns, Catacombs, Frostvault, Emberdepths, Abyss, Fungal Gardens, Ruined Forge, Sunken Sanctuary, Obsidian Hive, Caldera), each with its own palette, lighting tint, biased fauna, ambient hazard, a themed champion mini-boss, a cosmetic terrain-decor layer (moss, water, bones, cracks, ice, embers, void motes) and musical key
 - Two render modes (toggle with `g`): the classic colored-glyph map, or a half-block pixel-art "sprite" view — a hero-centred camera with procedural per-archetype sprites, distinct item/feature icons, an idle bob, particles and floating damage, all drawn in any truecolor terminal with no asset files (zoom with `z`)
-- Sixteen hero classes (Warrior / Rogue / Mage / Paladin / Necromancer / Ranger / Berserker / Elementalist / Monk / Druid / Templar / Warlock / Shaman / Valkyrie / Spellblade / Sentinel) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown
+- Seventeen hero classes (Warrior / Rogue / Mage / Paladin / Necromancer / Ranger / Berserker / Elementalist / Monk / Druid / Templar / Warlock / Shaman / Valkyrie / Spellblade / Sentinel / Reaper) with distinct weapons, armor, crits, cleave and bolts, plus a class active ability the AI triggers on cooldown
+- Six AI playstyles (modes) that reshape how the hero behaves: completionist (explore everything), fighter (seek combat), rusher (dive for stairs), looter (grab treasure, dodge fights), cautious (heal, disengage, retreat to stairs when threatened) and hunter (chase every monster, race boss to boss)
+- Eight talents rolled on level-up — berserk crit, lifesteal, +max HP, cleave, chain lightning, regen, scout (+vision) and steel skin (-incoming damage)
 - Five weapon families (light / heavy / staff / martial fists / bows) and four armor families (cloth / leather / plate / mail), each with six (weapons) or five (armor) tiers from starter gear up to legendary endgame pieces
 - Rare lost human companions: every so often a survivor is found stranded deep in the dungeon and joins you — a named, persistent ally with a role (guard / huntress / medic), distinct behavior (tanking, ranged shots, healing you), who follows across floors, levels up alongside the hero, and fights at your side until it falls (up to two at once)
 - Combat depth: weapon procs (bleeding wounds, armor-sundering hits) on top of the elemental affixes, plus universal crit-bleed and low-HP execute finishers
 - Rift world-bosses: the rare parallel-world floors are stalked by an over-leveled "Guardian of the Rift" on top of the elite swarm
-- A bestiary of ~40 monster kinds across the depth range, each with its glyph, element, behavior and a procedural sprite
+- A bestiary of ~42 monster kinds across the depth range, each with its glyph, element, behavior and a procedural sprite
 - Summoned allies: the Necromancer raises slain monsters as temporary undead that fight alongside the hero (a reusable allied-unit system)
 - Unique relics dropped by bosses and champions with special effects (lifesteal on kill, ghostly dodge, chain-lightning procs, burning hits, +max HP, raise-the-dead for any class, low-HP frenzy damage, greed for extra gold/potions)
-- The Ancient Eye: a rare, single-use relic that, when picked up, dispels the entire floor's fog of war at once — every tile revealed regardless of distance or walls
+- Rare single-use ancient relics found as loot: the Ancient Eye (dispels the whole floor's fog of war at once, through walls and distance), the Hourglass (freezes every non-boss monster on the floor) and the Chalice of Life (full heal, cleanse, and +12 permanent max HP)
 - Four scroll types the AI reads situationally: fireball (AoE), freeze (crowd control), teleport (escape) and chain lightning (arcs between several foes)
 - Atmosphere: per-biome lore lines, boss intros, and ambient particles (embers, snow, fog) drifting through the lit area
 - Elemental synergies: shatter frozen foes for bonus damage, lightning that arcs to a nearby enemy, and poison that spreads between adjacent monsters

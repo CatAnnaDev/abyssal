@@ -44,7 +44,7 @@ Bestiaire — touche `k` pour un codex des monstres découverts avec leur élém
 cargo run --release
 ```
 
-Un menu d'avant-partie permet de choisir une classe, un état d'esprit (complétionniste / combattant / rusher), une difficulté et un trait de départ — ou de tout laisser au hasard et regarder.
+Un menu d'avant-partie permet de choisir une classe, un état d'esprit (complétionniste / combattant / rusher / pilleur / prudent / traqueur), une difficulté et un trait de départ — ou de tout laisser au hasard et regarder.
 
 ## Contrôles
 
@@ -73,15 +73,17 @@ La progression se charge automatiquement au lancement (`abyssal.save.json`).
 - Salles Faille — un étage de monde parallèle rare (une « Faille » teintée de violet) gorgé d'élites et de butin : plus de monstres avec un taux d'élite très élevé, objets et coffres supplémentaires, et une relique garantie à l'entrée ; gros risque, grosse récompense
 - Dix biomes (Cavernes, Catacombes, Glacier, Tréfonds, Abîme, Jardins Fongiques, Forge en Ruine, Sanctuaire Englouti, Ruche d'Obsidienne, Caldeira), chacun avec sa palette, sa teinte d'éclairage, sa faune biaisée, un danger ambiant, un champion thématique, une couche de décor au sol (mousse, eau, ossements, fissures, glace, braises, motes du vide) et sa tonalité musicale
 - Deux modes de rendu (touche `g`) : la carte en glyphes colorés classique, ou une vue « sprite » pixel-art en demi-blocs — caméra centrée sur le héros, sprites procéduraux par archétype, icônes d'objets distinctes, petit balancement, particules et dégâts flottants, le tout dans n'importe quel terminal truecolor sans fichier (zoom avec `z`)
-- Seize classes de héros (Guerrier / Voleur / Mage / Paladin / Nécromancien / Rôdeur / Berserker / Élémentaliste / Moine / Druide / Templier / Occultiste / Chaman / Valkyrie / Lame-Sort / Sentinelle), armes/armures/crit/cleave/bolts distincts, plus une capacité active déclenchée par l'IA en cooldown
+- Dix-sept classes de héros (Guerrier / Voleur / Mage / Paladin / Nécromancien / Rôdeur / Berserker / Élémentaliste / Moine / Druide / Templier / Occultiste / Chaman / Valkyrie / Lame-Sort / Sentinelle / Faucheur), armes/armures/crit/cleave/bolts distincts, plus une capacité active déclenchée par l'IA en cooldown
+- Six états d'esprit (modes) qui changent le comportement du héros : complétionniste (tout explorer), combattant (chercher le combat), rusher (foncer vers l'escalier), pilleur (rafler le butin, éviter les combats), prudent (se soigner, se replier vers l'escalier en cas de danger) et traqueur (pourchasser chaque monstre, enchaîner les boss)
+- Huit talents tirés à la montée de niveau — crit berserk, vol de vie, +PV max, cleave, chaîne d'éclairs, régénération, éclaireur (+vision) et peau d'acier (-dégâts subis)
 - Cinq familles d'armes (légère / lourde / magique / poings martiaux / arcs) et quatre familles d'armures (tissu / cuir / plaque / mailles), chacune avec six paliers (armes) ou cinq (armures), du matériel de départ jusqu'aux pièces légendaires de fin de partie
 - Compagnons humains perdus et rares : de temps en temps un survivant est retrouvé échoué au fond du donjon et vous rejoint — un allié nommé et persistant avec un rôle (garde / archère / guérisseur), un comportement propre (encaisser, tirer à distance, vous soigner), qui vous suit d'étage en étage, monte en niveau avec le héros et combat jusqu'à ce qu'il tombe (jusqu'à deux à la fois)
 - Profondeur de combat : procs d'arme (plaies saignantes, coups brise-garde) en plus des affixes élémentaires, plus saignement universel sur critique et exécution des ennemis à bas PV
 - World-boss des Failles : les rares étages du monde parallèle sont hantés par un « Gardien de la Faille » surpuissant en plus de la nuée d'élites
-- Un bestiaire d'environ 40 monstres sur toute la profondeur, chacun avec son glyphe, son élément, son comportement et un sprite procédural
+- Un bestiaire d'environ 42 monstres sur toute la profondeur, chacun avec son glyphe, son élément, son comportement et un sprite procédural
 - Alliés invoqués : le Nécromancien relève les monstres tués en morts-vivants temporaires qui combattent à ses côtés (système d'unités alliées réutilisable)
 - Reliques uniques lâchées par les boss et champions, à effets spéciaux (vol de vie aux kills, esquive spectrale, éclairs en chaîne, coups enflammés, +PV max, levée des morts pour toute classe, furie à bas PV, cupidité pour plus d'or/potions)
-- L'Œil Antique : une relique rare à usage unique qui, une fois ramassée, dissipe d'un coup tout le brouillard de l'étage — chaque case révélée quelle que soit la distance ou les murs
+- Reliques antiques rares à usage unique trouvées en butin : l'Œil Antique (dissipe d'un coup tout le brouillard de l'étage, à travers murs et distance), le Sablier du Temps (fige tous les monstres non-boss de l'étage) et le Calice de Vie (soins complets, purge des maux, +12 PV max permanents)
 - Quatre types de parchemins lus selon la situation : boule de feu (zone), gel (contrôle), téléportation (fuite) et chaîne d'éclairs (rebondit entre plusieurs ennemis)
 - Ambiance : phrases de lore par biome, intros de boss, et particules d'ambiance (braises, neige, brume) qui flottent dans la zone éclairée
 - Synergies élémentaires : « shatter » des ennemis gelés pour des dégâts bonus, foudre qui rebondit sur un ennemi proche, poison qui se propage entre monstres adjacents

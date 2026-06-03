@@ -29,6 +29,12 @@ Le menu (`main.rs`) lit `CLASSES` automatiquement : rien d'autre à faire.
 
 `roll_biome`, le rendu, la musique et les particules suivent automatiquement.
 
+## Ajouter un mode (état d'esprit)
+
+1. Ajoute une variante à `enum Playstyle` (`game.rs`) et à `Playstyle::ALL`.
+2. Ajoute son `label`, un bras dans le dispatch de `hero_turn` pointant vers une `fn turn_xxx` (compose les helpers `act_hunt`/`act_loot`/`act_feature`/`act_merchant`/`act_explore`/`act_to_stairs`), et un bras dans `room_appeal`.
+3. Ajoute `("Nom", Playstyle::Xxx)` à `M_MODES` (`main.rs`).
+
 ## Ajouter une difficulté
 
 Ajoute une ligne `(label, multiplicateur)` à `DIFFICULTIES` (`game.rs`). Le menu la propose aussitôt.

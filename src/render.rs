@@ -531,6 +531,7 @@ fn item_sprite(glyph: char) -> &'static [&'static str; 4] {
         '\u{2666}' => &SPR_AMULET,
         '?' => &SPR_SCROLL,
         '\u{2609}' => &SPR_EYE,
+        '\u{2624}' => &SPR_POTION,
         _ => &SPR_ITEM,
     }
 }
@@ -555,8 +556,9 @@ fn monster_sprite(m: &crate::entity::Monster) -> &'static [&'static str; 4] {
         'a' => &SPR_ARCHER,
         'w' | 'S' | 'c' | 'N' | 'f' => &SPR_CASTER,
         'O' | 'T' | 'P' | 'B' | 'C' => &SPR_BRUTE,
-        'D' | 'i' => &SPR_DEMON,
-        'Y' | 'A' | 'Q' | 'H' => &SPR_DRAGON,
+        'D' | 'i' | 'V' => &SPR_DEMON,
+        'F' => &SPR_CASTER,
+        'Y' | 'A' | 'Q' | 'H' | 'y' => &SPR_DRAGON,
         'z' => &SPR_BOMB,
         'j' => &SPR_BLOB,
         'e' => &SPR_FLAME,
