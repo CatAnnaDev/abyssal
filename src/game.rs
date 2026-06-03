@@ -548,6 +548,12 @@ pub struct Game {
     pub objective_done: bool,
     pub objective_target: i32,
     pub floor_turns: i32,
+    #[serde(skip)]
+    floor_start_kills: i32,
+    #[serde(skip)]
+    floor_start_gold: i32,
+    #[serde(skip)]
+    floor_items: i32,
     pub start_class: Option<HeroClass>,
     pub diff_mult: f32,
     pub diff_label: String,
@@ -696,6 +702,9 @@ impl Game {
             objective_done: false,
             objective_target: 0,
             floor_turns: 0,
+            floor_start_kills: 0,
+            floor_start_gold: 0,
+            floor_items: 0,
             start_class,
             diff_mult,
             diff_label,
@@ -998,6 +1007,9 @@ impl Game {
             self.allies[k].hp = self.allies[k].max_hp;
         }
         self.floor_turns = 0;
+        self.floor_start_kills = self.hero.kills;
+        self.floor_start_gold = self.hero.gold;
+        self.floor_items = 0;
         self.objective = Objective::None;
         self.objective_done = false;
         self.objective_target = 0;
@@ -2280,8 +2292,8 @@ impl Game {
                 self.fx.label(mx, my, "BOSS VAINCU", (255, 220, 90));
                 self.push_log(format!("BOSS VAINCU : {} ! (+{} XP)", name, m.xp_reward), WARN);
                 self.unlock("boss", "Tueur de boss");
-            } else {
-                self.push_log(format!("Vous terrassez le {} ! (+{} XP)", name, m.xp_reward), GOOD);
+            } else if m.elite {
+                self.push_log(format!("Elite vaincu : {} ! (+{} XP)", name, m.xp_reward), GOOD);
             }
             if self.total_kills == 1 {
                 self.unlock("first_blood", "Premier sang");
@@ -2308,8 +2320,6 @@ impl Game {
                     a.level_up();
                 }
             }
-        } else {
-            self.push_log(format!("Vous touchez le {} ({} degats).", name, dmg), WHITE);
         }
 
         let storm = self.hero.has_relic(Relic::Storm) && self.rng.chance(0.3);
@@ -2707,20 +2717,20 @@ impl Game {
         if let Some(i) = self.items.iter().position(|it| it.x == hx && it.y == hy) {
             let item = self.items.swap_remove(i);
             let rarity = item.color;
+            if !matches!(item.kind, ItemKind::Gold(_)) {
+                self.floor_items += 1;
+            }
             match item.kind {
                 ItemKind::Gold(amount) => {
                     self.hero.gold += amount;
                     self.sfx.push(Sound::Gold);
-                    self.push_log(format!("Vous ramassez {} pieces d'or.", amount), GOLD);
                 }
                 ItemKind::Potion => {
                     self.hero.potions += 1;
-                    self.push_log("Vous trouvez une potion de soin.".into(), MAGIC);
                 }
                 ItemKind::Weapon(bonus, name, affix, wclass) => {
                     if wclass != self.class.weapon_class() {
                         self.hero.gold += bonus + 4;
-                        self.push_log(format!("Vous revendez : {} ({}).", name, wclass.label()), DIM);
                     } else if bonus > self.hero.weapon_bonus
                         || (bonus == self.hero.weapon_bonus && affix != Affix::None)
                     {
@@ -2731,13 +2741,11 @@ impl Game {
                         self.push_log(format!("Vous equipez : {} (ATQ {}).", self.hero.weapon, self.hero.atk()), rarity);
                     } else {
                         self.hero.gold += bonus;
-                        self.push_log(format!("Vous revendez : {}.", name), DIM);
                     }
                 }
                 ItemKind::Armor(bonus, name, affix, aclass) => {
                     if aclass != self.class.armor_class() {
                         self.hero.gold += bonus + 4;
-                        self.push_log(format!("Vous revendez : {} ({}).", name, aclass.label()), DIM);
                     } else if bonus > self.hero.armor_bonus
                         || (bonus == self.hero.armor_bonus && affix != Affix::None)
                     {
@@ -2748,7 +2756,6 @@ impl Game {
                         self.push_log(format!("Vous equipez : {} (DEF {}).", self.hero.armor, self.hero.def()), rarity);
                     } else {
                         self.hero.gold += bonus;
-                        self.push_log(format!("Vous revendez : {}.", name), DIM);
                     }
                 }
                 ItemKind::Ring(bonus, affix) => {
@@ -2758,7 +2765,6 @@ impl Game {
                         self.push_log(format!("Anneau equipe (+{} ATQ, {}).", bonus, affix.label()), rarity);
                     } else {
                         self.hero.gold += 8;
-                        self.push_log("Vous revendez un anneau.".into(), DIM);
                     }
                 }
                 ItemKind::Amulet(bonus, affix) => {
@@ -2768,13 +2774,11 @@ impl Game {
                         self.push_log(format!("Amulette equipee (+{} DEF, {}).", bonus, affix.label()), rarity);
                     } else {
                         self.hero.gold += 8;
-                        self.push_log("Vous revendez une amulette.".into(), DIM);
                     }
                 }
                 ItemKind::Scroll(kind) => {
                     self.hero.scrolls.push(kind);
                     self.sfx.push(Sound::Item);
-                    self.push_log(format!("Parchemin ramasse : {}.", kind.label()), (235, 235, 170));
                 }
                 ItemKind::AncientEye => {
                     self.map.reveal_all();
@@ -3859,10 +3863,31 @@ impl Game {
         }
     }
 
+    fn log_floor_summary(&mut self) {
+        let kills = self.hero.kills - self.floor_start_kills;
+        let gold = self.hero.gold - self.floor_start_gold;
+        let items = self.floor_items;
+        if kills <= 0 && items <= 0 && gold <= 0 {
+            return;
+        }
+        let mut parts: Vec<String> = Vec::new();
+        if kills > 0 {
+            parts.push(format!("{} tues", kills));
+        }
+        if gold > 0 {
+            parts.push(format!("+{} or", gold));
+        }
+        if items > 0 {
+            parts.push(format!("{} objets", items));
+        }
+        self.push_log(format!("Etage {} boucle : {}.", self.floor, parts.join(", ")), (150, 195, 175));
+    }
+
     fn descend(&mut self) {
         if self.objective == Objective::Swift && !self.objective_done && self.floor_turns <= self.objective_target {
             self.complete_objective();
         }
+        self.log_floor_summary();
         self.floor += 1;
         self.choose_branch();
         self.best_floor = self.best_floor.max(self.floor);

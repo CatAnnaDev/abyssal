@@ -21,6 +21,7 @@ pub enum ArmorClass {
 }
 
 impl WeaponClass {
+    #[allow(dead_code)]
     pub fn label(self) -> &'static str {
         match self {
             WeaponClass::Light => "leger",
@@ -33,6 +34,7 @@ impl WeaponClass {
 }
 
 impl ArmorClass {
+    #[allow(dead_code)]
     pub fn label(self) -> &'static str {
         match self {
             ArmorClass::Cloth => "tissu",
@@ -225,6 +227,7 @@ pub enum ScrollKind {
 }
 
 impl ScrollKind {
+    #[allow(dead_code)]
     pub fn label(self) -> &'static str {
         match self {
             ScrollKind::Fireball => "boule de feu",
