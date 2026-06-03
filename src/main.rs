@@ -83,6 +83,11 @@ struct Setup {
     diff_label: String,
     boon: Boon,
     boss_rush: bool,
+    mutator_pref: i32,
+    start_pet: bool,
+    speed_idx: usize,
+    sprite: bool,
+    muted: bool,
 }
 
 enum MenuResult {
@@ -108,6 +113,22 @@ const M_MODES: [(&str, Playstyle); 6] = [
 ];
 const M_DIFFS: &[(&str, f32)] = game::DIFFICULTIES;
 const M_VARIANTS: [(&str, bool); 2] = [("Normal", false), ("Boss Rush", true)];
+const M_MUTATORS: [(&str, i32); 3] = [("Aleatoire", 0), ("Aucun", 1), ("Garanti", 2)];
+const M_FAMILIAR: [(&str, bool); 2] = [("Aucun", false), ("Au depart", true)];
+const M_DISPLAY: [(&str, bool); 2] = [("Glyphes", false), ("Sprites", true)];
+const M_SOUND: [(&str, bool); 2] = [("Active", false), ("Coupe", true)];
+const M_HINTS: [&str; 10] = [
+    "La classe definit arme, armure, capacite et style de jeu.",
+    "L'etat d'esprit pilote l'IA : explorer, combattre, fuir, piller...",
+    "La difficulte ajuste les PV et l'attaque des monstres.",
+    "Un trait de depart : bonus de PV, d'ATQ ou d'or/potions.",
+    "Boss Rush : un boss par etage des l'etage 10 (sans sauvegarde).",
+    "Mutateurs : modificateurs de run (spawns, scaling, recompenses).",
+    "Demarrer accompagne d'un familier qui monte en niveau avec vous.",
+    "Vitesse de simulation au lancement (modifiable avec +/-).",
+    "Affichage au lancement : carte en glyphes ou sprites pixel-art.",
+    "Son actif ou coupe au lancement (touche 'a' en jeu).",
+];
 const M_BOONS: [(&str, Boon); 4] = [
     ("Aucun", Boon::None),
     ("Robuste", Boon::Tough),
@@ -119,16 +140,42 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
     use std::fmt::Write as _;
     use std::io::Write as _;
     let mut sel = 0i32;
-    let mut idx = [0usize, 1, 1, 0, 0];
-    let labels = ["Classe", "Mode de jeu", "Difficulte", "Trait de depart", "Variante"];
+    let mut idx = [0usize, 1, 1, 0, 0, 0, 0, 1, 0, 0];
+    let labels = [
+        "Classe",
+        "Etat d'esprit",
+        "Difficulte",
+        "Trait de depart",
+        "Variante",
+        "Mutateurs",
+        "Familier",
+        "Vitesse",
+        "Affichage",
+        "Son",
+    ];
     let m_classes = class_choices();
+    let nrows = labels.len();
+    let lens = |i: usize| -> usize {
+        [
+            m_classes.len(),
+            M_MODES.len(),
+            M_DIFFS.len(),
+            M_BOONS.len(),
+            M_VARIANTS.len(),
+            M_MUTATORS.len(),
+            M_FAMILIAR.len(),
+            SPEEDS.len(),
+            M_DISPLAY.len(),
+            M_SOUND.len(),
+        ][i]
+    };
     loop {
         let mut buf = String::new();
         buf.push_str("\x1b[2J\x1b[H");
-        let bw = 52i32;
-        let bh = 20i32;
+        let bw = 64i32;
+        let bh = (nrows as i32) + 12;
         let ox = (cols - bw) / 2;
-        let oy = (rows - bh) / 2;
+        let oy = ((rows - bh) / 2).max(0);
         let c = (120, 120, 150);
         let put = |buf: &mut String, x: i32, y: i32, col: (u8, u8, u8), s: &str| {
             let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;{};{};{}m{}", y, x, col.0, col.1, col.2, s);
@@ -148,7 +195,7 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
         }
         buf.push('\u{255d}');
 
-        put(&mut buf, ox + 3, oy + 1, (255, 225, 130), "ABYSSAL  —  nouvelle exploration");
+        put(&mut buf, ox + 3, oy + 1, (255, 225, 130), "ABYSSAL  —  configuration de la run");
         put(&mut buf, ox + 3, oy + 2, c, &"\u{2500}".repeat((bw - 6) as usize));
 
         let values = [
@@ -157,32 +204,42 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
             M_DIFFS[idx[2]].0,
             M_BOONS[idx[3]].0,
             M_VARIANTS[idx[4]].0,
+            M_MUTATORS[idx[5]].0,
+            M_FAMILIAR[idx[6]].0,
+            SPEEDS[idx[7]].0,
+            M_DISPLAY[idx[8]].0,
+            M_SOUND[idx[9]].0,
         ];
-        for r in 0..5usize {
-            let y = oy + 4 + r as i32 * 2;
+        for r in 0..nrows {
+            let y = oy + 3 + r as i32;
             let arrow = if sel == r as i32 { "\u{25b6} " } else { "  " };
             let lab_col = if sel == r as i32 { (255, 230, 140) } else { (170, 170, 185) };
+            let val_col = if sel == r as i32 { (255, 245, 200) } else { (200, 210, 225) };
             put(&mut buf, ox + 3, y, lab_col, &format!("{}{:<16}", arrow, labels[r]));
-            put(&mut buf, ox + 24, y, (210, 220, 235), &format!("\u{2039} {:^14} \u{203a}", values[r]));
+            put(&mut buf, ox + 26, y, val_col, &format!("\u{2039} {:^16} \u{203a}", values[r]));
         }
 
+        let sep1 = oy + 3 + nrows as i32;
+        put(&mut buf, ox + 3, sep1, c, &"\u{2500}".repeat((bw - 6) as usize));
+        let clamp = |s: String| -> String { s.chars().take((bw - 6) as usize).collect() };
+        put(&mut buf, ox + 3, sep1 + 1, (150, 190, 220), &clamp(format!("\u{2192} {}", M_HINTS[sel as usize])));
+
         if profile.runs > 0 {
-            let clamp = |s: String| -> String { s.chars().take((bw - 6) as usize).collect() };
             put(
                 &mut buf,
                 ox + 3,
-                oy + bh - 6,
+                sep1 + 2,
                 (170, 150, 110),
                 &clamp(format!("Profil: {} runs · etage {} · score {} · asc {}", profile.runs, profile.best_floor, profile.best_score, profile.ascension)),
             );
             let perks = profile.perk_labels();
             let perks_txt = if perks.is_empty() { "aucun (atteins l'etage 4...)".to_string() } else { perks.join(", ") };
-            put(&mut buf, ox + 3, oy + bh - 5, (150, 200, 140), &clamp(format!("Bonus: {}", perks_txt)));
+            put(&mut buf, ox + 3, sep1 + 3, (150, 200, 140), &clamp(format!("Bonus: {}", perks_txt)));
         }
-        put(&mut buf, ox + 3, oy + bh - 4, c, &"\u{2500}".repeat((bw - 6) as usize));
-        put(&mut buf, ox + 3, oy + bh - 3, (150, 200, 150), "Entree: lancer    fleches: choisir/changer");
+        put(&mut buf, ox + 3, oy + bh - 3, c, &"\u{2500}".repeat((bw - 6) as usize));
+        put(&mut buf, ox + 3, oy + bh - 2, (150, 200, 150), "fleches: choisir/changer    Entree: lancer");
         let cont = if has_save { "c: continuer la sauvegarde    q: quitter" } else { "q: quitter" };
-        put(&mut buf, ox + 3, oy + bh - 2, (150, 150, 170), cont);
+        put(&mut buf, ox + 34, oy + bh - 2, (150, 150, 170), cont);
 
         buf.push_str("\x1b[0m");
         let _ = stdout.write_all(buf.as_bytes());
@@ -196,14 +253,14 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
                 match k.code {
                     KeyCode::Char('q') | KeyCode::Esc => return Ok(MenuResult::Quit),
                     KeyCode::Char('c') if has_save => return Ok(MenuResult::Continue),
-                    KeyCode::Up => sel = (sel + 4) % 5,
-                    KeyCode::Down => sel = (sel + 1) % 5,
+                    KeyCode::Up => sel = (sel + nrows as i32 - 1) % nrows as i32,
+                    KeyCode::Down => sel = (sel + 1) % nrows as i32,
                     KeyCode::Left => {
-                        let len = [m_classes.len(), M_MODES.len(), M_DIFFS.len(), M_BOONS.len(), M_VARIANTS.len()][sel as usize];
+                        let len = lens(sel as usize);
                         idx[sel as usize] = (idx[sel as usize] + len - 1) % len;
                     }
                     KeyCode::Right => {
-                        let len = [m_classes.len(), M_MODES.len(), M_DIFFS.len(), M_BOONS.len(), M_VARIANTS.len()][sel as usize];
+                        let len = lens(sel as usize);
                         idx[sel as usize] = (idx[sel as usize] + 1) % len;
                     }
                     KeyCode::Enter => {
@@ -214,6 +271,11 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
                             diff_label: M_DIFFS[idx[2]].0.to_string(),
                             boon: M_BOONS[idx[3]].1,
                             boss_rush: M_VARIANTS[idx[4]].1,
+                            mutator_pref: M_MUTATORS[idx[5]].1,
+                            start_pet: M_FAMILIAR[idx[6]].1,
+                            speed_idx: idx[7],
+                            sprite: M_DISPLAY[idx[8]].1,
+                            muted: M_SOUND[idx[9]].1,
                         }));
                     }
                     _ => {}
@@ -233,7 +295,7 @@ fn dims(cols: u16, rows: u16) -> (i32, i32, i32, i32) {
 
 fn build_game(map_w: i32, map_h: i32, setup: &Option<Setup>, meta: (i32, i32, i32, bool, i32)) -> Game {
     match setup {
-        Some(s) => Game::new_with(map_w, map_h, seed(), s.class, s.style, s.diff_mult, s.diff_label.clone(), s.boon, meta, s.boss_rush),
+        Some(s) => Game::new_with(map_w, map_h, seed(), s.class, s.style, s.diff_mult, s.diff_label.clone(), s.boon, meta, s.boss_rush, s.mutator_pref, s.start_pet),
         None => Game::new(map_w, map_h, seed()),
     }
 }
@@ -249,7 +311,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         MenuResult::Quit => return Ok(()),
         MenuResult::Continue => Game::load().unwrap_or_else(|| Game::new(map_w, map_h, seed())),
         MenuResult::Start(s) => {
-            let g = Game::new_with(map_w, map_h, seed(), s.class, s.style, s.diff_mult, s.diff_label.clone(), s.boon, profile.meta(), s.boss_rush);
+            let g = Game::new_with(map_w, map_h, seed(), s.class, s.style, s.diff_mult, s.diff_label.clone(), s.boon, profile.meta(), s.boss_rush, s.mutator_pref, s.start_pet);
             setup = Some(s);
             g
         }
@@ -258,7 +320,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
 
     let cfg = Config::load_or_create();
     let mut audio = audio::Audio::new(cfg.ambient_enabled, cfg.master_volume, cfg.ambient_volume);
-    audio.muted = !cfg.sound_enabled;
+    audio.muted = !cfg.sound_enabled || setup.as_ref().map_or(false, |s| s.muted);
     let votes = if cfg.twitch_active() {
         Some(twitch::connect(&cfg.twitch_channel))
     } else {
@@ -270,9 +332,9 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
     let mut speed_votes: i32 = 0;
     let mut vote_clock = 0.0f32;
 
-    let mut speed = 1usize;
+    let mut speed = setup.as_ref().map_or(1, |s| s.speed_idx.min(SPEEDS.len() - 1));
     let mut paused = false;
-    let mut sprite_mode = false;
+    let mut sprite_mode = setup.as_ref().map_or(false, |s| s.sprite);
     let sprite_zooms = [3i32, 4, 6];
     let mut zoom_idx = 1usize;
     let mut accumulator = 0.0f32;

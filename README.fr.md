@@ -44,7 +44,7 @@ Bestiaire — touche `k` pour un codex des monstres découverts avec leur élém
 cargo run --release
 ```
 
-Un menu d'avant-partie permet de choisir une classe, un état d'esprit (complétionniste / combattant / rusher / pilleur / prudent / traqueur), une difficulté, un trait de départ et une variante (Normal ou Boss Rush) — ou de tout laisser au hasard et regarder.
+Un grand menu d'avant-partie permet de configurer la run sur dix axes — classe, état d'esprit (complétionniste / combattant / rusher / pilleur / prudent / traqueur), difficulté, trait de départ, variante (Normal ou Boss Rush), mutateurs (aléatoire / aucun / garanti), familier de départ, vitesse de simulation, affichage (glyphes ou sprites) et son — chacun avec une description en ligne. Ou laisse tout par défaut / au hasard et regarde.
 
 ## Contrôles
 

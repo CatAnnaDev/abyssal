@@ -44,7 +44,7 @@ Bestiary — toggle `k` for a codex of discovered monsters with their element, b
 cargo run --release
 ```
 
-A pre-game menu lets you pick a class, a playstyle (completionist / fighter / rusher / looter / cautious / hunter), a difficulty, a starting boon, and a variant (Normal or Boss Rush) — or just let it roll random and watch.
+A roomy pre-game menu lets you configure the run across ten axes — class, playstyle (completionist / fighter / rusher / looter / cautious / hunter), difficulty, starting boon, variant (Normal or Boss Rush), mutators (random / none / guaranteed), starting familiar, simulation speed, display (glyphs or sprites) and sound — each with an inline hint. Or just leave it all on the defaults / random and watch.
 
 ## Controls
 

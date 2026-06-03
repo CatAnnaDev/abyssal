@@ -565,6 +565,10 @@ pub struct Game {
     #[serde(default)]
     pub boss_rush: bool,
     #[serde(default)]
+    pub mutator_pref: i32,
+    #[serde(default)]
+    pub start_pet: bool,
+    #[serde(default)]
     meta_hp: i32,
     #[serde(default)]
     meta_might: i32,
@@ -646,7 +650,7 @@ const MAGIC: Color = (160, 150, 240);
 
 impl Game {
     pub fn new(map_w: i32, map_h: i32, seed: u64) -> Self {
-        Game::new_with(map_w, map_h, seed, None, Playstyle::Completionist, 1.0, "Normal".to_string(), Boon::None, (0, 0, 0, false, 0), false)
+        Game::new_with(map_w, map_h, seed, None, Playstyle::Completionist, 1.0, "Normal".to_string(), Boon::None, (0, 0, 0, false, 0), false, 0, false)
     }
 
     pub fn new_with(
@@ -660,6 +664,8 @@ impl Game {
         boon: Boon,
         meta: (i32, i32, i32, bool, i32),
         boss_rush: bool,
+        mutator_pref: i32,
+        start_pet: bool,
     ) -> Self {
         let mut rng = Rng::from_seed(seed);
         let class = start_class.unwrap_or_else(|| HeroClass::pick(&mut rng));
@@ -712,6 +718,8 @@ impl Game {
             mutators: Vec::new(),
             ascension: meta.4,
             boss_rush,
+            mutator_pref,
+            start_pet,
             meta_hp: meta.0,
             meta_might: meta.1,
             meta_pot: meta.2,
@@ -1038,6 +1046,14 @@ impl Game {
                     break;
                 }
             }
+        }
+        if first && self.start_pet && self.pet.is_none() {
+            let spot = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1)]
+                .into_iter()
+                .map(|(dx, dy)| (hx + dx, hy + dy))
+                .find(|&(x, y)| self.map.is_walkable(x, y) && self.monster_at(x, y).is_none())
+                .unwrap_or((hx, hy));
+            self.pet = Some(Pet::new(self.floor, spot.0, spot.1, &mut self.rng));
         }
 
         self.explore_target = None;
@@ -1482,7 +1498,10 @@ impl Game {
 
     fn roll_mutators(&mut self) {
         self.mutators.clear();
-        if !self.rng.chance(0.55) {
+        if self.mutator_pref == 1 {
+            return;
+        }
+        if self.mutator_pref != 2 && !self.rng.chance(0.55) {
             return;
         }
         let mut pool: Vec<Mutator> = Mutator::ALL.to_vec();
@@ -4041,5 +4060,20 @@ mod tests {
 #[cfg(test)]
 fn super_panel() -> i32 {
     34
+}
+
+#[cfg(test)]
+mod setup_opts {
+    use super::*;
+    #[test]
+    fn options_apply() {
+        let g = Game::new_with(80, 30, 1, Some(HeroClass::Warrior), Playstyle::Combatant, 1.0, "Normal".into(), Boon::None, (0, 0, 0, false, 0), false, 2, true);
+        assert!(g.pet.is_some(), "start_pet should spawn a familiar");
+        assert!(!g.mutators.is_empty(), "mutator_pref=2 should guarantee a mutator");
+
+        let g2 = Game::new_with(80, 30, 1, Some(HeroClass::Warrior), Playstyle::Combatant, 1.0, "Normal".into(), Boon::None, (0, 0, 0, false, 0), false, 1, false);
+        assert!(g2.pet.is_none(), "no start_pet -> no familiar");
+        assert!(g2.mutators.is_empty(), "mutator_pref=1 should disable mutators");
+    }
 }
 
