@@ -56,6 +56,7 @@ Le jeu se joue tout seul. Les entrées sont optionnelles :
 | `+` / `-` | plus vite / moins vite (lent → ultra) |
 | `m` / `1` `2` `3` | changer / fixer l'état d'esprit du héros |
 | `a` | couper / réactiver le son |
+| `o` | ouvrir le menu d'options en jeu (met le jeu en pause) |
 | `g` | basculer vue sprite (pixel-art demi-blocs) / carte glyphes classique |
 | `z` | changer le zoom de la vue sprite |
 | `k` | ouvrir / fermer le bestiaire |

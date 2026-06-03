@@ -56,6 +56,7 @@ The game plays itself. Input is optional:
 | `+` / `-` | faster / slower (lent → ultra) |
 | `m` / `1` `2` `3` | cycle / set the hero's mindset |
 | `a` | mute / unmute sound |
+| `o` | open the in-game options menu (pauses the game) |
 | `g` | toggle sprite view (half-block pixel-art) / classic glyph map |
 | `z` | cycle sprite-view zoom |
 | `k` | open / close the bestiary codex |

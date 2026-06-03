@@ -445,7 +445,7 @@ pub struct Audio {
 impl Audio {
     pub fn new(ambient_on: bool, master_volume: f32, ambient_volume: f32) -> Self {
         let volume = master_volume.clamp(0.0, 2.0);
-        let music_level = (ambient_volume * volume).clamp(0.0, 2.0);
+        let music_level = ambient_volume.clamp(0.0, 2.0);
         let voice = 0i32;
         match OutputStream::try_default() {
             Ok((stream, handle)) => {
@@ -494,6 +494,11 @@ impl Audio {
         }
     }
 
+    pub fn set_levels(&mut self, sfx: f32, music: f32) {
+        self.volume = sfx.clamp(0.0, 2.0);
+        self.music_level = music.clamp(0.0, 2.0);
+    }
+
     pub fn set_music_mode(&mut self, mode: MusicMode) {
         if self.music.len() < 3 {
             return;
@@ -522,7 +527,11 @@ impl Audio {
     }
 
     pub fn toggle_mute(&mut self) {
-        self.muted = !self.muted;
+        self.set_muted(!self.muted);
+    }
+
+    pub fn set_muted(&mut self, m: bool) {
+        self.muted = m;
         for st in self.music.iter() {
             if self.muted {
                 st.sink.pause();

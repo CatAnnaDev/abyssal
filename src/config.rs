@@ -64,4 +64,10 @@ impl Config {
     pub fn twitch_active(&self) -> bool {
         self.twitch_enabled && !self.twitch_channel.trim().is_empty()
     }
+
+    pub fn save(&self) {
+        if let Ok(json) = serde_json::to_string_pretty(self) {
+            let _ = std::fs::write(CONFIG_PATH, json);
+        }
+    }
 }

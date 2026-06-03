@@ -344,6 +344,125 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
     }
 }
 
+fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, audio: &mut audio::Audio) -> io::Result<()> {
+    use std::fmt::Write as _;
+    use std::io::Write as _;
+    let mut sel = 0i32;
+    let nrows = 9i32;
+    let apply = |cfg: &Config, audio: &mut audio::Audio| {
+        let music = if cfg.ambient_enabled { cfg.ambient_volume } else { 0.0 };
+        audio.set_levels(cfg.master_volume, music);
+        audio.set_muted(!cfg.sound_enabled);
+    };
+    let bar = |v: f32| -> String {
+        let n = (v / 2.0 * 12.0).round() as i32;
+        let mut s = String::new();
+        for i in 0..12 {
+            s.push(if i < n { '\u{2588}' } else { '\u{2591}' });
+        }
+        s
+    };
+    loop {
+        let mut buf = String::new();
+        buf.push_str("\x1b[2J\x1b[H");
+        let bw = 60i32;
+        let bh = nrows + 9;
+        let ox = (cols - bw) / 2;
+        let oy = ((rows - bh) / 2).max(0);
+        let c = (120, 120, 150);
+        let put = |buf: &mut String, x: i32, y: i32, col: (u8, u8, u8), s: &str| {
+            let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;{};{};{}m{}", y, x, col.0, col.1, col.2, s);
+        };
+        put(&mut buf, ox.max(1), oy, c, "\u{2554}");
+        for _ in 0..bw - 2 {
+            buf.push('\u{2550}');
+        }
+        buf.push('\u{2557}');
+        for i in 1..bh - 1 {
+            put(&mut buf, ox.max(1), oy + i, c, "\u{2551}");
+            let _ = write!(buf, "\x1b[{};{}H\u{2551}", oy + i, ox + bw - 1);
+        }
+        put(&mut buf, ox.max(1), oy + bh - 1, c, "\u{255a}");
+        for _ in 0..bw - 2 {
+            buf.push('\u{2550}');
+        }
+        buf.push('\u{255d}');
+
+        put(&mut buf, ox + 3, oy + 1, (255, 225, 130), "OPTIONS  —  jeu en pause");
+        put(&mut buf, ox + 3, oy + 2, c, &"\u{2500}".repeat((bw - 6) as usize));
+
+        let labels = [
+            "Volume SFX",
+            "Volume musique",
+            "Musique active",
+            "Son (sourdine)",
+            "Twitch (relance)",
+            "Votes style",
+            "Votes marchand",
+            "Votes vitesse",
+            "Fenetre de vote",
+        ];
+        let values = [
+            format!("{} {:>4.1}", bar(cfg.master_volume), cfg.master_volume),
+            format!("{} {:>4.1}", bar(cfg.ambient_volume), cfg.ambient_volume),
+            if cfg.ambient_enabled { "Oui".into() } else { "Non".into() },
+            if cfg.sound_enabled { "Actif".into() } else { "Coupe".into() },
+            if cfg.twitch_enabled { "Oui".into() } else { "Non".into() },
+            if cfg.allow_style_vote { "Oui".into() } else { "Non".into() },
+            if cfg.allow_merchant_vote { "Oui".into() } else { "Non".into() },
+            if cfg.allow_speed_vote { "Oui".into() } else { "Non".into() },
+            format!("{:.0} s", cfg.vote_window_secs),
+        ];
+        for r in 0..nrows as usize {
+            let y = oy + 3 + r as i32;
+            let arrow = if sel == r as i32 { "\u{25b6} " } else { "  " };
+            let lab_col = if sel == r as i32 { (255, 230, 140) } else { (170, 170, 185) };
+            put(&mut buf, ox + 3, y, lab_col, &format!("{}{:<18}", arrow, labels[r]));
+            put(&mut buf, ox + 26, y, (210, 220, 235), &values[r]);
+        }
+        put(&mut buf, ox + 3, oy + bh - 4, c, &"\u{2500}".repeat((bw - 6) as usize));
+        put(&mut buf, ox + 3, oy + bh - 3, (160, 200, 230), "Canal Twitch : modifiable dans abyssal.config.json");
+        put(&mut buf, ox + 3, oy + bh - 2, (150, 200, 150), "fleches: ajuster    o/echap/entree: fermer");
+
+        buf.push_str("\x1b[0m");
+        let _ = stdout.write_all(buf.as_bytes());
+        let _ = stdout.flush();
+
+        if event::poll(Duration::from_millis(150))? {
+            if let Event::Key(k) = event::read()? {
+                if k.kind != KeyEventKind::Press {
+                    continue;
+                }
+                let dir = match k.code {
+                    KeyCode::Left => -1,
+                    KeyCode::Right => 1,
+                    _ => 0,
+                };
+                match k.code {
+                    KeyCode::Char('o') | KeyCode::Esc | KeyCode::Enter => return Ok(()),
+                    KeyCode::Up => sel = (sel + nrows - 1) % nrows,
+                    KeyCode::Down => sel = (sel + 1) % nrows,
+                    KeyCode::Left | KeyCode::Right => {
+                        match sel {
+                            0 => cfg.master_volume = (cfg.master_volume + 0.1 * dir as f32).clamp(0.0, 2.0),
+                            1 => cfg.ambient_volume = (cfg.ambient_volume + 0.1 * dir as f32).clamp(0.0, 2.0),
+                            2 => cfg.ambient_enabled = !cfg.ambient_enabled,
+                            3 => cfg.sound_enabled = !cfg.sound_enabled,
+                            4 => cfg.twitch_enabled = !cfg.twitch_enabled,
+                            5 => cfg.allow_style_vote = !cfg.allow_style_vote,
+                            6 => cfg.allow_merchant_vote = !cfg.allow_merchant_vote,
+                            7 => cfg.allow_speed_vote = !cfg.allow_speed_vote,
+                            _ => cfg.vote_window_secs = (cfg.vote_window_secs + dir as f32).clamp(2.0, 60.0),
+                        }
+                        apply(cfg, audio);
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
 fn dims(cols: u16, rows: u16) -> (i32, i32, i32, i32) {
     let cols = cols as i32;
     let rows = rows as i32;
@@ -377,7 +496,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
     };
     let _ = stdout.execute(Clear(ClearType::All));
 
-    let cfg = Config::load_or_create();
+    let mut cfg = Config::load_or_create();
     let mut audio = audio::Audio::new(cfg.ambient_enabled, cfg.master_volume, cfg.ambient_volume);
     audio.muted = !cfg.sound_enabled || setup.as_ref().map_or(false, |s| s.muted);
     let votes = if cfg.twitch_active() {
@@ -436,6 +555,11 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     KeyCode::Char('a') => {
                         audio.toggle_mute();
                         game.push_log(if audio.muted { "Son coupe." } else { "Son active." }.into(), (130, 235, 240));
+                    }
+                    KeyCode::Char('o') => {
+                        config_menu(stdout, cols, rows, &mut cfg, &mut audio)?;
+                        cfg.save();
+                        let _ = stdout.execute(Clear(ClearType::All));
                     }
                     KeyCode::Char('k') => {
                         game.show_codex = !game.show_codex;

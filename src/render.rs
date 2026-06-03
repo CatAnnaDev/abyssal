@@ -965,26 +965,31 @@ fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
 fn draw_shop(game: &Game, mw: i32, buf: &mut String) {
     let Some(m) = game.merchant.as_ref() else { return };
     let v = &game.merchant_votes;
+    let sep = "\u{2500}".repeat(40);
+    let afford = |p: i32| if game.hero.gold >= p { "" } else { "  (trop cher)" };
     let mut lines: Vec<String> = Vec::new();
+    lines.push(format!("Le marchand etale sa camelote.   Votre or : {}", game.hero.gold));
+    lines.push(sep.clone());
     match &m.weapon {
-        Some((name, bonus, price)) => lines.push(format!("!arme    {:<16} ATQ+{:<2} {:>4}or [{}]", name, bonus, price, v[0])),
-        None => lines.push(format!("!arme    {:<26} [{}]", "(rien)", v[0])),
+        Some((name, bonus, price)) => lines.push(format!("!arme    {:<18} ATQ+{:<2} {:>4}or [{}]{}", name, bonus, price, v[0], afford(*price))),
+        None => lines.push(format!("!arme    {:<28} [{}]", "(rien en stock)", v[0])),
     }
     match &m.armor {
-        Some((name, bonus, price)) => lines.push(format!("!armure  {:<16} DEF+{:<2} {:>4}or [{}]", name, bonus, price, v[1])),
-        None => lines.push(format!("!armure  {:<26} [{}]", "(rien)", v[1])),
+        Some((name, bonus, price)) => lines.push(format!("!armure  {:<18} DEF+{:<2} {:>4}or [{}]{}", name, bonus, price, v[1], afford(*price))),
+        None => lines.push(format!("!armure  {:<28} [{}]", "(rien en stock)", v[1])),
     }
-    lines.push(format!("!potion  {:<23} {:>4}or [{}]", "potion de soin", m.potion_price, v[2]));
-    lines.push(format!("!soin    {:<23} {:>4}or [{}]", "soin complet", m.heal_price, v[3]));
-    lines.push(format!("!reroll  {:<28} [{}]", "nouveau stock", v[4]));
-    lines.push(format!("!purge   {:<28} [{}]", "retirer les maux", v[5]));
-    lines.push(format!("!skip    {:<28} [{}]", "passer son tour", v[6]));
+    lines.push(format!("!potion  {:<25} {:>4}or [{}]{}", "potion de soin", m.potion_price, v[2], afford(m.potion_price)));
+    lines.push(format!("!soin    {:<25} {:>4}or [{}]{}", "soin complet (PV max)", m.heal_price, v[3], afford(m.heal_price)));
+    lines.push(format!("!reroll  {:<30} [{}]", "renouveler le stock", v[4]));
+    lines.push(format!("!purge   {:<30} [{}]", "retirer poison/brulure", v[5]));
+    lines.push(format!("!skip    {:<30} [{}]", "passer son tour", v[6]));
+    lines.push(sep.clone());
     lines.push(match game.forced_purchase {
-        Some(p) => format!("le chat achete: {}", p.label()),
-        None => "marchandage en cours...".to_string(),
+        Some(p) => format!("le chat a vote : {}", p.label()),
+        None => "marchandage en cours... (votez avec !arme, !potion, ...)".to_string(),
     });
 
-    let inner = lines.iter().map(|l| l.chars().count()).max().unwrap_or(20) as i32 + 2;
+    let inner = (lines.iter().map(|l| l.chars().count()).max().unwrap_or(20) as i32 + 2).max(50);
     let bw = inner + 2;
     let ox = ((mw - bw) / 2).max(0);
     let oy = 3;
