@@ -118,6 +118,11 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
         format!("  ·  \u{2622} {}", names.join("+"))
     };
     let asc = if game.ascension > 0 { format!("  ·  Asc.{}", game.ascension) } else { String::new() };
+    let rush = if game.boss_rush {
+        if game.floor >= 10 { "  ·  BOSS RUSH" } else { "  ·  Boss Rush(10)" }
+    } else {
+        ""
+    };
     let title = format!(
         " ABYSSAL  ·  etage {} {}  ·  {}  ·  run #{}  ·  {}{}{}{} ",
         game.floor,
@@ -129,7 +134,7 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
         boon,
         evt
     );
-    let title = format!("{}{}{}", title.trim_end(), asc, muts);
+    let title = format!("{}{}{}{}", title.trim_end(), asc, rush, muts);
     let title = format!("{} ", title);
     let avail = (cols - 2).max(0) as usize;
     let t: String = title.chars().take(avail).collect();

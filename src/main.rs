@@ -82,6 +82,7 @@ struct Setup {
     diff_mult: f32,
     diff_label: String,
     boon: Boon,
+    boss_rush: bool,
 }
 
 enum MenuResult {
@@ -106,6 +107,7 @@ const M_MODES: [(&str, Playstyle); 6] = [
     ("Traqueur", Playstyle::Hunter),
 ];
 const M_DIFFS: &[(&str, f32)] = game::DIFFICULTIES;
+const M_VARIANTS: [(&str, bool); 2] = [("Normal", false), ("Boss Rush", true)];
 const M_BOONS: [(&str, Boon); 4] = [
     ("Aucun", Boon::None),
     ("Robuste", Boon::Tough),
@@ -117,14 +119,14 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
     use std::fmt::Write as _;
     use std::io::Write as _;
     let mut sel = 0i32;
-    let mut idx = [0usize, 1, 1, 0];
-    let labels = ["Classe", "Mode de jeu", "Difficulte", "Trait de depart"];
+    let mut idx = [0usize, 1, 1, 0, 0];
+    let labels = ["Classe", "Mode de jeu", "Difficulte", "Trait de depart", "Variante"];
     let m_classes = class_choices();
     loop {
         let mut buf = String::new();
         buf.push_str("\x1b[2J\x1b[H");
         let bw = 52i32;
-        let bh = 18i32;
+        let bh = 20i32;
         let ox = (cols - bw) / 2;
         let oy = (rows - bh) / 2;
         let c = (120, 120, 150);
@@ -154,8 +156,9 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
             M_MODES[idx[1]].0,
             M_DIFFS[idx[2]].0,
             M_BOONS[idx[3]].0,
+            M_VARIANTS[idx[4]].0,
         ];
-        for r in 0..4usize {
+        for r in 0..5usize {
             let y = oy + 4 + r as i32 * 2;
             let arrow = if sel == r as i32 { "\u{25b6} " } else { "  " };
             let lab_col = if sel == r as i32 { (255, 230, 140) } else { (170, 170, 185) };
@@ -193,14 +196,14 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
                 match k.code {
                     KeyCode::Char('q') | KeyCode::Esc => return Ok(MenuResult::Quit),
                     KeyCode::Char('c') if has_save => return Ok(MenuResult::Continue),
-                    KeyCode::Up => sel = (sel + 3) % 4,
-                    KeyCode::Down => sel = (sel + 1) % 4,
+                    KeyCode::Up => sel = (sel + 4) % 5,
+                    KeyCode::Down => sel = (sel + 1) % 5,
                     KeyCode::Left => {
-                        let len = [m_classes.len(), M_MODES.len(), M_DIFFS.len(), M_BOONS.len()][sel as usize];
+                        let len = [m_classes.len(), M_MODES.len(), M_DIFFS.len(), M_BOONS.len(), M_VARIANTS.len()][sel as usize];
                         idx[sel as usize] = (idx[sel as usize] + len - 1) % len;
                     }
                     KeyCode::Right => {
-                        let len = [m_classes.len(), M_MODES.len(), M_DIFFS.len(), M_BOONS.len()][sel as usize];
+                        let len = [m_classes.len(), M_MODES.len(), M_DIFFS.len(), M_BOONS.len(), M_VARIANTS.len()][sel as usize];
                         idx[sel as usize] = (idx[sel as usize] + 1) % len;
                     }
                     KeyCode::Enter => {
@@ -210,6 +213,7 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
                             diff_mult: M_DIFFS[idx[2]].1,
                             diff_label: M_DIFFS[idx[2]].0.to_string(),
                             boon: M_BOONS[idx[3]].1,
+                            boss_rush: M_VARIANTS[idx[4]].1,
                         }));
                     }
                     _ => {}
@@ -229,7 +233,7 @@ fn dims(cols: u16, rows: u16) -> (i32, i32, i32, i32) {
 
 fn build_game(map_w: i32, map_h: i32, setup: &Option<Setup>, meta: (i32, i32, i32, bool, i32)) -> Game {
     match setup {
-        Some(s) => Game::new_with(map_w, map_h, seed(), s.class, s.style, s.diff_mult, s.diff_label.clone(), s.boon, meta),
+        Some(s) => Game::new_with(map_w, map_h, seed(), s.class, s.style, s.diff_mult, s.diff_label.clone(), s.boon, meta, s.boss_rush),
         None => Game::new(map_w, map_h, seed()),
     }
 }
@@ -245,7 +249,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         MenuResult::Quit => return Ok(()),
         MenuResult::Continue => Game::load().unwrap_or_else(|| Game::new(map_w, map_h, seed())),
         MenuResult::Start(s) => {
-            let g = Game::new_with(map_w, map_h, seed(), s.class, s.style, s.diff_mult, s.diff_label.clone(), s.boon, profile.meta());
+            let g = Game::new_with(map_w, map_h, seed(), s.class, s.style, s.diff_mult, s.diff_label.clone(), s.boon, profile.meta(), s.boss_rush);
             setup = Some(s);
             g
         }

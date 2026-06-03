@@ -557,6 +557,8 @@ pub struct Game {
     #[serde(default)]
     pub ascension: i32,
     #[serde(default)]
+    pub boss_rush: bool,
+    #[serde(default)]
     meta_hp: i32,
     #[serde(default)]
     meta_might: i32,
@@ -638,7 +640,7 @@ const MAGIC: Color = (160, 150, 240);
 
 impl Game {
     pub fn new(map_w: i32, map_h: i32, seed: u64) -> Self {
-        Game::new_with(map_w, map_h, seed, None, Playstyle::Completionist, 1.0, "Normal".to_string(), Boon::None, (0, 0, 0, false, 0))
+        Game::new_with(map_w, map_h, seed, None, Playstyle::Completionist, 1.0, "Normal".to_string(), Boon::None, (0, 0, 0, false, 0), false)
     }
 
     pub fn new_with(
@@ -651,6 +653,7 @@ impl Game {
         diff_label: String,
         boon: Boon,
         meta: (i32, i32, i32, bool, i32),
+        boss_rush: bool,
     ) -> Self {
         let mut rng = Rng::from_seed(seed);
         let class = start_class.unwrap_or_else(|| HeroClass::pick(&mut rng));
@@ -699,6 +702,7 @@ impl Game {
             boon,
             mutators: Vec::new(),
             ascension: meta.4,
+            boss_rush,
             meta_hp: meta.0,
             meta_might: meta.1,
             meta_pot: meta.2,
@@ -814,6 +818,9 @@ impl Game {
         if self.floor <= 3 {
             monster_count = monster_count.min(self.floor as usize + 1);
         }
+        if self.boss_rush && self.floor >= 10 {
+            monster_count = (monster_count / 3).max(2);
+        }
 
         let biome_el = self.biome.element();
         let fauna = self.biome.fauna();
@@ -913,7 +920,8 @@ impl Game {
             place_feature(&mut floor_tiles, &mut self.rng, FeatureKind::Trap, &mut self.features);
         }
 
-        if self.floor % 5 == 0 {
+        let boss_rush_floor = self.boss_rush && self.floor >= 10;
+        if self.floor % 5 == 0 || boss_rush_floor {
             let (sx, sy) = self.map.stairs;
             let spot = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1)]
                 .into_iter()
@@ -1025,8 +1033,14 @@ impl Game {
         self.map.compute_fov(hx, hy, fr);
         if first {
             self.push_log(format!("Vous entrez dans le donjon. Etage {} - {}.", self.floor, self.biome.label()), WHITE);
+            if self.boss_rush {
+                self.push_log("BOSS RUSH : 10 etages pour vous equiper, puis un boss a chaque etage !".into(), (255, 120, 90));
+            }
         } else {
             self.push_log(format!("Etage {} - {} ({}).", self.floor, self.biome.label(), self.room_kind.label()), MAGIC);
+        }
+        if self.boss_rush && self.floor == 10 {
+            self.push_log("LE BOSS RUSH COMMENCE ! Plus de repit desormais.".into(), (255, 90, 80));
         }
         self.push_log(self.biome.lore().to_string(), (150, 150, 165));
         if self.room_kind == RoomKind::Rest {
