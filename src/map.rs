@@ -44,6 +44,8 @@ pub struct Map {
     explored_walkable: i32,
     #[serde(default)]
     decor: Vec<u8>,
+    #[serde(skip)]
+    walk: Vec<bool>,
 }
 
 impl Map {
@@ -65,6 +67,7 @@ impl Map {
             walkable_total: 0,
             explored_walkable: 0,
             decor: vec![0u8; count],
+            walk: Vec::new(),
         };
 
         match style {
@@ -87,7 +90,12 @@ impl Map {
         map.place_spawn_and_stairs();
         map.scatter_decor(style, rng);
         map.walkable_total = map.tiles.iter().filter(|&&t| t != Tile::Wall).count() as i32;
+        map.rebuild_walk();
         map
+    }
+
+    pub fn rebuild_walk(&mut self) {
+        self.walk = self.tiles.iter().map(|&t| t != Tile::Wall).collect();
     }
 
     fn gen_rooms(&mut self, rng: &mut Rng, attempts: i32, min_w: i32, max_w: i32, min_h: i32, max_h: i32, round_chance: f32, wide: bool) {
@@ -456,7 +464,15 @@ impl Map {
     }
 
     pub fn is_walkable(&self, x: i32, y: i32) -> bool {
-        self.in_bounds(x, y) && self.tiles[self.idx(x, y)] != Tile::Wall
+        if !self.in_bounds(x, y) {
+            return false;
+        }
+        let i = self.idx(x, y);
+        if i < self.walk.len() {
+            self.walk[i]
+        } else {
+            self.tiles[i] != Tile::Wall
+        }
     }
 
     pub fn is_visible(&self, x: i32, y: i32) -> bool {

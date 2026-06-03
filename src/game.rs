@@ -2904,6 +2904,7 @@ impl Game {
             let _ = std::fs::remove_file(SAVE_PATH);
             return None;
         }
+        game.map.rebuild_walk();
         game.last_action = "charge";
         game.push_log("Partie chargee depuis la sauvegarde.".into(), (120, 220, 230));
         Some(game)
