@@ -1203,6 +1203,24 @@ fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut S
     }
 }
 
+const TWITCH_HINTS: &[&str] = &[
+    "!join \u{2192} rejoins le combat",
+    "!hype \u{2192} gonfle la jauge",
+    "!cheer <3 \u{2192} envoie un coeur",
+    "!1 !2 !3 \u{2192} etat d'esprit",
+    "!bet <etage> \u{2192} parie",
+    "!bless \u{2192} benir l'heroine",
+    "!curse \u{2192} maudire l'heroine",
+    "!name <nom> \u{2192} renomme-la",
+    "!arme !armure !potion \u{2192} achat",
+    "!faster !slower \u{2192} vitesse",
+];
+
+fn command_ticker(anim_t: u32) -> String {
+    let i = (anim_t / 200) as usize % TWITCH_HINTS.len();
+    format!("\u{25b8} {}", TWITCH_HINTS[i])
+}
+
 fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
     let title = if game.twitch_channel.is_empty() {
         "TWITCH".to_string()
@@ -1217,9 +1235,8 @@ fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
     let hk = (game.hype * 10 / crate::game::HYPE_MAX).clamp(0, 10) as usize;
     if game.hype > 0 || game.hype_flash > 0 {
         lines.push(format!("HYPE [{}{}]", "\u{2588}".repeat(hk), "\u{00b7}".repeat(10 - hk)));
-    } else {
-        lines.push("!hype !join !cheer".to_string());
     }
+    lines.push(command_ticker(game.anim_t));
     let st = game.style_tally;
     if st[0] + st[1] + st[2] > 0 {
         let bar = |n: u32| -> String {
@@ -1260,7 +1277,13 @@ fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
     }
     buf.push('\u{2510}');
     for (i, l) in lines.iter().enumerate() {
-        let color = if i == 0 { (200, 170, 90) } else { (210, 210, 225) };
+        let color = if i == 0 {
+            (200, 170, 90)
+        } else if l.starts_with('\u{25b8}') {
+            (150, 220, 180)
+        } else {
+            (210, 210, 225)
+        };
         put(buf, MCOL, MROW + oy + 1 + i as i32, border, "\u{2502}");
         let mut content: String = l.chars().take(inner as usize).collect();
         while (content.chars().count() as i32) < inner {
