@@ -30,7 +30,7 @@ pub struct Config {
     pub obs_overlay: bool,
     #[serde(default)]
     pub window_scale: i32,
-    #[serde(default = "two")]
+    #[serde(default = "three")]
     pub render_scale: i32,
 }
 
@@ -38,8 +38,8 @@ fn yes() -> bool {
     true
 }
 
-fn two() -> i32 {
-    2
+fn three() -> i32 {
+    3
 }
 
 fn default_volume() -> f32 {
@@ -69,7 +69,7 @@ impl Default for Config {
             allow_bet_vote: true,
             obs_overlay: false,
             window_scale: 0,
-            render_scale: 2,
+            render_scale: 3,
         }
     }
 }
