@@ -4,10 +4,33 @@ use crate::game::{self, Game, MerchantPick, Playstyle};
 use crate::profile;
 use crate::render;
 use crate::twitch::{self, ViewerCmd};
-use font8x8::UnicodeFonts;
+use fontdue::{Font, Metrics};
 use minifb::{Key, KeyRepeat, Scale, ScaleMode, Window, WindowOptions};
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::OnceLock;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+static FONT: OnceLock<Font> = OnceLock::new();
+
+fn font() -> &'static Font {
+    FONT.get_or_init(|| Font::from_bytes(include_bytes!("../assets/font.ttf").as_ref(), fontdue::FontSettings::default()).expect("font load"))
+}
+
+thread_local! {
+    static GCACHE: RefCell<HashMap<char, (Metrics, Vec<u8>)>> = RefCell::new(HashMap::new());
+}
+
+fn fallback_bitmap(c: char) -> Option<[u8; 8]> {
+    use font8x8::UnicodeFonts;
+    font8x8::BASIC_FONTS
+        .get(c)
+        .or_else(|| font8x8::LATIN_FONTS.get(c))
+        .or_else(|| font8x8::BOX_FONTS.get(c))
+        .or_else(|| font8x8::BLOCK_FONTS.get(c))
+        .or_else(|| font8x8::GREEK_FONTS.get(c))
+        .or_else(|| font8x8::MISC_FONTS.get(c))
+}
 
 const SPEEDS: [(&str, f32); 5] = [("lent", 4.0), ("normal", 7.0), ("rapide", 12.0), ("turbo", 20.0), ("ultra", 36.0)];
 const PANEL_W: i32 = 42;
@@ -27,17 +50,6 @@ fn daily_seed() -> (u64, u64, String) {
 
 fn leader<K: Copy>(votes: &HashMap<K, u32>) -> Option<K> {
     votes.iter().max_by_key(|(_, n)| **n).map(|(k, _)| *k)
-}
-
-fn glyph(c: char) -> [u8; 8] {
-    font8x8::BASIC_FONTS
-        .get(c)
-        .or_else(|| font8x8::LATIN_FONTS.get(c))
-        .or_else(|| font8x8::BOX_FONTS.get(c))
-        .or_else(|| font8x8::BLOCK_FONTS.get(c))
-        .or_else(|| font8x8::GREEK_FONTS.get(c))
-        .or_else(|| font8x8::MISC_FONTS.get(c))
-        .unwrap_or([0; 8])
 }
 
 fn rgb(c: (u8, u8, u8)) -> u32 {
@@ -145,6 +157,26 @@ fn parse_grid(s: &str, cols: usize, rows: usize) -> Vec<Cell> {
 const CW: usize = 8;
 const CH: usize = 16;
 const GLYPH_PAD: usize = 4;
+const FONT_PX: f32 = 13.0;
+const BASELINE: i32 = 12;
+
+fn blend(dst: u32, fg: (u8, u8, u8), cov: u8) -> u32 {
+    if cov == 0 {
+        return dst;
+    }
+    if cov == 255 {
+        return rgb(fg);
+    }
+    let a = cov as u32;
+    let ia = 255 - a;
+    let dr = (dst >> 16) & 0xff;
+    let dg = (dst >> 8) & 0xff;
+    let db = dst & 0xff;
+    let r = (fg.0 as u32 * a + dr * ia) / 255;
+    let g = (fg.1 as u32 * a + dg * ia) / 255;
+    let b = (fg.2 as u32 * a + db * ia) / 255;
+    (r << 16) | (g << 8) | b
+}
 
 fn put_glyph(fb: &mut [u32], w: usize, h: usize, cx: usize, cy: usize, ch: char, fg: (u8, u8, u8), bg: Option<(u8, u8, u8)>) {
     if let Some(b) = bg {
@@ -162,28 +194,62 @@ fn put_glyph(fb: &mut [u32], w: usize, h: usize, cx: usize, cy: usize, ch: char,
             }
         }
     }
-    let g = glyph(ch);
-    let fgp = rgb(fg);
-    for (ry, row) in g.iter().enumerate() {
-        let py = cy * CH + GLYPH_PAD + ry;
-        if py >= h {
-            break;
-        }
-        for col in 0..CW {
-            if row & (1 << col) != 0 {
-                let px = cx * CW + col;
-                if px < w {
-                    fb[py * w + px] = fgp;
+    if ch == ' ' {
+        return;
+    }
+    if font().lookup_glyph_index(ch) == 0 {
+        if let Some(g) = fallback_bitmap(ch) {
+            let fgp = rgb(fg);
+            for (ry, row) in g.iter().enumerate() {
+                let py = cy * CH + GLYPH_PAD + ry;
+                if py >= h {
+                    break;
+                }
+                for col in 0..8 {
+                    if row & (1 << col) != 0 {
+                        let px = cx * CW + col;
+                        if px < w {
+                            fb[py * w + px] = fgp;
+                        }
+                    }
                 }
             }
         }
+        return;
     }
+    GCACHE.with(|c| {
+        let mut c = c.borrow_mut();
+        let (m, bmp) = c.entry(ch).or_insert_with(|| font().rasterize(ch, FONT_PX));
+        let cell_x = (cx * CW) as i32;
+        let cell_y = (cy * CH) as i32;
+        let gx0 = cell_x + m.xmin;
+        let gy0 = cell_y + BASELINE - m.height as i32 - m.ymin;
+        for j in 0..m.height {
+            let py = gy0 + j as i32;
+            if py < 0 || py >= h as i32 {
+                continue;
+            }
+            for i in 0..m.width {
+                let cov = bmp[j * m.width + i];
+                if cov == 0 {
+                    continue;
+                }
+                let px = gx0 + i as i32;
+                if px < 0 || px >= w as i32 {
+                    continue;
+                }
+                let idx = py as usize * w + px as usize;
+                fb[idx] = blend(fb[idx], fg, cov);
+            }
+        }
+    });
 }
 
 fn overlay_world(game: &Game, fb: &mut [u32], w: usize, h: usize, cols: i32, rows: i32) {
     let mw = game.map.width;
     let mh = game.map.height;
     let sdx = game.fx.shake_offset();
+    let tint = render::frame_tint(game);
     let blit = |fb: &mut [u32], px: i32, py: i32, c: (u8, u8, u8)| {
         if px >= 0 && py >= 0 && (px as usize) < w && (py as usize) < h {
             fb[py as usize * w + px as usize] = rgb(c);
@@ -198,6 +264,20 @@ fn overlay_world(game: &Game, fb: &mut [u32], w: usize, h: usize, cols: i32, row
             let cy = (render::MROW + wy) as usize;
             if cx >= cols as usize || cy >= rows as usize {
                 continue;
+            }
+            let (_, _, bg) = render::cell_render(game, wx, wy, tint);
+            let bgp = rgb(bg);
+            for ry in 0..CH {
+                let py = cy * CH + ry;
+                if py >= h {
+                    break;
+                }
+                for col in 0..CW {
+                    let px = cx * CW + col;
+                    if px < w {
+                        fb[py * w + px] = bgp;
+                    }
+                }
             }
             for (sy, line) in pat.iter().enumerate() {
                 for (sx, ch) in line.chars().enumerate() {

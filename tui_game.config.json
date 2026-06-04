@@ -1,0 +1,8 @@
+{
+  "twitch_enabled": true,
+  "twitch_channel": "pholecia",
+  "vote_window_secs": 8.0,
+  "allow_style_vote": true,
+  "allow_speed_vote": false,
+  "allow_merchant_vote": true
+}
