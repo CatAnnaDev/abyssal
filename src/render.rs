@@ -69,6 +69,15 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
             let tx = (MCOL + sdx + m.x - half).clamp(MCOL + sdx, MCOL + sdx + mw - tag.chars().count() as i32);
             let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;235;130;205m{}\x1b[0m", MROW + m.y - 1, tx, tag);
         }
+        for a in &game.allies {
+            if a.name.is_empty() || a.companion || a.x < 0 || a.y < 1 || a.x >= mw || a.y >= mh || !game.map.is_visible(a.x, a.y) {
+                continue;
+            }
+            let tag: String = a.name.chars().take(12).collect();
+            let half = tag.chars().count() as i32 / 2;
+            let tx = (MCOL + sdx + a.x - half).clamp(MCOL + sdx, MCOL + sdx + mw - tag.chars().count() as i32);
+            let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;150;200;255m{}\x1b[0m", MROW + a.y - 1, tx, tag);
+        }
     }
     buf.push_str("\x1b[0m");
     draw_frame(game, cols, rows, mw, paused, speed_label, &mut buf);
@@ -1201,6 +1210,16 @@ fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
         format!("TWITCH #{}", game.twitch_channel)
     };
     let mut lines: Vec<String> = vec![title];
+    let vc = game.viewer_count();
+    if vc > 0 {
+        lines.push(format!("\u{263a} {} viewers en live", vc));
+    }
+    let hk = (game.hype * 10 / crate::game::HYPE_MAX).clamp(0, 10) as usize;
+    if game.hype > 0 || game.hype_flash > 0 {
+        lines.push(format!("HYPE [{}{}]", "\u{2588}".repeat(hk), "\u{00b7}".repeat(10 - hk)));
+    } else {
+        lines.push("!hype !join !cheer".to_string());
+    }
     let st = game.style_tally;
     if st[0] + st[1] + st[2] > 0 {
         let bar = |n: u32| -> String {

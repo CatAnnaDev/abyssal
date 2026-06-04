@@ -832,6 +832,26 @@ impl Ally {
         }
     }
 
+    pub fn spectator(name: &str, floor: i32, x: i32, y: i32) -> Ally {
+        let depth = floor.max(1);
+        let hp = 20 + depth * 3;
+        Ally {
+            x,
+            y,
+            hp,
+            max_hp: hp,
+            atk: 7 + depth,
+            ttl: 240,
+            glyph: '\u{263a}',
+            color: (150, 200, 255),
+            companion: false,
+            name: name.chars().take(14).collect(),
+            role: ALLY_HUNTER,
+            level: 1,
+            kills: 0,
+        }
+    }
+
     pub fn companion(floor: i32, x: i32, y: i32, rng: &mut Rng) -> Ally {
         let depth = floor.max(1);
         let (name, glyph, role) = LOST_NAMES[rng.below(LOST_NAMES.len())];

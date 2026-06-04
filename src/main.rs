@@ -782,11 +782,30 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                         bets.insert(user.clone(), f);
                         (true, format!("{} parie etage {}", user, f))
                     }
+                    ViewerCmd::Join => {
+                        game.viewer_join(&user);
+                        (true, String::new())
+                    }
+                    ViewerCmd::Hype => {
+                        game.add_hype(&user);
+                        (true, String::new())
+                    }
+                    ViewerCmd::Cheer(e) => {
+                        game.viewer_cheer(&user, &e);
+                        (true, String::new())
+                    }
+                    ViewerCmd::Chat => {
+                        game.register_viewer(&user);
+                        game.tag_monster(&user);
+                        (false, String::new())
+                    }
                     _ => (false, String::new()),
                 };
                 if counted {
                     *voter_counts.entry(user.clone()).or_insert(0) += 1;
-                    game.push_feed(action);
+                    if !action.is_empty() {
+                        game.push_feed(action);
+                    }
                     game.tag_monster(&user);
                 }
             }

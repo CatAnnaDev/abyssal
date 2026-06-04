@@ -12,6 +12,10 @@ pub enum ViewerCmd {
     Curse,
     Name(String),
     Bet(i32),
+    Join,
+    Hype,
+    Cheer(String),
+    Chat,
 }
 
 pub fn connect(channel_name: &str) -> Receiver<(String, ViewerCmd)> {
@@ -35,11 +39,10 @@ pub fn connect(channel_name: &str) -> Receiver<(String, ViewerCmd)> {
                         continue;
                     }
                     if let Some(msg) = privmsg_body(&line) {
-                        if let Some(cmd) = parse_cmd(msg) {
-                            let user = sender(&line).unwrap_or("anon").to_string();
-                            if tx.send((user, cmd)).is_err() {
-                                return;
-                            }
+                        let user = sender(&line).unwrap_or("anon").to_string();
+                        let cmd = parse_cmd(msg).unwrap_or(ViewerCmd::Chat);
+                        if tx.send((user, cmd)).is_err() {
+                            return;
                         }
                     }
                 }
@@ -83,7 +86,7 @@ pub fn parse_cmd(msg: &str) -> Option<ViewerCmd> {
         "skip" | "rien" | "pass" => Some(ViewerCmd::Merchant(MerchantPick::Skip)),
         "bless" | "benir" | "benediction" | "buff" => Some(ViewerCmd::Bless),
         "curse" | "malediction" | "maudire" | "debuff" => Some(ViewerCmd::Curse),
-        "name" | "nom" | "rename" | "baptise" => {
+        "name" | "nom" | "rename" => {
             if arg.is_empty() {
                 None
             } else {
@@ -91,6 +94,9 @@ pub fn parse_cmd(msg: &str) -> Option<ViewerCmd> {
             }
         }
         "bet" | "pari" | "mise" | "predict" => arg.parse::<i32>().ok().map(|n| ViewerCmd::Bet(n.clamp(1, 300))),
+        "join" | "rejoindre" | "combattre" => Some(ViewerCmd::Join),
+        "hype" | "go" | "gg" | "letsgo" | "pog" | "poggers" => Some(ViewerCmd::Hype),
+        "cheer" | "emote" | "love" | "coeur" | "<3" | "salut" | "hello" | "hi" => Some(ViewerCmd::Cheer(arg.chars().take(8).collect())),
         _ => None,
     }
 }
@@ -114,7 +120,10 @@ mod tests {
         assert!(matches!(parse_cmd("!bet 15"), Some(ViewerCmd::Bet(15))));
         assert!(matches!(parse_cmd("!name Lyra"), Some(ViewerCmd::Name(_))));
         assert!(matches!(parse_cmd("!bless"), Some(ViewerCmd::Bless)));
+        assert!(matches!(parse_cmd("!join"), Some(ViewerCmd::Join)));
+        assert!(matches!(parse_cmd("!hype"), Some(ViewerCmd::Hype)));
+        assert!(matches!(parse_cmd("hello"), Some(ViewerCmd::Cheer(_))));
         assert!(parse_cmd("!bet xyz").is_none());
-        assert!(parse_cmd("hello world").is_none());
+        assert!(parse_cmd("blabla random").is_none());
     }
 }
