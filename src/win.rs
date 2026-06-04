@@ -333,6 +333,18 @@ mod tests {
     }
 }
 
+fn present(window: &mut Window, fb: &[u32], w: usize, h: usize) {
+    let mut big = vec![0u32; w * h * 2];
+    for y in 0..h {
+        let src = &fb[y * w..y * w + w];
+        let d0 = (y * 2) * w;
+        let d1 = (y * 2 + 1) * w;
+        big[d0..d0 + w].copy_from_slice(src);
+        big[d1..d1 + w].copy_from_slice(src);
+    }
+    let _ = window.update_with_buffer(&big, w, h * 2);
+}
+
 fn draw_text(fb: &mut [u32], w: usize, h: usize, col: usize, row: usize, s: &str, fg: (u8, u8, u8)) {
     for (i, ch) in s.chars().enumerate() {
         put_glyph(fb, w, h, col + i, row, ch, fg, None);
@@ -406,7 +418,7 @@ fn pregame_menu(window: &mut Window, profile: &profile::Profile, w: usize, h: us
         }
 
         let fb = pregame_fb(w, h, cols, &classes, &idx, sel, has_save, profile);
-        let _ = window.update_with_buffer(&fb, w, h);
+        present(window, &fb, w, h);
     }
     None
 }
@@ -537,7 +549,7 @@ fn options_menu(window: &mut Window, cfg: &mut Config, audio: &mut audio::Audio,
             draw_text(&mut fb, w, h, ox, y, &format!("{} {:<16}", arrow, rows_txt[i].0), col);
             draw_text(&mut fb, w, h, ox + 20, y, &format!("< {} >", rows_txt[i].1), if i == sel { (235, 215, 140) } else { (150, 195, 210) });
         }
-        let _ = window.update_with_buffer(&fb, w, h);
+        present(window, &fb, w, h);
     }
     cfg.save();
 }
@@ -563,7 +575,7 @@ pub fn run() {
     let mut window = match Window::new(
         "Abyssal",
         w,
-        h,
+        h * 2,
         WindowOptions { scale, scale_mode: ScaleMode::AspectRatioStretch, resize: true, ..WindowOptions::default() },
     ) {
         Ok(win) => win,
@@ -844,7 +856,7 @@ pub fn run() {
         }
 
         let fb = render_frame(&game, cols, rows, paused, SPEEDS[speed].0);
-        let _ = window.update_with_buffer(&fb, w, h);
+        present(&mut window, &fb, w, h);
     }
     game.save();
 }
