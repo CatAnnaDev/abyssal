@@ -570,7 +570,7 @@ fn dims(cols: u16, rows: u16) -> (i32, i32, i32, i32) {
     let cols = cols as i32;
     let rows = rows as i32;
     let map_w = (cols - PANEL_W).clamp(24, cols.max(24));
-    let map_h = (rows - 2).max(10);
+    let map_h = (rows - 2 - render::CMD_BAR_H).max(10);
     (cols, rows, map_w, map_h)
 }
 
