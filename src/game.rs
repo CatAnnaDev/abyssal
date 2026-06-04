@@ -1707,6 +1707,7 @@ impl Game {
             self.fx.add_shake(9);
             self.fx.label(self.hero.x, self.hero.y, "LA FOULE GRONDE !", (255, 220, 90));
             self.fx.ring(self.hero.x, self.hero.y, (255, 230, 120), 20, '\u{2605}');
+            self.fx.shockwave(self.hero.x, self.hero.y, (255, 215, 120), 14);
             self.fx.confetti(&mut self.rng, self.map.width, 70);
             self.fx.screen_flash((255, 215, 120), 10);
             self.push_feed("HYPE ! la foule galvanise l'heroine".into());
@@ -1793,22 +1794,25 @@ impl Game {
     }
 
     fn spawn_ambient(&mut self) {
-        let x = self.hero.x + self.rng.between(-9, 10);
-        let y = self.hero.y + self.rng.between(-6, 7);
-        if !self.map.is_visible(x, y) {
-            return;
-        }
         let (glyph, color, vy) = self.biome.ambient();
-        self.fx.particles.push(Particle {
-            x: x as f32,
-            y: y as f32,
-            vx: self.rng.range(-0.04, 0.04),
-            vy,
-            grav: 0.0,
-            glyph,
-            color,
-            ttl: self.rng.between(8, 16),
-        });
+        for _ in 0..3 {
+            let x = self.hero.x + self.rng.between(-10, 11);
+            let y = self.hero.y + self.rng.between(-6, 7);
+            if !self.map.is_visible(x, y) {
+                continue;
+            }
+            self.fx.particles.push(Particle {
+                x: x as f32 + self.rng.range(0.0, 1.0),
+                y: y as f32 + self.rng.range(0.0, 1.0),
+                vx: self.rng.range(-0.05, 0.05),
+                vy,
+                grav: 0.0,
+                glyph,
+                color,
+                ttl: self.rng.between(10, 22),
+                fine: true,
+            });
+        }
     }
 
     pub fn cosmetic_tick(&mut self) {
@@ -2643,6 +2647,7 @@ impl Game {
         if self.hero.gain_xp(m.xp_reward) {
             self.sfx.push(Sound::LevelUp);
             self.fx.ring(self.hero.x, self.hero.y, (255, 235, 150), 18, '\u{2022}');
+            self.fx.shockwave(self.hero.x, self.hero.y, (255, 225, 120), 12);
             self.fx.screen_flash((255, 225, 120), 7);
             self.fx.label(self.hero.x, self.hero.y, "NIVEAU+", (255, 225, 120));
             self.grant_talent();
@@ -3161,6 +3166,7 @@ impl Game {
                 self.fx.add_shake(12);
                 self.fx.ring(mx, my, (255, 235, 150), 22, '\u{2736}');
                 self.fx.ring(mx, my, (255, 200, 90), 16, '\u{2605}');
+                self.fx.shockwave(mx, my, (255, 210, 110), 18);
                 self.fx.confetti(&mut self.rng, self.map.width, 80);
                 self.fx.screen_flash((255, 220, 120), 14);
                 self.fx.label(mx, my, "BOSS VAINCU", (255, 220, 90));
@@ -3193,6 +3199,7 @@ impl Game {
             if self.hero.gain_xp(m.xp_reward) {
                 self.sfx.push(Sound::LevelUp);
                 self.fx.ring(self.hero.x, self.hero.y, (255, 235, 150), 18, '\u{2022}');
+                self.fx.shockwave(self.hero.x, self.hero.y, (255, 225, 120), 12);
                 self.fx.screen_flash((255, 225, 120), 7);
                 self.fx.label(self.hero.x, self.hero.y, "NIVEAU+", (255, 225, 120));
                 self.push_log(

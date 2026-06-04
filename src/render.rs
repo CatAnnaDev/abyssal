@@ -1,6 +1,8 @@
 use crate::entity::{Affix, Color, Element, FeatureKind, ScrollKind};
+use crate::fx::Wave;
 use crate::game::{Biome, FloorEvent, Game, Objective, Phase};
 use crate::map::Tile;
+use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::io::Write;
 
@@ -54,6 +56,9 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
                 }
                 if vignette > 0.0 {
                     bg = vignette_add(bg, x, y, mw, mh, vignette);
+                }
+                if !game.fx.waves.is_empty() {
+                    bg = wave_add(bg, x, y, &game.fx.waves);
                 }
                 if flash > 0.0 {
                     bg = flash_add(bg, flash_color, flash);
@@ -127,7 +132,31 @@ fn put(buf: &mut String, x: i32, y: i32, color: Color, text: &str) {
     let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;{};{};{}m{}", y, x, color.0, color.1, color.2, text);
 }
 
+fn lerp_color(a: Color, b: Color, t: f32) -> Color {
+    let t = t.clamp(0.0, 1.0);
+    (
+        (a.0 as f32 + (b.0 as f32 - a.0 as f32) * t) as u8,
+        (a.1 as f32 + (b.1 as f32 - a.1 as f32) * t) as u8,
+        (a.2 as f32 + (b.2 as f32 - a.2 as f32) * t) as u8,
+    )
+}
+
+fn frame_color(game: &Game) -> Color {
+    if game.hype_flash > 0 {
+        return lerp_color(FRAME, (255, 215, 120), (game.hype_flash as f32 / 28.0) * 0.95);
+    }
+    if game.fx.shake > 0 {
+        return lerp_color(FRAME, (225, 80, 65), (game.fx.shake as f32 / 9.0) * 0.85);
+    }
+    let frac = game.hp_fraction();
+    if matches!(game.phase, Phase::Playing) && frac < 0.30 {
+        return lerp_color(FRAME, (165, 45, 45), ((0.30 - frac) / 0.30) * 0.7);
+    }
+    FRAME
+}
+
 fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_label: &str, buf: &mut String) {
+    let fc = frame_color(game);
     let evt = if game.event == FloorEvent::Calm {
         String::new()
     } else {
@@ -171,9 +200,9 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
     let avail = (cols - 2).max(0) as usize;
     let t: String = title.chars().take(avail).collect();
     let fill = avail - t.chars().count();
-    let _ = write!(buf, "\x1b[1;1H\x1b[38;2;{};{};{}m\u{2554}", FRAME.0, FRAME.1, FRAME.2);
+    let _ = write!(buf, "\x1b[1;1H\x1b[38;2;{};{};{}m\u{2554}", fc.0, fc.1, fc.2);
     let _ = write!(buf, "\x1b[38;2;255;225;130m{}", t);
-    let _ = write!(buf, "\x1b[38;2;{};{};{}m", FRAME.0, FRAME.1, FRAME.2);
+    let _ = write!(buf, "\x1b[38;2;{};{};{}m", fc.0, fc.1, fc.2);
     for _ in 0..fill {
         buf.push('\u{2550}');
     }
@@ -195,6 +224,7 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
     let _ = write!(buf, "\x1b[{};3H\x1b[38;2;{};{};{}m{}", rows, bcol.0, bcol.1, bcol.2, h);
 
     let sep = mw + 2;
+    let _ = write!(buf, "\x1b[38;2;{};{};{}m", fc.0, fc.1, fc.2);
     for y in 2..rows {
         let _ = write!(buf, "\x1b[{};1H\u{2551}", y);
         let _ = write!(buf, "\x1b[{};{}H\u{2503}", y, sep);
@@ -917,6 +947,41 @@ fn flash_add(base: Color, color: Color, strength: f32) -> Color {
     )
 }
 
+fn wave_add(base: Color, x: i32, y: i32, waves: &[Wave]) -> Color {
+    let mut c = (base.0 as f32, base.1 as f32, base.2 as f32);
+    for w in waves {
+        let dx = x as f32 - w.x;
+        let dy = (y as f32 - w.y) * 2.0;
+        let d = (dx * dx + dy * dy).sqrt();
+        let r = w.age as f32 * 1.5;
+        let band = 1.9;
+        let diff = (d - r).abs();
+        if diff < band {
+            let edge = 1.0 - diff / band;
+            let life = 1.0 - (w.age as f32 / w.ttl.max(1) as f32);
+            let a = (edge * life * 0.75).clamp(0.0, 0.75);
+            c.0 += (w.color.0 as f32 - c.0) * a;
+            c.1 += (w.color.1 as f32 - c.1) * a;
+            c.2 += (w.color.2 as f32 - c.2) * a;
+        }
+    }
+    (c.0 as u8, c.1 as u8, c.2 as u8)
+}
+
+fn braille_bit(col: i32, row: i32) -> u8 {
+    match (col, row) {
+        (0, 0) => 0x01,
+        (0, 1) => 0x02,
+        (0, 2) => 0x04,
+        (1, 0) => 0x08,
+        (1, 1) => 0x10,
+        (1, 2) => 0x20,
+        (0, 3) => 0x40,
+        (1, 3) => 0x80,
+        _ => 0,
+    }
+}
+
 fn light_add(base: Color, lights: &[(f32, f32, Color)], x: i32, y: i32) -> Color {
     let mut r = base.0 as f32;
     let mut g = base.1 as f32;
@@ -1032,12 +1097,35 @@ fn cell_render(game: &Game, x: i32, y: i32, tint: (f32, f32, f32)) -> (char, Col
 }
 
 fn draw_fx(game: &Game, mw: i32, mh: i32, sdx: i32, buf: &mut String) {
+    let mut braille: HashMap<(i32, i32), (u8, Color)> = HashMap::new();
     for p in &game.fx.particles {
-        let x = p.x.round() as i32 + sdx;
-        let y = p.y.round() as i32;
-        if x >= 0 && x < mw && y >= 0 && y < mh {
-            put(buf, MCOL + x, MROW + y, p.color, &p.glyph.to_string());
+        if p.fine {
+            let gx = p.x.floor();
+            let gy = p.y.floor();
+            let tx = gx as i32 + sdx;
+            let ty = gy as i32;
+            if tx < 0 || tx >= mw || ty < 0 || ty >= mh {
+                continue;
+            }
+            let sub_col = if (p.x - gx) >= 0.5 { 1 } else { 0 };
+            let sub_row = ((p.y - gy) * 4.0).floor().clamp(0.0, 3.0) as i32;
+            let e = braille.entry((tx, ty)).or_insert((0u8, p.color));
+            e.0 |= braille_bit(sub_col, sub_row);
+            let b = |c: Color| c.0 as u32 + c.1 as u32 + c.2 as u32;
+            if b(p.color) > b(e.1) {
+                e.1 = p.color;
+            }
+        } else {
+            let x = p.x.round() as i32 + sdx;
+            let y = p.y.round() as i32;
+            if x >= 0 && x < mw && y >= 0 && y < mh {
+                put(buf, MCOL + x, MROW + y, p.color, &p.glyph.to_string());
+            }
         }
+    }
+    for ((tx, ty), (mask, color)) in &braille {
+        let ch = char::from_u32(0x2800 + *mask as u32).unwrap_or('\u{2800}');
+        put(buf, MCOL + tx, MROW + ty, *color, &ch.to_string());
     }
     for p in &game.fx.projectiles {
         let x = p.x.round() as i32 + sdx;
