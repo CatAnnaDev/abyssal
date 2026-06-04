@@ -717,6 +717,12 @@ pub struct Game {
     #[serde(skip)]
     pub top_voters: Vec<(String, u32)>,
     #[serde(skip)]
+    pub viewers: Vec<(String, i32)>,
+    #[serde(skip)]
+    pub hype: i32,
+    #[serde(skip)]
+    pub hype_flash: i32,
+    #[serde(skip)]
     pub hud_note: String,
     #[serde(skip)]
     pub sfx: Vec<Sound>,
@@ -745,6 +751,7 @@ pub struct Game {
     rng: Rng,
 }
 
+pub const HYPE_MAX: i32 = 12;
 const WHITE: Color = (220, 220, 220);
 const DIM: Color = (140, 140, 150);
 const GOOD: Color = (120, 220, 120);
@@ -882,6 +889,9 @@ impl Game {
             style_tally: [0; 3],
             twitch_channel: String::new(),
             top_voters: Vec::new(),
+            viewers: Vec::new(),
+            hype: 0,
+            hype_flash: 0,
             hud_note: String::new(),
             sfx: Vec::new(),
             low_hp_pulse: 0.0,
@@ -1577,6 +1587,67 @@ impl Game {
         path
     }
 
+    pub fn register_viewer(&mut self, user: &str) {
+        let name: String = user.chars().take(14).collect();
+        if let Some(v) = self.viewers.iter_mut().find(|v| v.0 == name) {
+            v.1 = 900;
+        } else {
+            self.viewers.push((name, 900));
+            if self.viewers.len() > 30 {
+                self.viewers.remove(0);
+            }
+        }
+    }
+
+    pub fn viewer_count(&self) -> usize {
+        self.viewers.len()
+    }
+
+    pub fn viewer_join(&mut self, user: &str) {
+        self.register_viewer(user);
+        if self.allies.iter().filter(|a| a.glyph == '\u{263a}').count() >= 4 {
+            return;
+        }
+        let (hx, hy) = (self.hero.x, self.hero.y);
+        let spot = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
+            .into_iter()
+            .map(|(dx, dy)| (hx + dx, hy + dy))
+            .find(|&(x, y)| self.map.is_walkable(x, y) && self.monster_at(x, y).is_none() && !self.allies.iter().any(|a| a.x == x && a.y == y));
+        if let Some((x, y)) = spot {
+            let name: String = user.chars().take(14).collect();
+            self.allies.push(crate::entity::Ally::spectator(&name, self.floor, x, y));
+            self.fx.burst(&mut self.rng, x, y, (150, 200, 255), 12, '\u{2605}');
+            self.fx.label(x, y, &name, (150, 200, 255));
+            self.push_feed(format!("{} rejoint le combat !", name));
+            self.sfx.push(Sound::LevelUp);
+        }
+    }
+
+    pub fn add_hype(&mut self, user: &str) {
+        self.register_viewer(user);
+        self.hype += 1;
+        if self.hype >= HYPE_MAX {
+            self.hype = 0;
+            self.hype_flash = 28;
+            self.hero.rage = self.hero.rage.max(30);
+            self.hero.shield = self.hero.shield.max(20);
+            self.hero.hp = (self.hero.hp + self.hero.max_hp / 4).min(self.hero.max_hp);
+            self.fx.add_shake(9);
+            self.fx.label(self.hero.x, self.hero.y, "LA FOULE GRONDE !", (255, 220, 90));
+            self.fx.burst(&mut self.rng, self.hero.x, self.hero.y, (255, 220, 90), 26, '\u{2605}');
+            self.push_feed("HYPE ! la foule galvanise l'heroine".into());
+            self.sfx.push(Sound::LevelUp);
+        }
+    }
+
+    pub fn viewer_cheer(&mut self, user: &str, emote: &str) {
+        self.register_viewer(user);
+        let name: String = user.chars().take(12).collect();
+        let txt = if emote.is_empty() { format!("{} \u{2665}", name) } else { format!("{} {}", name, emote) };
+        let ox = self.rng.between(-3, 4);
+        self.fx.label(self.hero.x + ox, (self.hero.y - 1).max(1), &txt, (210, 160, 240));
+    }
+
     pub fn tag_monster(&mut self, user: &str) {
         if self.monsters.iter().any(|m| m.owner == user) {
             return;
@@ -1666,6 +1737,16 @@ impl Game {
         self.hero_struck = false;
         if self.sfx.len() > 256 {
             self.sfx.clear();
+        }
+        if self.hype_flash > 0 {
+            self.hype_flash -= 1;
+        }
+        for v in self.viewers.iter_mut() {
+            v.1 -= 1;
+        }
+        self.viewers.retain(|v| v.1 > 0);
+        if self.floor_turns % 40 == 0 && self.hype > 0 {
+            self.hype -= 1;
         }
         self.fx.tick();
         if matches!(self.phase, Phase::Playing) && self.rng.chance(0.3) {
