@@ -96,6 +96,11 @@ pub enum HeroClass {
     Spectre,
     Maelstrom,
     Lich,
+    Crusader,
+    Assassin,
+    Stormcaller,
+    Geomancer,
+    Bloodknight,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -181,10 +186,15 @@ pub const CLASSES: &[ClassDef] = &[
     ClassDef { class: HeroClass::Spectre,      label: "Spectre",       crit: 0.20, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Cloth,   d_hp: 4,  d_might: 5, d_guard: 0, ability: Ability::Phase },
     ClassDef { class: HeroClass::Maelstrom,    label: "Maelstrom",     crit: 0.16, cleave: 3,   bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Leather, d_hp: 8,  d_might: 5, d_guard: 0, ability: Ability::Vortex },
     ClassDef { class: HeroClass::Lich,         label: "Liche",         crit: 0.14, cleave: 999, bolt: 1,   bleeds: false, raises: true,  weapon: WeaponClass::Staff, armor: ArmorClass::Cloth,   d_hp: 8,  d_might: 4, d_guard: 0, ability: Ability::Possess },
+    ClassDef { class: HeroClass::Crusader,     label: "Croisee",       crit: 0.12, cleave: 3,   bolt: 999, bleeds: false, raises: false, weapon: WeaponClass::Heavy, armor: ArmorClass::Plate,   d_hp: 24, d_might: 2, d_guard: 4, ability: Ability::Smite },
+    ClassDef { class: HeroClass::Assassin,     label: "Assassine",     crit: 0.34, cleave: 999, bolt: 7,   bleeds: true,  raises: false, weapon: WeaponClass::Light, armor: ArmorClass::Leather, d_hp: 0,  d_might: 4, d_guard: 0, ability: Ability::Blink },
+    ClassDef { class: HeroClass::Stormcaller,  label: "Foudroyeuse",   crit: 0.16, cleave: 999, bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Cloth,   d_hp: 2,  d_might: 6, d_guard: 0, ability: Ability::Vortex },
+    ClassDef { class: HeroClass::Geomancer,    label: "Geomancienne",  crit: 0.14, cleave: 2,   bolt: 1,   bleeds: false, raises: false, weapon: WeaponClass::Staff, armor: ArmorClass::Mail,    d_hp: 14, d_might: 4, d_guard: 2, ability: Ability::Charge },
+    ClassDef { class: HeroClass::Bloodknight,  label: "Sanguinaire",   crit: 0.20, cleave: 2,   bolt: 999, bleeds: true,  raises: false, weapon: WeaponClass::Heavy, armor: ArmorClass::Leather, d_hp: 12, d_might: 5, d_guard: 1, ability: Ability::Furie },
 ];
 
 impl HeroClass {
-    pub const ALL: [HeroClass; 20] = [
+    pub const ALL: [HeroClass; 25] = [
         HeroClass::Warrior,
         HeroClass::Rogue,
         HeroClass::Mage,
@@ -205,6 +215,11 @@ impl HeroClass {
         HeroClass::Spectre,
         HeroClass::Maelstrom,
         HeroClass::Lich,
+        HeroClass::Crusader,
+        HeroClass::Assassin,
+        HeroClass::Stormcaller,
+        HeroClass::Geomancer,
+        HeroClass::Bloodknight,
     ];
 
     pub fn def(self) -> &'static ClassDef {
