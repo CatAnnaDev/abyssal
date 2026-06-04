@@ -783,6 +783,10 @@ fn draw_sprite_map(game: &Game, mw: i32, mh: i32, sdx: i32, tint: (f32, f32, f32
     let bgfill: Color = (6, 6, 9);
     let mut fb = vec![bgfill; (pw * ph) as usize];
     let ((wall_fg, wall_bg), (floor_fg, floor_bg)) = biome_palette(game.biome);
+    let lights = collect_lights(game);
+    let at = game.anim_t as f32;
+    let flick = 1.0 + 0.05 * (at * 0.09).sin() + 0.03 * (at * 0.22).sin();
+    let danger_pulse = 0.42 + 0.22 * (at * 0.12).sin();
 
     for ty in 0..camh {
         for tx in 0..camw {
@@ -799,7 +803,7 @@ fn draw_sprite_map(game: &Game, mw: i32, mh: i32, sdx: i32, tint: (f32, f32, f32
             let light = if visible {
                 let dx = (wx - game.hero.x) as f32;
                 let dy = (wy - game.hero.y) as f32;
-                (1.2 - (dx * dx + dy * dy).sqrt() * 0.085).clamp(0.34, 1.0)
+                (1.18 * flick - (dx * dx + dy * dy).sqrt() * 0.085).clamp(0.34, 1.0)
             } else {
                 0.42
             };
@@ -847,22 +851,34 @@ fn draw_sprite_map(game: &Game, mw: i32, mh: i32, sdx: i32, tint: (f32, f32, f32
                     }
                 }
             }
+            if visible {
+                let (lr, lg, lb) = light_delta(&lights, wx, wy);
+                if lr + lg + lb > 0.5 {
+                    for row in cell.iter_mut() {
+                        for c in row.iter_mut() {
+                            c.0 = (c.0 as f32 + lr).min(255.0) as u8;
+                            c.1 = (c.1 as f32 + lg).min(255.0) as u8;
+                            c.2 = (c.2 as f32 + lb).min(255.0) as u8;
+                        }
+                    }
+                }
+            }
             if game.danger.iter().any(|&(a, b)| a == wx && b == wy) {
                 for row in cell.iter_mut() {
                     for c in row.iter_mut() {
-                        *c = px_blend(*c, game.danger_color, 0.5);
+                        *c = px_blend(*c, game.danger_color, danger_pulse);
                     }
                 }
             } else if game.hazard.iter().any(|&(a, b, _)| a == wx && b == wy) {
                 for row in cell.iter_mut() {
                     for c in row.iter_mut() {
-                        *c = px_blend(*c, (235, 110, 40), 0.55);
+                        *c = px_blend(*c, (235, 110, 40), (danger_pulse + 0.12).min(0.7));
                     }
                 }
             } else if game.cast_danger.iter().any(|&(a, b)| a == wx && b == wy) {
                 for row in cell.iter_mut() {
                     for c in row.iter_mut() {
-                        *c = px_blend(*c, (235, 140, 60), 0.5);
+                        *c = px_blend(*c, (235, 140, 60), danger_pulse);
                     }
                 }
             }
@@ -1058,6 +1074,23 @@ fn collect_lights(game: &Game) -> Vec<(f32, f32, Color)> {
         lights.push((p.x, p.y, p.color));
     }
     lights
+}
+
+fn light_delta(lights: &[(f32, f32, Color)], x: i32, y: i32) -> (f32, f32, f32) {
+    let (mut r, mut g, mut b) = (0.0f32, 0.0f32, 0.0f32);
+    for &(lx, ly, col) in lights {
+        let dx = lx - x as f32;
+        let dy = ly - y as f32;
+        let d2 = dx * dx + dy * dy;
+        if d2 < 9.0 {
+            let mut inten = 1.0 - d2.sqrt() / 3.0;
+            inten = (inten * inten * 0.8).max(0.0);
+            r += col.0 as f32 * inten;
+            g += col.1 as f32 * inten;
+            b += col.2 as f32 * inten;
+        }
+    }
+    (r, g, b)
 }
 
 fn light_add(base: Color, lights: &[(f32, f32, Color)], x: i32, y: i32) -> Color {
