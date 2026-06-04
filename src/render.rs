@@ -1467,7 +1467,7 @@ fn draw_dialogue(game: &Game, mw: i32, mh: i32, buf: &mut String) {
     if d.ttl <= 0 || d.prio < 1 {
         return;
     }
-    let inner = (mw - 2).clamp(12, 120);
+    let inner = (mw * 7 / 10).clamp(24, (mw - 2).max(24));
     let wrapped = wrap_text(&d.text, (inner - 2) as usize);
     let shown: Vec<&String> = wrapped.iter().take(2).collect();
     if shown.is_empty() {
@@ -1475,16 +1475,17 @@ fn draw_dialogue(game: &Game, mw: i32, mh: i32, buf: &mut String) {
     }
     let bh = shown.len() as i32 + 2;
     let y0 = MROW + mh - bh;
+    let x0 = MCOL + ((mw - (inner + 2)) / 2).max(0);
     let bg = (12, 12, 20);
     let bc = d.color;
     for i in 0..bh {
-        let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;{};{};{}m", y0 + i, MCOL, bg.0, bg.1, bg.2);
+        let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;{};{};{}m", y0 + i, x0, bg.0, bg.1, bg.2);
         for _ in 0..(inner + 2) {
             buf.push(' ');
         }
     }
     let spk: String = d.speaker.chars().take(20).collect();
-    let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;{};{};{}m\x1b[38;2;{};{};{}m\u{256d}\u{2500} ", y0, MCOL, bg.0, bg.1, bg.2, bc.0, bc.1, bc.2);
+    let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;{};{};{}m\x1b[38;2;{};{};{}m\u{256d}\u{2500} ", y0, x0, bg.0, bg.1, bg.2, bc.0, bc.1, bc.2);
     let _ = write!(buf, "\x1b[38;2;255;240;180m{}", spk);
     let _ = write!(buf, "\x1b[38;2;{};{};{}m ", bc.0, bc.1, bc.2);
     let used = 4 + spk.chars().count();
@@ -1493,16 +1494,20 @@ fn draw_dialogue(game: &Game, mw: i32, mh: i32, buf: &mut String) {
     }
     buf.push('\u{256e}');
     for (k, line) in shown.iter().enumerate() {
-        let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;{};{};{}m\x1b[38;2;{};{};{}m\u{2502}", y0 + 1 + k as i32, MCOL, bg.0, bg.1, bg.2, bc.0, bc.1, bc.2);
+        let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;{};{};{}m\x1b[38;2;{};{};{}m\u{2502}", y0 + 1 + k as i32, x0, bg.0, bg.1, bg.2, bc.0, bc.1, bc.2);
         let _ = write!(buf, "\x1b[38;2;{};{};{}m {:<width$}", d.color.0, d.color.1, d.color.2, line, width = (inner - 1) as usize);
         let _ = write!(buf, "\x1b[38;2;{};{};{}m\u{2502}", bc.0, bc.1, bc.2);
     }
-    let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;{};{};{}m\x1b[38;2;{};{};{}m\u{2570}", y0 + bh - 1, MCOL, bg.0, bg.1, bg.2, bc.0, bc.1, bc.2);
+    let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;{};{};{}m\x1b[38;2;{};{};{}m\u{2570}", y0 + bh - 1, x0, bg.0, bg.1, bg.2, bc.0, bc.1, bc.2);
     for _ in 0..inner {
         buf.push('\u{2500}');
     }
     buf.push('\u{256f}');
     buf.push_str("\x1b[0m");
+}
+
+fn dialogue_active(game: &Game) -> bool {
+    game.dialogue.as_ref().map_or(false, |d| d.ttl > 0 && d.prio >= 1)
 }
 
 fn draw_command_bar(game: &Game, cols: i32, rows: i32, buf: &mut String) {
@@ -1644,7 +1649,7 @@ fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
     }
     let inner = lines.iter().map(|(l, _)| l.chars().count()).max().unwrap_or(8).clamp(8, 30) as i32 + 1;
     let bh = lines.len() as i32 + 2;
-    let oy = if game.hero.y >= mh / 2 { 0 } else { (mh - bh).max(0) };
+    let oy = if dialogue_active(game) || game.hero.y >= mh / 2 { 0 } else { (mh - bh).max(0) };
     let border: Color = (180, 130, 235);
     put(buf, MCOL, MROW + oy, border, "\u{250c}");
     for _ in 0..inner {
