@@ -11,9 +11,9 @@ const MCOL: i32 = 2;
 const FRAME: Color = (95, 95, 120);
 pub const CMD_BAR_H: i32 = 2;
 
-pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, sprite: bool, zoom: i32, out: &mut impl Write) {
+pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, sprite: bool, zoom: i32, fps: f32, target_fps: u32, out: &mut impl Write) {
     let mut buf = String::with_capacity((cols * rows) as usize * 7);
-    buf.push_str("\x1b[H");
+    buf.push_str("\x1b[?2026h\x1b[H");
 
     let mw = game.map.width;
     let mh = game.map.height;
@@ -108,7 +108,7 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
         let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;255;200;70mCOMBO x{}\x1b[0m", MROW, MCOL + 1, game.fx.combo);
     }
     if game.debug {
-        draw_debug(game, mw, mh, sdx, sprite, &mut buf);
+        draw_debug(game, mw, mh, sdx, sprite, fps, target_fps, &mut buf);
     }
     if game.fx.transition > 0 {
         draw_transition(game.fx.transition_floor, mw, mh, &mut buf);
@@ -123,7 +123,7 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
         draw_hall(game, cols, rows, &mut buf);
     }
 
-    buf.push_str("\x1b[0m");
+    buf.push_str("\x1b[0m\x1b[?2026l");
     let _ = out.write_all(buf.as_bytes());
     let _ = out.flush();
 }
@@ -1184,7 +1184,7 @@ fn arrow_glyph(dx: i32, dy: i32) -> char {
     }
 }
 
-fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut String) {
+fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, fps: f32, target_fps: u32, buf: &mut String) {
     use std::fmt::Write as _;
     let h = &game.hero;
     let field = game.debug_field();
@@ -1260,6 +1260,7 @@ fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut S
     let we = h.weapon_element();
     let lines = vec![
         "== DEBUG (ctrl+d) ==".to_string(),
+        format!("fps:{:.0} / cible:{}", fps, target_fps),
         format!("act:{}  goal:{}", game.last_action, goal),
         format!("pf:{} reach:{} gdist:{} steps:{}", game.pathfinder.label(), reach, gdist, game.debug_path().len()),
         "legende: G=but, fleches=chemin, []=danger".to_string(),

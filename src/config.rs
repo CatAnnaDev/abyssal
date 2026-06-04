@@ -28,10 +28,16 @@ pub struct Config {
     pub allow_bet_vote: bool,
     #[serde(default)]
     pub obs_overlay: bool,
+    #[serde(default = "default_target_fps")]
+    pub target_fps: u32,
 }
 
 fn yes() -> bool {
     true
+}
+
+fn default_target_fps() -> u32 {
+    30
 }
 
 fn default_volume() -> f32 {
@@ -60,6 +66,7 @@ impl Default for Config {
             allow_chaos_vote: true,
             allow_bet_vote: true,
             obs_overlay: false,
+            target_fps: 30,
         }
     }
 }

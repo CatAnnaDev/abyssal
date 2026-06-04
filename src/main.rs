@@ -311,7 +311,7 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
     };
     loop {
         let mut buf = String::new();
-        buf.push_str("\x1b[2J\x1b[H");
+        buf.push_str("\x1b[?2026h\x1b[2J\x1b[H");
         let bw = 64i32;
         let bh = (nrows as i32) + 13;
         let ox = (cols - bw) / 2;
@@ -389,7 +389,7 @@ fn menu(stdout: &mut io::Stdout, cols: i32, rows: i32, has_save: bool, profile: 
         let cont = if has_save { "c: continuer la sauvegarde    q: quitter" } else { "q: quitter" };
         put(&mut buf, ox + 34, oy + bh - 2, (150, 150, 170), cont);
 
-        buf.push_str("\x1b[0m");
+        buf.push_str("\x1b[0m\x1b[?2026l");
         let _ = stdout.write_all(buf.as_bytes());
         let _ = stdout.flush();
 
@@ -437,7 +437,7 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
     use std::fmt::Write as _;
     use std::io::Write as _;
     let mut sel = 0i32;
-    let nrows = 11i32;
+    let nrows = 12i32;
     let apply = |cfg: &Config, audio: &mut audio::Audio| {
         let music = if cfg.ambient_enabled { cfg.ambient_volume } else { 0.0 };
         audio.set_levels(cfg.master_volume, music);
@@ -454,7 +454,7 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
     };
     loop {
         let mut buf = String::new();
-        buf.push_str("\x1b[2J\x1b[H");
+        buf.push_str("\x1b[?2026h\x1b[2J\x1b[H");
         let bw = 60i32;
         let bh = nrows + 9;
         let ox = (cols - bw) / 2;
@@ -493,6 +493,7 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
             "Votes vitesse",
             "Fenetre de vote",
             "Pathfinder",
+            "FPS cible",
         ];
         let preset = (cfg.music_preset.rem_euclid(audio::MUSIC_PRESETS.len() as i32)) as usize;
         let values = [
@@ -507,6 +508,7 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
             if cfg.allow_speed_vote { "Oui".into() } else { "Non".into() },
             format!("{:.0} s", cfg.vote_window_secs),
             ai::Pathfinder::from_index(cfg.pathfinder).label().to_string(),
+            format!("{} fps", cfg.target_fps),
         ];
         for r in 0..nrows as usize {
             let y = oy + 3 + r as i32;
@@ -519,7 +521,7 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
         put(&mut buf, ox + 3, oy + bh - 3, (160, 200, 230), "Canal Twitch : modifiable dans abyssal.config.json");
         put(&mut buf, ox + 3, oy + bh - 2, (150, 200, 150), "fleches: ajuster    o/echap/entree: fermer");
 
-        buf.push_str("\x1b[0m");
+        buf.push_str("\x1b[0m\x1b[?2026l");
         let _ = stdout.write_all(buf.as_bytes());
         let _ = stdout.flush();
 
@@ -552,10 +554,11 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
                             7 => cfg.allow_merchant_vote = !cfg.allow_merchant_vote,
                             8 => cfg.allow_speed_vote = !cfg.allow_speed_vote,
                             9 => cfg.vote_window_secs = (cfg.vote_window_secs + dir as f32).clamp(2.0, 60.0),
-                            _ => {
+                            10 => {
                                 let n = ai::Pathfinder::ALL.len() as i32;
                                 cfg.pathfinder = (cfg.pathfinder + dir).rem_euclid(n);
                             }
+                            _ => cfg.target_fps = (cfg.target_fps as i32 + dir * 5).clamp(10, 240) as u32,
                         }
                         apply(cfg, audio);
                     }
@@ -625,6 +628,8 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
     let mut zoom_idx = 2usize;
     let mut accumulator = 0.0f32;
     let mut last = Instant::now();
+    let mut last_draw = Instant::now() - Duration::from_secs(1);
+    let mut fps_smoothed = 0.0f32;
     let mut heartbeat_acc = 0.0f32;
     let mut shop_window = 0.0f32;
     let mut prev_merchant = false;
@@ -958,7 +963,16 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         }
         was_dead = dead_now;
 
-        render::draw(&game, cols, rows, paused, SPEEDS[speed].0, sprite_mode, sprite_zooms[zoom_idx], stdout);
+        let frame_ms = (1000 / cfg.target_fps.clamp(10, 240)) as u128;
+        if last_draw.elapsed().as_millis() >= frame_ms {
+            let since = last_draw.elapsed().as_secs_f32();
+            if since > 0.0 {
+                let inst = 1.0 / since;
+                fps_smoothed = if fps_smoothed <= 0.0 { inst } else { fps_smoothed * 0.9 + inst * 0.1 };
+            }
+            render::draw(&game, cols, rows, paused, SPEEDS[speed].0, sprite_mode, sprite_zooms[zoom_idx], fps_smoothed, cfg.target_fps, stdout);
+            last_draw = Instant::now();
+        }
 
         if cfg.obs_overlay && last_obs.elapsed() >= Duration::from_millis(250) {
             write_obs(&game);
