@@ -154,11 +154,30 @@ fn parse_grid(s: &str, cols: usize, rows: usize) -> Vec<Cell> {
     grid
 }
 
-const CW: usize = 8;
-const CH: usize = 16;
-const GLYPH_PAD: usize = 4;
-const FONT_PX: f32 = 13.0;
-const BASELINE: i32 = 12;
+static SS_VAL: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+fn ss() -> usize {
+    match SS_VAL.load(std::sync::atomic::Ordering::Relaxed) {
+        0 => 2,
+        n => n,
+    }
+}
+
+fn cw() -> usize {
+    8 * ss()
+}
+fn cell_h() -> usize {
+    16 * ss()
+}
+fn glyph_pad() -> usize {
+    4 * ss()
+}
+fn font_px() -> f32 {
+    13.0 * ss() as f32
+}
+fn baseline() -> i32 {
+    12 * ss() as i32
+}
 
 fn blend(dst: u32, fg: (u8, u8, u8), cov: u8) -> u32 {
     if cov == 0 {
@@ -181,13 +200,13 @@ fn blend(dst: u32, fg: (u8, u8, u8), cov: u8) -> u32 {
 fn put_glyph(fb: &mut [u32], w: usize, h: usize, cx: usize, cy: usize, ch: char, fg: (u8, u8, u8), bg: Option<(u8, u8, u8)>) {
     if let Some(b) = bg {
         let bp = rgb(b);
-        for ry in 0..CH {
-            let py = cy * CH + ry;
+        for ry in 0..cell_h() {
+            let py = cy * cell_h() + ry;
             if py >= h {
                 break;
             }
-            for col in 0..CW {
-                let px = cx * CW + col;
+            for col in 0..cw() {
+                let px = cx * cw() + col;
                 if px < w {
                     fb[py * w + px] = bp;
                 }
@@ -201,15 +220,17 @@ fn put_glyph(fb: &mut [u32], w: usize, h: usize, cx: usize, cy: usize, ch: char,
         if let Some(g) = fallback_bitmap(ch) {
             let fgp = rgb(fg);
             for (ry, row) in g.iter().enumerate() {
-                let py = cy * CH + GLYPH_PAD + ry;
-                if py >= h {
-                    break;
-                }
                 for col in 0..8 {
-                    if row & (1 << col) != 0 {
-                        let px = cx * CW + col;
-                        if px < w {
-                            fb[py * w + px] = fgp;
+                    if row & (1 << col) == 0 {
+                        continue;
+                    }
+                    for dy in 0..ss() {
+                        for dx in 0..ss() {
+                            let px = cx * cw() + col * ss() + dx;
+                            let py = cy * cell_h() + glyph_pad() + ry * ss() + dy;
+                            if px < w && py < h {
+                                fb[py * w + px] = fgp;
+                            }
                         }
                     }
                 }
@@ -219,11 +240,11 @@ fn put_glyph(fb: &mut [u32], w: usize, h: usize, cx: usize, cy: usize, ch: char,
     }
     GCACHE.with(|c| {
         let mut c = c.borrow_mut();
-        let (m, bmp) = c.entry(ch).or_insert_with(|| font().rasterize(ch, FONT_PX));
-        let cell_x = (cx * CW) as i32;
-        let cell_y = (cy * CH) as i32;
+        let (m, bmp) = c.entry(ch).or_insert_with(|| font().rasterize(ch, font_px()));
+        let cell_x = (cx * cw()) as i32;
+        let cell_y = (cy * cell_h()) as i32;
         let gx0 = cell_x + m.xmin;
-        let gy0 = cell_y + BASELINE - m.height as i32 - m.ymin;
+        let gy0 = cell_y + baseline() - m.height as i32 - m.ymin;
         for j in 0..m.height {
             let py = gy0 + j as i32;
             if py < 0 || py >= h as i32 {
@@ -267,13 +288,13 @@ fn overlay_world(game: &Game, fb: &mut [u32], w: usize, h: usize, cols: i32, row
             }
             let (_, _, bg) = render::cell_render(game, wx, wy, tint);
             let bgp = rgb(bg);
-            for ry in 0..CH {
-                let py = cy * CH + ry;
+            for ry in 0..cell_h() {
+                let py = cy * cell_h() + ry;
                 if py >= h {
                     break;
                 }
-                for col in 0..CW {
-                    let px = cx * CW + col;
+                for col in 0..cw() {
+                    let px = cx * cw() + col;
                     if px < w {
                         fb[py * w + px] = bgp;
                     }
@@ -281,32 +302,37 @@ fn overlay_world(game: &Game, fb: &mut [u32], w: usize, h: usize, cols: i32, row
             }
             for (sy, line) in pat.iter().enumerate() {
                 for (sx, ch) in line.chars().enumerate() {
-                    if sx >= CW {
+                    if sx >= 8 {
                         break;
                     }
                     if let Some(p) = sprite_px(ch, color) {
-                        blit(fb, (cx * CW + sx) as i32, (cy * CH + GLYPH_PAD + sy) as i32, p);
+                        for dy in 0..ss() {
+                            for dx in 0..ss() {
+                                blit(fb, (cx * cw() + sx * ss() + dx) as i32, (cy * cell_h() + glyph_pad() + sy * ss() + dy) as i32, p);
+                            }
+                        }
                     }
                 }
             }
         }
     }
-    let bx = (render::MCOL + sdx) as f32 * CW as f32;
-    let by = render::MROW as f32 * CH as f32;
+    let bx = (render::MCOL + sdx) as f32 * cw() as f32;
+    let by = render::MROW as f32 * cell_h() as f32;
+    let dot = ss() as i32;
     for p in &game.fx.particles {
-        let px = (bx + (p.x + 0.5) * CW as f32) as i32;
-        let py = (by + (p.y + 0.5) * CH as f32) as i32;
-        for dy in 0..2 {
-            for dx in 0..2 {
+        let px = (bx + (p.x + 0.5) * cw() as f32) as i32;
+        let py = (by + (p.y + 0.5) * cell_h() as f32) as i32;
+        for dy in 0..dot {
+            for dx in 0..dot {
                 blit(fb, px + dx, py + dy, p.color);
             }
         }
     }
     for p in &game.fx.projectiles {
-        let px = (bx + (p.x + 0.5) * CW as f32) as i32;
-        let py = (by + (p.y + 0.5) * CH as f32) as i32;
-        for dy in -1..3 {
-            for dx in -1..3 {
+        let px = (bx + (p.x + 0.5) * cw() as f32) as i32;
+        let py = (by + (p.y + 0.5) * cell_h() as f32) as i32;
+        for dy in -dot..dot {
+            for dx in -dot..dot {
                 blit(fb, px + dx, py + dy, p.color);
             }
         }
@@ -319,8 +345,8 @@ pub fn render_frame(game: &Game, cols: i32, rows: i32, paused: bool, speed_label
     let text = String::from_utf8_lossy(&out);
     let grid = parse_grid(&text, cols as usize, rows as usize);
 
-    let w = cols as usize * CW;
-    let h = rows as usize * CH;
+    let w = cols as usize * cw();
+    let h = rows as usize * cell_h();
     let mut fb = vec![0u32; w * h];
 
     for cy in 0..rows as usize {
@@ -350,15 +376,15 @@ mod tests {
             g.update();
         }
         let fb = render_frame(&g, cols, rows, false, "1x");
-        assert_eq!(fb.len(), (cols as usize * CW) * (rows as usize * CH));
+        assert_eq!(fb.len(), (cols as usize * cw()) * (rows as usize * cell_h()));
         assert!(fb.iter().any(|&p| p != 0), "framebuffer should have lit pixels");
     }
 
     #[test]
     fn pregame_menu_renders() {
         let cols = MAP_W + PANEL_W;
-        let w = cols as usize * CW;
-        let h = (MAP_H + 2) as usize * CH;
+        let w = cols as usize * cw();
+        let h = (MAP_H + 2) as usize * cell_h();
         let classes = [("Aleatoire", None), ("Mage", None)];
         let idx = [1usize, 1, 1, 0, 0, 0, 1, 1, 0];
         let prof = profile::Profile::default();
@@ -513,7 +539,7 @@ fn pregame_fb(w: usize, h: usize, cols: i32, classes: &[(&str, Option<crate::ent
 }
 
 fn options_menu(window: &mut Window, cfg: &mut Config, audio: &mut audio::Audio, w: usize, h: usize, cols: i32) {
-    let n = 13usize;
+    let n = 14usize;
     let mut sel = 0usize;
     let onoff = |b: bool| if b { "oui" } else { "non" };
     loop {
@@ -525,7 +551,7 @@ fn options_menu(window: &mut Window, cfg: &mut Config, audio: &mut audio::Audio,
         audio.set_preset(cfg.music_preset);
 
         let presets = audio::MUSIC_PRESETS;
-        let rows_txt: [(String, String); 13] = [
+        let rows_txt: [(String, String); 14] = [
             ("Son".into(), onoff(cfg.sound_enabled).into()),
             ("Ambiance".into(), onoff(cfg.ambient_enabled).into()),
             ("Volume SFX".into(), format!("{:.1}", cfg.master_volume)),
@@ -539,6 +565,7 @@ fn options_menu(window: &mut Window, cfg: &mut Config, audio: &mut audio::Audio,
             ("Vote chaos".into(), onoff(cfg.allow_chaos_vote).into()),
             ("Vote paris".into(), onoff(cfg.allow_bet_vote).into()),
             ("Overlay OBS".into(), onoff(cfg.obs_overlay).into()),
+            ("Finesse (resolution)".into(), format!("x{} (au relancement)", cfg.render_scale.clamp(1, 4))),
         ];
         let mut fb = vec![0u32; w * h];
         let ox = (cols as usize) / 2 - 18;
@@ -583,7 +610,8 @@ fn options_menu(window: &mut Window, cfg: &mut Config, audio: &mut audio::Audio,
                         9 => cfg.allow_merchant_vote = !cfg.allow_merchant_vote,
                         10 => cfg.allow_chaos_vote = !cfg.allow_chaos_vote,
                         11 => cfg.allow_bet_vote = !cfg.allow_bet_vote,
-                        _ => cfg.obs_overlay = !cfg.obs_overlay,
+                        12 => cfg.obs_overlay = !cfg.obs_overlay,
+                        _ => cfg.render_scale = (cfg.render_scale - 1 + dir).rem_euclid(4) + 1,
                     }
                 }
                 _ => {}
@@ -599,12 +627,13 @@ fn options_menu(window: &mut Window, cfg: &mut Config, audio: &mut audio::Audio,
 pub fn run() {
     let cols = MAP_W + PANEL_W;
     let rows = MAP_H + 2;
-    let w = cols as usize * CW;
-    let h = rows as usize * CH;
 
     let mut profile = profile::Profile::load();
 
     let mut cfg = Config::load_or_create();
+    SS_VAL.store(cfg.render_scale.clamp(1, 4) as usize, std::sync::atomic::Ordering::Relaxed);
+    let w = cols as usize * cw();
+    let h = rows as usize * cell_h();
     let mut audio = audio::Audio::new(cfg.ambient_enabled, cfg.master_volume, cfg.ambient_volume, cfg.music_preset);
     audio.muted = !cfg.sound_enabled;
     let votes = if cfg.twitch_active() { Some(twitch::connect(&cfg.twitch_channel)) } else { None };

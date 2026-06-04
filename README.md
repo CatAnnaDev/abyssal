@@ -155,6 +155,8 @@ Multiplied together that is roughly **180 billion** theoretical builds (≈ 1.8 
 - `pathfinder` — heroine navigation algorithm: 0 BFS, 1 A*, 2 Dijkstra (weighted, danger-aware), 3 Greedy, 4 Diagonal (8-way), 5 JPS (jump point search)
 - `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote`, `allow_chaos_vote` — the optional Twitch integration
 - `allow_bet_vote` — let viewers `!bet <floor>` on the heroine's death depth
+- `render_scale` — internal supersampling factor (1–4, default 2): higher = finer/sharper text and crisper detail (the window renders at this multiple of the base resolution). Takes effect on relaunch. Also in the in-game options menu (`o`).
+- `window_scale` — minifb window scale (0 = FitScreen, 1 = native, 2/4 = integer upscale)
 - `obs_overlay` — when true, writes a self-refreshing `abyssal.obs.html` (transparent background, large fonts) ~4×/s; add it as an OBS **Browser source** (Local file) for a clean streaming overlay alongside the terminal capture. The card shows the heroine's stats, current thought, recent events, and a Twitch line (channel, bet pool, top chatter, last prediction result)
 
 ## Saves & files
