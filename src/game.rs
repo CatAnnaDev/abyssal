@@ -1687,7 +1687,8 @@ impl Game {
         if let Some((x, y)) = spot {
             let name: String = user.chars().take(14).collect();
             self.allies.push(crate::entity::Ally::spectator(&name, self.floor, x, y));
-            self.fx.burst(&mut self.rng, x, y, (150, 200, 255), 12, '\u{2605}');
+            self.fx.beam(x, y, (150, 200, 255), 6);
+            self.fx.ring(x, y, (180, 215, 255), 14, '\u{2605}');
             self.fx.label(x, y, &name, (150, 200, 255));
             self.push_feed(format!("{} rejoint le combat !", name));
             self.sfx.push(Sound::LevelUp);
@@ -1705,7 +1706,9 @@ impl Game {
             self.hero.hp = (self.hero.hp + self.hero.max_hp / 4).min(self.hero.max_hp);
             self.fx.add_shake(9);
             self.fx.label(self.hero.x, self.hero.y, "LA FOULE GRONDE !", (255, 220, 90));
-            self.fx.burst(&mut self.rng, self.hero.x, self.hero.y, (255, 220, 90), 26, '\u{2605}');
+            self.fx.ring(self.hero.x, self.hero.y, (255, 230, 120), 20, '\u{2605}');
+            self.fx.confetti(&mut self.rng, self.map.width, 70);
+            self.fx.screen_flash((255, 215, 120), 10);
             self.push_feed("HYPE ! la foule galvanise l'heroine".into());
             self.sfx.push(Sound::LevelUp);
         }
@@ -1717,6 +1720,7 @@ impl Game {
         let txt = if emote.is_empty() { format!("{} \u{2665}", name) } else { format!("{} {}", name, emote) };
         let ox = self.rng.between(-3, 4);
         self.fx.label(self.hero.x + ox, (self.hero.y - 1).max(1), &txt, (210, 160, 240));
+        self.fx.rise(self.hero.x + ox, self.hero.y, '\u{2665}', (240, 130, 170));
     }
 
     pub fn tag_monster(&mut self, user: &str) {
@@ -1800,6 +1804,7 @@ impl Game {
             y: y as f32,
             vx: self.rng.range(-0.04, 0.04),
             vy,
+            grav: 0.0,
             glyph,
             color,
             ttl: self.rng.between(8, 16),
@@ -2637,6 +2642,8 @@ impl Game {
         self.hero.gold += (m.gold_reward as f32 * self.mut_gold_mult()) as i32;
         if self.hero.gain_xp(m.xp_reward) {
             self.sfx.push(Sound::LevelUp);
+            self.fx.ring(self.hero.x, self.hero.y, (255, 235, 150), 18, '\u{2022}');
+            self.fx.screen_flash((255, 225, 120), 7);
             self.fx.label(self.hero.x, self.hero.y, "NIVEAU+", (255, 225, 120));
             self.grant_talent();
         }
@@ -3151,7 +3158,11 @@ impl Game {
             if is_boss {
                 self.boss_wind = 0;
                 self.danger.clear();
-                self.fx.add_shake(8);
+                self.fx.add_shake(12);
+                self.fx.ring(mx, my, (255, 235, 150), 22, '\u{2736}');
+                self.fx.ring(mx, my, (255, 200, 90), 16, '\u{2605}');
+                self.fx.confetti(&mut self.rng, self.map.width, 80);
+                self.fx.screen_flash((255, 220, 120), 14);
                 self.fx.label(mx, my, "BOSS VAINCU", (255, 220, 90));
                 self.push_log(format!("BOSS VAINCU : {} ! (+{} XP)", name, m.xp_reward), WARN);
                 self.unlock("boss", "Tueur de boss");
@@ -3181,7 +3192,8 @@ impl Game {
             }
             if self.hero.gain_xp(m.xp_reward) {
                 self.sfx.push(Sound::LevelUp);
-                self.fx.burst(&mut self.rng, self.hero.x, self.hero.y, (255, 225, 120), 16, '\u{2022}');
+                self.fx.ring(self.hero.x, self.hero.y, (255, 235, 150), 18, '\u{2022}');
+                self.fx.screen_flash((255, 225, 120), 7);
                 self.fx.label(self.hero.x, self.hero.y, "NIVEAU+", (255, 225, 120));
                 self.push_log(
                     format!("NIVEAU {} ! PV/ATQ/DEF augmentes, soins complets.", self.hero.level),
