@@ -11,7 +11,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const SPEEDS: [(&str, f32); 5] = [("lent", 4.0), ("normal", 7.0), ("rapide", 12.0), ("turbo", 20.0), ("ultra", 36.0)];
 const PANEL_W: i32 = 42;
-const MAP_W: i32 = 80;
+const MAP_W: i32 = 107;
 const MAP_H: i32 = 40;
 
 fn seed() -> u64 {
@@ -503,11 +503,16 @@ fn options_menu(window: &mut Window, cfg: &mut Config, audio: &mut audio::Audio,
                         3 => cfg.ambient_volume = (cfg.ambient_volume + dir as f32 * 0.1).clamp(0.0, 2.0),
                         4 => cfg.music_preset = (cfg.music_preset + dir).rem_euclid(6),
                         5 => cfg.pathfinder = (cfg.pathfinder + dir).rem_euclid(crate::ai::Pathfinder::ALL.len() as i32),
-                        6 => cfg.window_scale = match cfg.window_scale {
-                            1 => if dir > 0 { 2 } else { 4 },
-                            2 => if dir > 0 { 4 } else { 1 },
-                            _ => if dir > 0 { 1 } else { 2 },
-                        },
+                        6 => {
+                            cfg.window_scale = match (cfg.window_scale, dir > 0) {
+                                (2, true) => 4,
+                                (2, false) => 0,
+                                (4, true) => 0,
+                                (4, false) => 2,
+                                (_, true) => 2,
+                                (_, false) => 4,
+                            }
+                        }
                         7 => cfg.twitch_enabled = !cfg.twitch_enabled,
                         8 => cfg.allow_style_vote = !cfg.allow_style_vote,
                         9 => cfg.allow_merchant_vote = !cfg.allow_merchant_vote,
@@ -530,7 +535,7 @@ fn options_menu(window: &mut Window, cfg: &mut Config, audio: &mut audio::Audio,
             ("Volume musique".into(), format!("{:.1}", cfg.ambient_volume)),
             ("Preset musique".into(), presets[cfg.music_preset.rem_euclid(6) as usize].into()),
             ("Pathfinder".into(), crate::ai::Pathfinder::from_index(cfg.pathfinder).label().into()),
-            ("Echelle fenetre".into(), format!("{}x (au relancement)", cfg.window_scale)),
+            ("Echelle fenetre".into(), format!("{} (au relancement)", if cfg.window_scale == 2 { "2x" } else if cfg.window_scale == 4 { "4x" } else { "Auto (16:9)" })),
             ("Twitch".into(), onoff(cfg.twitch_enabled).into()),
             ("Vote mindset".into(), onoff(cfg.allow_style_vote).into()),
             ("Vote marchand".into(), onoff(cfg.allow_merchant_vote).into()),
@@ -570,7 +575,7 @@ pub fn run() {
     let scale = match cfg.window_scale {
         2 => Scale::X2,
         4 => Scale::X4,
-        _ => Scale::X1,
+        _ => Scale::FitScreen,
     };
     let mut window = match Window::new(
         "Abyssal",
