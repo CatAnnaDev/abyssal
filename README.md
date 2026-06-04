@@ -159,7 +159,7 @@ Multiplied together that is roughly **180 billion** theoretical builds (≈ 1.8 
 - `pathfinder` — heroine navigation algorithm: 0 BFS, 1 A*, 2 Dijkstra (weighted, danger-aware), 3 Greedy, 4 Diagonal (8-way), 5 JPS (jump point search)
 - `twitch_enabled`, `twitch_channel`, `vote_window_secs`, `allow_style_vote`, `allow_speed_vote`, `allow_merchant_vote`, `allow_chaos_vote` — the optional Twitch integration
 - `allow_bet_vote` — let viewers `!bet <floor>` on the heroine's death depth
-- `obs_overlay` — when true, writes a self-refreshing `abyssal.obs.html` (transparent background, large fonts) ~4×/s; add it as an OBS **Browser source** (Local file) for a clean streaming overlay alongside the terminal capture. The card shows the heroine's stats, current thought, recent events, and a Twitch line (channel, bet pool, top chatter, last prediction result)
+- `obs_overlay` — when true, writes a self-refreshing `abyssal.obs.html` (transparent background, large fonts) ~4×/s; add it as an OBS **Browser source** (Local file) for a clean streaming overlay alongside the terminal capture. The card shows the heroine (name, class, level, trait, origin), run tags (mindset, difficulty, Boss Rush wave, mutators), live HP/XP/corruption bars (HP color shifts green→amber→red), core stats, equipped weapon/armor with element/affix/set bonus, active status chips (poison/burn/shield/regen/rage, potions, scrolls), familiar & companions, the current thought, a color-coded event feed, a death banner with obituary, and a Twitch line (channel, viewers, hype, bet pool, top chatter, last prediction result)
 
 ## Saves & files
 

@@ -56,23 +56,162 @@ fn esc(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
 }
 
+const OBS_HEAD: &str = "<!doctype html><html><head><meta charset=utf-8><meta http-equiv=refresh content=1>\
+<style>body{margin:0;background:transparent;font-family:'Menlo','Consolas',monospace;color:#e8edf2}\
+.card{display:inline-block;min-width:360px;max-width:440px;background:rgba(8,9,16,.80);border:2px solid #46b6ff;border-radius:14px;padding:16px 20px;box-shadow:0 6px 26px rgba(0,0,0,.45)}\
+.hdr{display:flex;align-items:baseline;gap:10px}\
+.name{font-size:30px;font-weight:bold;color:#ffd76e}\
+.lvl{font-size:16px;color:#9fb2c8}\
+.sub{font-size:15px;color:#8ea2b8;margin:2px 0 8px}\
+.tags{margin-bottom:8px}\
+.chip{display:inline-block;font-size:12px;padding:2px 8px;margin:2px 4px 2px 0;border-radius:10px;background:#1c2740;color:#bcd2f0}\
+.chip.mind{background:#243a2a;color:#bfe8c5}\
+.chip.diff{background:#3a2a24;color:#f0cdb0}\
+.chip.var{background:#3a2438;color:#f0b0e0}\
+.chip.mut{background:#352440;color:#d8b0f0}\
+.bar{display:flex;align-items:center;gap:8px;margin:4px 0}\
+.blab{font-size:13px;width:42px;color:#9fb2c8}\
+.trk{flex:1;height:13px;background:#222936;border-radius:7px;overflow:hidden}\
+.fill{display:block;height:100%}\
+.bval{font-size:13px;color:#c6d2de;min-width:84px;text-align:right}\
+.stats{font-size:16px;margin:6px 0}\
+.gear{font-size:14px;color:#bcd0e4;margin:4px 0}\
+.stx{margin:6px 0}\
+.st{display:inline-block;font-size:12px;padding:2px 7px;margin:2px 4px 2px 0;border-radius:9px;background:#161c28}\
+.pets{font-size:13px;color:#a8e0c8;margin:4px 0}\
+.pet{margin-right:12px}\
+.thought{font-style:italic;color:#a6d8ff;font-size:19px;margin:8px 0;max-width:400px}\
+.tw{color:#c79bff;font-size:14px;margin-top:6px}\
+.dead{color:#ff5a5a;font-size:22px;font-weight:bold;margin-top:8px}\
+.ob{color:#e8c9a0;font-size:15px;max-width:410px;margin-top:4px}\
+.feed{margin-top:8px;font-size:14px;border-top:1px solid #1e2636;padding-top:6px}\
+.ev{margin-top:2px}</style></head><body>";
+
+fn obs_bar(label: &str, cur: i32, max: i32, color: &str) -> String {
+    let pct = if max > 0 { (cur.max(0) * 100 / max).clamp(0, 100) } else { 0 };
+    format!(
+        "<div class=bar><span class=blab>{}</span><span class=trk><span class=fill style='width:{}%;background:{}'></span></span><span class=bval>{}/{}</span></div>",
+        label,
+        pct,
+        color,
+        cur.max(0),
+        max
+    )
+}
+
 fn write_obs(game: &Game) {
     let h = &game.hero;
-    let hp_pct = (h.hp.max(0) * 100 / h.max_hp.max(1)).clamp(0, 100);
     let dead = matches!(game.phase, game::Phase::Dead(_));
-    let thought = game.thoughts.last().map(|s| s.as_str()).unwrap_or("");
-    let mut events = String::new();
-    for line in game.log.iter().rev().take(4) {
-        events.push_str(&format!("<div class=ev>{}</div>", esc(&line.text)));
+    let frac = if h.max_hp > 0 { h.hp.max(0) as f32 / h.max_hp as f32 } else { 0.0 };
+    let hp_col = if frac > 0.5 { "#5ed27a" } else if frac > 0.25 { "#e8c06a" } else { "#ef5a5a" };
+
+    let mut tags = format!("<span class='chip mind'>{}</span>", esc(game.style.label()));
+    if game.diff_label != "Normal" {
+        tags.push_str(&format!("<span class='chip diff'>{}</span>", esc(&game.diff_label)));
     }
+    if game.boss_rush {
+        let v = if game.floor >= 10 { format!("Boss Rush · vague {}", game.boss_wave + 1) } else { "Boss Rush".to_string() };
+        tags.push_str(&format!("<span class='chip var'>{}</span>", esc(&v)));
+    }
+    for m in &game.mutators {
+        tags.push_str(&format!("<span class='chip mut'>\u{2622} {}</span>", esc(m.label())));
+    }
+
+    let mut bars = obs_bar("PV", h.hp, h.max_hp, hp_col);
+    bars.push_str(&obs_bar("XP", h.xp, h.xp_next, "#6aa0f0"));
+    if game.corruption > 0 {
+        bars.push_str(&obs_bar("Corr", game.corruption, 100, "#c074d0"));
+    }
+
+    let stats = format!(
+        "<div class=stats>\u{2694} {} · \u{25c8} {} · {} or · {} kills · expl {}%</div>",
+        h.atk(),
+        h.def(),
+        h.gold,
+        h.kills,
+        game.map.discovery_percent()
+    );
+
+    let waf = h.weapon_affix.label();
+    let waf = if waf.is_empty() { String::new() } else { format!(" {}", waf) };
+    let wel = h.weapon_element().label();
+    let wele = if wel != "physique" { format!(" [{}]", wel) } else { String::new() };
+    let aaf = h.armor_affix.label();
+    let aaf = if aaf.is_empty() { String::new() } else { format!(" {}", aaf) };
+    let setb = h.set_bonus();
+    let sets = if setb > 0 { format!(" · SET\u{00d7}{}", setb) } else { String::new() };
+    let gear = format!(
+        "<div class=gear>\u{2694} {}+{}{}{}  \u{25c8} {}+{}{}{}</div>",
+        esc(&h.weapon),
+        h.weapon_bonus,
+        esc(&waf),
+        esc(&wele),
+        esc(&h.armor),
+        h.armor_bonus,
+        esc(&aaf),
+        sets
+    );
+
+    let mut st = String::new();
+    let mut chip = |txt: String, col: &str| st.push_str(&format!("<span class=st style='color:{}'>{}</span>", col, esc(&txt)));
+    if h.poison > 0 {
+        chip(format!("poison {}", h.poison), "#9bd25a");
+    }
+    if h.burn > 0 {
+        chip(format!("feu {}", h.burn), "#f0884a");
+    }
+    if h.shield > 0 {
+        chip(format!("bouclier {}", h.shield), "#7fd0ff");
+    }
+    if h.regen > 0 {
+        chip(format!("regen {}", h.regen), "#9be88c");
+    }
+    if h.rage > 0 {
+        chip(format!("rage {}", h.rage), "#ef8a5a");
+    }
+    if h.potions > 0 {
+        chip(format!("potions {}", h.potions), "#aee6b0");
+    }
+    if !h.scrolls.is_empty() {
+        chip(format!("parchemins {}", h.scrolls.len()), "#e6dca0");
+    }
+    let status = if st.is_empty() { String::new() } else { format!("<div class=stx>{}</div>", st) };
+
+    let mut pets = String::new();
+    if let Some(p) = &game.pet {
+        pets.push_str(&format!("<span class=pet>\u{2726} {} niv{} {}/{}</span>", esc(&p.name), p.level, p.hp, p.max_hp));
+    }
+    for a in game.allies.iter().filter(|a| a.companion) {
+        pets.push_str(&format!(
+            "<span class=pet>\u{2665} {} ({}) n{} {}/{}</span>",
+            esc(&a.name),
+            esc(crate::entity::ally_role_label(a.role)),
+            a.level,
+            a.hp,
+            a.max_hp
+        ));
+    }
+    let petline = if pets.is_empty() { String::new() } else { format!("<div class=pets>{}</div>", pets) };
+
     let banner = if dead {
         format!("<div class=dead>MORTE — {}</div><div class=ob>{}</div>", esc(&game.last_cause), esc(&game.obituary))
     } else {
         String::new()
     };
+
+    let thought = game.thoughts.last().map(|s| s.as_str()).unwrap_or("");
+
     let mut tw = String::new();
     if !game.twitch_channel.is_empty() {
         tw.push_str(&format!("<div class=tw>#{}", esc(&game.twitch_channel)));
+        let vc = game.viewer_count();
+        if vc > 0 {
+            tw.push_str(&format!(" · \u{263a} {}", vc));
+        }
+        if game.hype > 0 {
+            let hk = (game.hype * 10 / crate::game::HYPE_MAX).clamp(0, 10);
+            tw.push_str(&format!(" · hype {}/10", hk));
+        }
         if game.bet_pool > 0 {
             tw.push_str(&format!(" · {} paris", game.bet_pool));
         }
@@ -84,50 +223,43 @@ fn write_obs(game: &Game) {
     if !game.bet_result.is_empty() {
         tw.push_str(&format!("<div class=tw>{}</div>", esc(&game.bet_result)));
     }
-    let html = format!(
-        "<!doctype html><html><head><meta charset=utf-8><meta http-equiv=refresh content=1>\
-<style>body{{margin:0;background:transparent;font-family:'Menlo','Consolas',monospace;color:#eee}}\
-.card{{display:inline-block;background:rgba(8,8,14,.74);border:2px solid #46b6ff;border-radius:12px;padding:16px 20px}}\
-.name{{font-size:32px;font-weight:bold;color:#ffd76e}}\
-.sub{{font-size:18px;color:#9fb2c8;margin-bottom:6px}}\
-.row{{font-size:20px;margin-top:6px}}\
-.hpbar{{height:14px;width:340px;background:#2a2a33;border-radius:7px;overflow:hidden;margin-top:8px}}\
-.hpfill{{height:100%;background:linear-gradient(90deg,#5ed27a,#9be88c)}}\
-.thought{{font-style:italic;color:#a6d8ff;font-size:21px;margin-top:10px;max-width:380px}}\
-.feed{{margin-top:8px;color:#8a93a6;font-size:15px}}\
-.dead{{color:#ff5a5a;font-size:24px;font-weight:bold;margin-top:8px}}\
-.ob{{color:#e8c9a0;font-size:16px;max-width:400px;margin-top:4px}}\
-.tw{{color:#c79bff;font-size:16px;margin-top:6px}}</style></head><body><div class=card>\
-<div class=name>{name}</div>\
-<div class=sub>{class} · {trait_} · {origin}</div>\
-<div class=row>Étage {floor} · {biome} · niv {level}</div>\
-<div class=hpbar><div class=hpfill style=\"width:{hp_pct}%\"></div></div>\
-<div class=row>♥ {hp}/{maxhp} · ⚔ {atk} · ◈ {def} · {gold} or · {kills} kills · corr {corr}%</div>\
-{banner}\
+
+    let mut events = String::new();
+    for line in game.log.iter().rev().take(5) {
+        let c = line.color;
+        events.push_str(&format!("<div class=ev style='color:rgb({},{},{})'>{}</div>", c.0, c.1, c.2, esc(&line.text)));
+    }
+
+    let body = format!(
+        "<div class=card>\
+<div class=hdr><span class=name>{name}</span><span class=lvl>niv {level} · {class}</span></div>\
+<div class=sub>{trait_} · {origin} · \u{00e9}tage {floor} · {biome}</div>\
+<div class=tags>{tags}</div>\
+{bars}{stats}{gear}{status}{petline}{banner}\
 <div class=thought>{thought}</div>\
 {tw}\
 <div class=feed>{events}</div>\
-</div></body></html>",
+</div>",
         name = esc(&game.identity.name),
+        level = h.level,
         class = esc(game.class.label()),
         trait_ = esc(game.identity.trait_kind.label()),
         origin = esc(&game.identity.origin),
         floor = game.floor,
         biome = esc(game.biome.label()),
-        level = h.level,
-        hp_pct = hp_pct,
-        hp = h.hp.max(0),
-        maxhp = h.max_hp,
-        atk = h.atk(),
-        def = h.def(),
-        gold = h.gold,
-        kills = h.kills,
-        corr = game.corruption,
+        tags = tags,
+        bars = bars,
+        stats = stats,
+        gear = gear,
+        status = status,
+        petline = petline,
         banner = banner,
         thought = esc(thought),
         tw = tw,
         events = events,
     );
+
+    let html = format!("{}{}</body></html>", OBS_HEAD, body);
     let _ = std::fs::write(OBS_PATH, html);
 }
 
