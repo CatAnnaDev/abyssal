@@ -19,6 +19,15 @@ pub struct Particle {
     pub glyph: char,
     pub color: Color,
     pub ttl: i32,
+    pub fine: bool,
+}
+
+pub struct Wave {
+    pub x: f32,
+    pub y: f32,
+    pub age: i32,
+    pub ttl: i32,
+    pub color: Color,
 }
 
 pub struct Projectile {
@@ -44,6 +53,7 @@ pub struct Fx {
     pub flash: i32,
     pub flash_max: i32,
     pub flash_color: Color,
+    pub waves: Vec<Wave>,
 }
 
 impl Fx {
@@ -69,8 +79,8 @@ impl Fx {
                 ((p.color.1 as u16 + 60).min(255)) as u8,
                 ((p.color.2 as u16 + 60).min(255)) as u8,
             );
-            trail.push(Particle { x: p.x, y: p.y, vx: 0.0, vy: 0.0, grav: 0.0, glyph: '\u{00b7}', color: p.color, ttl: 4 });
-            trail.push(Particle { x: p.x - p.vx * 0.5, y: p.y - p.vy * 0.5, glyph: '\u{2218}', color: glow, vx: 0.0, vy: 0.0, grav: 0.0, ttl: 3 });
+            trail.push(Particle { x: p.x, y: p.y, vx: 0.0, vy: 0.0, grav: 0.0, glyph: '\u{00b7}', color: p.color, ttl: 4, fine: true });
+            trail.push(Particle { x: p.x - p.vx * 0.5, y: p.y - p.vy * 0.5, glyph: '\u{2218}', color: glow, vx: 0.0, vy: 0.0, grav: 0.0, ttl: 3, fine: true });
         }
         self.particles.extend(trail);
 
@@ -90,6 +100,10 @@ impl Fx {
         if self.flash > 0 {
             self.flash -= 1;
         }
+        for w in self.waves.iter_mut() {
+            w.age += 1;
+        }
+        self.waves.retain(|w| w.age < w.ttl);
         if self.combo_timer > 0 {
             self.combo_timer -= 1;
             if self.combo_timer == 0 {
@@ -134,6 +148,7 @@ impl Fx {
                 glyph,
                 color,
                 ttl: rng.between(4, 9),
+                fine: false,
             });
         }
     }
@@ -156,6 +171,7 @@ impl Fx {
                 glyph: g,
                 color: c,
                 ttl: rng.between(42, 84),
+                fine: false,
             });
         }
     }
@@ -173,8 +189,13 @@ impl Fx {
                 glyph,
                 color,
                 ttl: 8,
+                fine: false,
             });
         }
+    }
+
+    pub fn shockwave(&mut self, x: i32, y: i32, color: Color, ttl: i32) {
+        self.waves.push(Wave { x: x as f32, y: y as f32, age: 0, ttl, color });
     }
 
     pub fn beam(&mut self, x: i32, y: i32, color: Color, height: i32) {
@@ -188,6 +209,7 @@ impl Fx {
                 glyph: if i % 2 == 0 { '\u{2503}' } else { '\u{2502}' },
                 color,
                 ttl: 7 + i,
+                fine: false,
             });
         }
     }
@@ -202,6 +224,7 @@ impl Fx {
             glyph,
             color,
             ttl: 15,
+            fine: false,
         });
     }
 
