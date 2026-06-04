@@ -1243,28 +1243,41 @@ fn draw_command_bar(game: &Game, cols: i32, rows: i32, buf: &mut String) {
         ("!faster ", cmd), ("!slower", cmd),
         ("   \u{00b7}   ", sep),
         ("!bet", cmd), (" <etage>  ", dim), ("!bless ", cmd), ("!curse", cmd),
-        ("   \u{00b7}   ", sep),
-        ("!arme ", cmd), ("!armure ", cmd), ("!potion", cmd),
     ];
     bar_segments(buf, y0, MCOL + 1, limit, line_a);
     bar_segments(buf, y0 + 1, MCOL + 1, limit, line_b);
     buf.push_str("\x1b[0m");
 }
 
+fn chat_user_color(name: &str) -> Color {
+    const PAL: &[Color] = &[
+        (255, 120, 120), (120, 200, 255), (150, 230, 150), (240, 200, 120),
+        (220, 150, 235), (120, 230, 220), (240, 160, 180), (180, 200, 255),
+    ];
+    let mut h: u32 = 2166136261;
+    for b in name.bytes() {
+        h = (h ^ b as u32).wrapping_mul(16777619);
+    }
+    PAL[(h as usize) % PAL.len()]
+}
+
 fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
+    let txt: Color = (210, 210, 225);
+    let head: Color = (185, 150, 110);
     let title = if game.twitch_channel.is_empty() {
         "TWITCH".to_string()
     } else {
         format!("TWITCH #{}", game.twitch_channel)
     };
-    let mut lines: Vec<String> = vec![title];
+    let mut lines: Vec<(String, Color)> = vec![(title, (200, 170, 90))];
     let vc = game.viewer_count();
     if vc > 0 {
-        lines.push(format!("\u{263a} {} viewers en live", vc));
+        lines.push((format!("\u{263a} {} viewers en live", vc), txt));
     }
     let hk = (game.hype * 10 / crate::game::HYPE_MAX).clamp(0, 10) as usize;
     if game.hype > 0 || game.hype_flash > 0 {
-        lines.push(format!("HYPE [{}{}]", "\u{2588}".repeat(hk), "\u{00b7}".repeat(10 - hk)));
+        let hc = if game.hype_flash > 0 { (255, 180, 90) } else { txt };
+        lines.push((format!("HYPE [{}{}]", "\u{2588}".repeat(hk), "\u{00b7}".repeat(10 - hk)), hc));
     }
     let st = game.style_tally;
     if st[0] + st[1] + st[2] > 0 {
@@ -1272,31 +1285,31 @@ fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
             let k = n.min(8) as usize;
             "\u{2588}".repeat(k)
         };
-        lines.push("votes etat d'esprit:".to_string());
-        lines.push(format!("!1 complet {:<8} {}", bar(st[0]), st[0]));
-        lines.push(format!("!2 combat  {:<8} {}", bar(st[1]), st[1]));
-        lines.push(format!("!3 rush    {:<8} {}", bar(st[2]), st[2]));
+        lines.push(("votes etat d'esprit:".to_string(), head));
+        lines.push((format!("!1 complet {:<8} {}", bar(st[0]), st[0]), txt));
+        lines.push((format!("!2 combat  {:<8} {}", bar(st[1]), st[1]), txt));
+        lines.push((format!("!3 rush    {:<8} {}", bar(st[2]), st[2]), txt));
     }
     if game.bet_pool > 0 {
-        lines.push(format!("paris: {} (!bet <etage>)", game.bet_pool));
+        lines.push((format!("paris: {} (!bet <etage>)", game.bet_pool), txt));
     }
     if !game.bet_result.is_empty() {
-        lines.push(game.bet_result.chars().take(28).collect());
-    }
-    if !game.top_voters.is_empty() {
-        lines.push("top chat:".to_string());
-    }
-    for (i, (user, n)) in game.top_voters.iter().enumerate() {
-        let u: String = user.chars().take(14).collect();
-        lines.push(format!("{}. {} ({})", i + 1, u, n));
+        lines.push((game.bet_result.chars().take(28).collect(), (200, 230, 160)));
     }
     if !game.twitch_feed.is_empty() {
-        lines.push("actions:".to_string());
+        lines.push(("actions:".to_string(), head));
         for a in game.twitch_feed.iter() {
-            lines.push(format!("\u{2022} {}", a.chars().take(26).collect::<String>()));
+            lines.push((format!("\u{2022} {}", a.chars().take(26).collect::<String>()), (180, 205, 175)));
         }
     }
-    let inner = lines.iter().map(|l| l.chars().count()).max().unwrap_or(8) as i32 + 1;
+    if !game.chat_log.is_empty() {
+        lines.push(("\u{25b8} tchat en direct:".to_string(), head));
+        let start = game.chat_log.len().saturating_sub(6);
+        for (user, msg) in game.chat_log[start..].iter() {
+            lines.push((format!("{}: {}", user, msg), chat_user_color(user)));
+        }
+    }
+    let inner = lines.iter().map(|(l, _)| l.chars().count()).max().unwrap_or(8).clamp(8, 30) as i32 + 1;
     let bh = lines.len() as i32 + 2;
     let oy = (mh - bh).max(0);
     let border: Color = (180, 130, 235);
@@ -1305,8 +1318,7 @@ fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
         buf.push('\u{2500}');
     }
     buf.push('\u{2510}');
-    for (i, l) in lines.iter().enumerate() {
-        let color = if i == 0 { (200, 170, 90) } else { (210, 210, 225) };
+    for (i, (l, color)) in lines.iter().enumerate() {
         put(buf, MCOL, MROW + oy + 1 + i as i32, border, "\u{2502}");
         let mut content: String = l.chars().take(inner as usize).collect();
         while (content.chars().count() as i32) < inner {

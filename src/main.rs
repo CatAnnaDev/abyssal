@@ -743,7 +743,11 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         prev_merchant = merchant_here;
 
         if let Some(rx) = &votes {
-            while let Ok((user, cmd)) = rx.try_recv() {
+            while let Ok((user, raw, cmd)) = rx.try_recv() {
+                let is_merchant = matches!(cmd, ViewerCmd::Merchant(_));
+                if !is_merchant {
+                    game.push_chat(&user, &raw);
+                }
                 let (counted, action) = match cmd {
                     ViewerCmd::Style(s) if cfg.allow_style_vote => {
                         *style_votes.entry(s).or_insert(0) += 1;
