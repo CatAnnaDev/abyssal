@@ -791,6 +791,8 @@ pub struct Game {
     #[serde(skip)]
     pub hype_flash: i32,
     #[serde(skip)]
+    pub chat_log: Vec<(String, String)>,
+    #[serde(skip)]
     pub hud_note: String,
     #[serde(skip)]
     pub sfx: Vec<Sound>,
@@ -960,6 +962,7 @@ impl Game {
             viewers: Vec::new(),
             hype: 0,
             hype_flash: 0,
+            chat_log: Vec::new(),
             hud_note: String::new(),
             sfx: Vec::new(),
             low_hp_pulse: 0.0,
@@ -1741,6 +1744,19 @@ impl Game {
         let n = self.twitch_feed.len();
         if n > 4 {
             self.twitch_feed.drain(0..n - 4);
+        }
+    }
+
+    pub fn push_chat(&mut self, user: &str, msg: &str) {
+        let clean: String = msg.trim().chars().filter(|c| !c.is_control()).take(48).collect();
+        if clean.is_empty() {
+            return;
+        }
+        let name: String = user.chars().take(16).collect();
+        self.chat_log.push((name, clean));
+        let n = self.chat_log.len();
+        if n > 8 {
+            self.chat_log.drain(0..n - 8);
         }
     }
 

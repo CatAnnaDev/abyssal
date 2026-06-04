@@ -18,7 +18,7 @@ pub enum ViewerCmd {
     Chat,
 }
 
-pub fn connect(channel_name: &str) -> Receiver<(String, ViewerCmd)> {
+pub fn connect(channel_name: &str) -> Receiver<(String, String, ViewerCmd)> {
     let (tx, rx) = channel();
     let chan = channel_name.trim().trim_start_matches('#').to_lowercase();
     let nonce = SystemTime::now()
@@ -40,8 +40,9 @@ pub fn connect(channel_name: &str) -> Receiver<(String, ViewerCmd)> {
                     }
                     if let Some(msg) = privmsg_body(&line) {
                         let user = sender(&line).unwrap_or("anon").to_string();
+                        let raw: String = msg.chars().take(160).collect();
                         let cmd = parse_cmd(msg).unwrap_or(ViewerCmd::Chat);
-                        if tx.send((user, cmd)).is_err() {
+                        if tx.send((user, raw, cmd)).is_err() {
                             return;
                         }
                     }
