@@ -317,7 +317,8 @@ mod tests {
         let h = (MAP_H + 2) as usize * 8;
         let classes = [("Aleatoire", None), ("Mage", None)];
         let idx = [1usize, 1, 1, 0, 0, 0, 1, 1, 0];
-        let fb = pregame_fb(w, h, cols, &classes, &idx, 2, true);
+        let prof = profile::Profile::default();
+        let fb = pregame_fb(w, h, cols, &classes, &idx, 2, true, &prof);
         assert_eq!(fb.len(), w * h);
         assert!(fb.iter().any(|&p| p != 0));
     }
@@ -404,14 +405,14 @@ fn pregame_menu(window: &mut Window, profile: &profile::Profile, w: usize, h: us
             }
         }
 
-        let fb = pregame_fb(w, h, cols, &classes, &idx, sel, has_save);
+        let fb = pregame_fb(w, h, cols, &classes, &idx, sel, has_save, profile);
         let _ = window.update_with_buffer(&fb, w, h);
     }
     None
 }
 
 #[allow(clippy::too_many_arguments)]
-fn pregame_fb(w: usize, h: usize, cols: i32, classes: &[(&str, Option<crate::entity::HeroClass>)], idx: &[usize; 9], sel: usize, has_save: bool) -> Vec<u32> {
+fn pregame_fb(w: usize, h: usize, cols: i32, classes: &[(&str, Option<crate::entity::HeroClass>)], idx: &[usize; 9], sel: usize, has_save: bool, profile: &profile::Profile) -> Vec<u32> {
     let diffs = game::DIFFICULTIES;
     let labels = ["Classe", "Etat d'esprit", "Difficulte", "Trait de depart", "Variante", "Mutateurs", "Familier", "Vitesse", "Son"];
     let mut fb = vec![0u32; w * h];
@@ -445,10 +446,26 @@ fn pregame_fb(w: usize, h: usize, cols: i32, classes: &[(&str, Option<crate::ent
         draw_text(&mut fb, w, h, ox, y, &format!("{} {:<16}", arrow, labels[i]), col);
         draw_text(&mut fb, w, h, ox + 20, y, &format!("< {} >", values[i]), if i == sel { (235, 215, 140) } else { (150, 195, 210) });
     }
+    let dy = r + 9 * 2 + 1;
+    let desc = if sel == 0 {
+        match idx[0] {
+            0 => "Classe tiree au hasard a chaque lancement.".to_string(),
+            n => crate::entity::CLASSES[n - 1].describe(),
+        }
+    } else {
+        String::new()
+    };
+    if !desc.is_empty() {
+        draw_text(&mut fb, w, h, ox, dy, &desc, (170, 200, 175));
+    }
+    let perks = profile.perk_labels();
+    if !perks.is_empty() {
+        draw_text(&mut fb, w, h, ox, dy + 2, &format!("Bonus debloques: {}", perks.join(", ")), (235, 205, 130));
+    }
     fb
 }
 
-fn options_menu(window: &mut Window, cfg: &mut Config, w: usize, h: usize, cols: i32) {
+fn options_menu(window: &mut Window, cfg: &mut Config, audio: &mut audio::Audio, w: usize, h: usize, cols: i32) {
     let n = 13usize;
     let mut sel = 0usize;
     let onoff = |b: bool| if b { "oui" } else { "non" };
@@ -456,6 +473,9 @@ fn options_menu(window: &mut Window, cfg: &mut Config, w: usize, h: usize, cols:
         if !window.is_open() {
             break;
         }
+        audio.muted = !cfg.sound_enabled;
+        audio.set_levels(cfg.master_volume, if cfg.ambient_enabled { cfg.ambient_volume } else { 0.0 });
+        audio.set_preset(cfg.music_preset);
         let mut close = false;
         for key in window.get_keys_pressed(KeyRepeat::No) {
             match key {
@@ -490,7 +510,7 @@ fn options_menu(window: &mut Window, cfg: &mut Config, w: usize, h: usize, cols:
         if close {
             break;
         }
-        let presets = ["Auto", "Chill", "Energique", "Sombre", "Retro 8-bit", "Mystique"];
+        let presets = audio::MUSIC_PRESETS;
         let rows_txt: [(String, String); 13] = [
             ("Son".into(), onoff(cfg.sound_enabled).into()),
             ("Ambiance".into(), onoff(cfg.ambient_enabled).into()),
@@ -617,11 +637,7 @@ pub fn run() {
                 }
                 Key::K => game.show_codex = !game.show_codex,
                 Key::H => game.show_hall = !game.show_hall,
-                Key::O => {
-                    options_menu(&mut window, &mut cfg, w, h, cols);
-                    audio = audio::Audio::new(cfg.ambient_enabled, cfg.master_volume, cfg.ambient_volume, cfg.music_preset);
-                    audio.muted = !cfg.sound_enabled;
-                }
+                Key::O => options_menu(&mut window, &mut cfg, &mut audio, w, h, cols),
                 Key::M => game.cycle_style(),
                 Key::B => game.spawn_test_merchant(),
                 Key::Key1 => game.set_style(Playstyle::Completionist),
@@ -790,6 +806,7 @@ pub fn run() {
         if game.lunge.2 > 0 {
             game.lunge.2 -= 1;
         }
+        game.cosmetic_tick();
         let dead_now = matches!(game.phase, game::Phase::Dead(_));
         if dead_now && !was_dead {
             if let Some(name) = game.nemesis_promoted.take() {
@@ -811,6 +828,7 @@ pub fn run() {
                 };
                 game.push_feed(format!("pari gagne: {}", shown));
             }
+            profile.record_ghost(game.make_ghost());
             profile.record_death(game.floor, game.last_score, game.hero.kills, game.hero.gold);
         }
         if was_dead && !dead_now {
