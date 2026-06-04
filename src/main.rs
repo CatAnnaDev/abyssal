@@ -927,7 +927,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         audio.set_biome(game.biome.music_id());
         audio.set_intensity(game.music_intensity());
         audio.set_music_mode(game.music_mode());
-        audio.tick();
+        audio.tick(dt);
         game.anim_t = game.anim_t.wrapping_add(1);
         if game.lunge.2 > 0 {
             game.lunge.2 -= 1;
@@ -970,7 +970,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                 let inst = 1.0 / since;
                 fps_smoothed = if fps_smoothed <= 0.0 { inst } else { fps_smoothed * 0.9 + inst * 0.1 };
             }
-            render::draw(&game, cols, rows, paused, SPEEDS[speed].0, sprite_mode, sprite_zooms[zoom_idx], fps_smoothed, cfg.target_fps, stdout);
+            render::draw(&game, cols, rows, paused, SPEEDS[speed].0, sprite_mode, sprite_zooms[zoom_idx], fps_smoothed, cfg.target_fps, audio.reboots(), stdout);
             last_draw = Instant::now();
         }
 

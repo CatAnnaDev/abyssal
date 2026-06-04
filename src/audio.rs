@@ -458,30 +458,74 @@ pub struct Audio {
     intensity_target: f32,
     preset: i32,
     pub muted: bool,
+    ambient_on: bool,
+    probe: Option<Sink>,
+    probe_age: f32,
+    reboots: u32,
 }
 
 impl Audio {
     pub fn new(ambient_on: bool, master_volume: f32, ambient_volume: f32, preset: i32) -> Self {
-        let volume = master_volume.clamp(0.0, 2.0);
-        let music_level = ambient_volume.clamp(0.0, 2.0);
-        let voice = 0i32;
-        match OutputStream::try_default() {
-            Ok((stream, handle)) => {
-                let mut music = Vec::new();
-                if ambient_on {
-                    for (i, stem) in [Stem::Base, Stem::Combat, Stem::Boss].into_iter().enumerate() {
-                        if let Ok(sink) = Sink::try_new(&handle) {
-                            let start = if i == 0 { music_level } else { 0.0 };
-                            sink.set_volume(start);
-                            sink.append(SamplesBuffer::new(1, SR, music_stem(stem, voice, preset)).repeat_infinite());
-                            music.push(StemSink { sink, cur: start, target: start });
-                        }
-                    }
-                }
-                Audio { _stream: Some(stream), handle: Some(handle), music, music_level, voice, volume, speed_cur: 1.0, intensity: 0.0, intensity_target: 0.0, preset, muted: false }
+        let mut audio = Audio {
+            _stream: None,
+            handle: None,
+            music: Vec::new(),
+            music_level: ambient_volume.clamp(0.0, 2.0),
+            voice: 0,
+            volume: master_volume.clamp(0.0, 2.0),
+            speed_cur: 1.0,
+            intensity: 0.0,
+            intensity_target: 0.0,
+            preset,
+            muted: false,
+            ambient_on,
+            probe: None,
+            probe_age: 0.0,
+            reboots: 0,
+        };
+        audio.spawn();
+        audio
+    }
+
+    pub fn reboots(&self) -> u32 {
+        self.reboots
+    }
+
+    fn spawn(&mut self) {
+        let (stream, handle) = match OutputStream::try_default() {
+            Ok(pair) => pair,
+            Err(_) => {
+                self._stream = None;
+                self.handle = None;
+                self.music = Vec::new();
+                self.probe = None;
+                return;
             }
-            Err(_) => Audio { _stream: None, handle: None, music: Vec::new(), music_level, voice, volume, speed_cur: 1.0, intensity: 0.0, intensity_target: 0.0, preset, muted: false },
+        };
+        let mut music = Vec::new();
+        if self.ambient_on {
+            for (i, stem) in [Stem::Base, Stem::Combat, Stem::Boss].into_iter().enumerate() {
+                if let Ok(sink) = Sink::try_new(&handle) {
+                    let target = self.music.get(i).map(|s| s.target).unwrap_or(if i == 0 { self.music_level } else { 0.0 });
+                    sink.set_volume(target);
+                    sink.set_speed(self.speed_cur);
+                    sink.append(SamplesBuffer::new(1, SR, music_stem(stem, self.voice, self.preset)).repeat_infinite());
+                    if self.muted {
+                        sink.pause();
+                    }
+                    music.push(StemSink { sink, cur: target, target });
+                }
+            }
         }
+        let probe = Sink::try_new(&handle).ok();
+        if let Some(p) = &probe {
+            p.set_volume(0.0);
+        }
+        self._stream = Some(stream);
+        self.handle = Some(handle);
+        self.music = music;
+        self.probe = probe;
+        self.probe_age = 0.0;
     }
 
     fn rebuild_stems(&mut self) {
@@ -566,7 +610,35 @@ impl Audio {
         self.intensity_target = t.clamp(0.0, 1.0);
     }
 
-    pub fn tick(&mut self) {
+    fn watchdog(&mut self, dt: f32) {
+        let (empty, has_probe) = match &self.probe {
+            Some(p) => (p.empty(), true),
+            None => (false, false),
+        };
+        if !has_probe {
+            self.probe_age += dt;
+            if self.probe_age > 1.5 {
+                self.reboots += 1;
+                self.spawn();
+            }
+            return;
+        }
+        if empty {
+            if let Some(p) = &self.probe {
+                p.append(SamplesBuffer::new(1, SR, vec![0.0f32; (SR / 4) as usize]));
+            }
+            self.probe_age = 0.0;
+        } else {
+            self.probe_age += dt;
+            if self.probe_age > 1.5 {
+                self.reboots += 1;
+                self.spawn();
+            }
+        }
+    }
+
+    pub fn tick(&mut self, dt: f32) {
+        self.watchdog(dt);
         if self.muted {
             return;
         }
