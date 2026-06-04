@@ -2003,6 +2003,7 @@ impl Game {
         if (self.hero.has_affix(Affix::Regen) || self.hero.has_talent(Talent::Regen) || self.hero.has_relic(Relic::Colossus)) && self.hero.hp < self.hero.max_hp {
             self.hero.hp += 1;
         }
+        let (burn0, poison0) = (self.hero.burn, self.hero.poison);
         if self.event == FloorEvent::Inferno && self.rng.chance(0.06) {
             self.hero.burn = self.hero.burn.max(2);
         }
@@ -2014,6 +2015,12 @@ impl Game {
             Biome::Necropolis if self.rng.chance(0.04) => self.hero.poison = self.hero.poison.max(2),
             _ => {}
         }
+        if burn0 == 0 && self.hero.burn > 0 {
+            self.push_log("L'air brulant vous embrase (brulure).".into(), (235, 130, 70));
+        }
+        if poison0 == 0 && self.hero.poison > 0 {
+            self.push_log("Les miasmes du lieu vous empoisonnent (poison).".into(), (150, 210, 110));
+        }
         if !self.hazard.is_empty() {
             let (hx, hy) = (self.hero.x, self.hero.y);
             let on_hazard = self.hazard.iter().any(|&(x, y, _)| x == hx && y == hy);
@@ -2022,6 +2029,7 @@ impl Game {
                 self.hero.hp -= d;
                 self.fx.damage(hx, hy, d, true);
                 self.fx.add_shake(2);
+                self.push_log(format!("Vous etes sur une zone en eruption ({} degats).", d), (235, 120, 60));
                 if self.hero.hp <= 0 {
                     self.hero.hp = 0;
                     self.die("une eruption");
@@ -4656,9 +4664,10 @@ impl Game {
         self.fx.damage(self.hero.x, self.hero.y, dmg, crit);
         if caster {
             self.hero.burn = self.hero.burn.max(3);
-            self.push_log(format!("Le {} vous embrase ({} degats).", name, dmg), BAD);
+            self.push_log(format!("Le {} vous embrase ({} degats — brulure).", name, dmg), BAD);
         } else {
-            self.push_log(format!("Le {} vous tire dessus ({} degats).", name, dmg), BAD);
+            let detail = dmg_detail(self.monsters[idx].element, crit);
+            self.push_log(format!("Le {} vous tire dessus ({} degats{}).", name, dmg, detail), BAD);
         }
         if self.hero.hp <= 0 {
             self.hero.hp = 0;
@@ -4683,7 +4692,8 @@ impl Game {
             return;
         }
         let (raw, crit) = resolve(self.monsters[idx].atk, self.hero.def(), &mut self.rng, 0.08);
-        let dmg = ((raw as f32 * self.hero_def_mult(self.monsters[idx].element)) as i32).max(1);
+        let elem = self.monsters[idx].element;
+        let dmg = ((raw as f32 * self.hero_def_mult(elem)) as i32).max(1);
         let name = self.monsters[idx].name.clone();
         self.hero.hp -= dmg;
         self.thorns_reflect(idx);
@@ -4692,12 +4702,13 @@ impl Game {
         self.fx.damage(self.hero.x, self.hero.y, dmg, crit);
         self.fx.add_shake(if crit { 6 } else { 3 });
         self.fx.combo = 0;
+        let detail = dmg_detail(elem, crit);
         if self.hero.hp <= 0 {
             self.hero.hp = 0;
-            self.push_log(format!("Le {} vous porte un coup fatal ({}).", name, dmg), BAD);
+            self.push_log(format!("Le {} vous porte un coup fatal ({} degats{}).", name, dmg, detail), BAD);
             self.die(&name);
         } else {
-            self.push_log(format!("Le {} vous blesse ({} degats).", name, dmg), BAD);
+            self.push_log(format!("Le {} vous blesse ({} degats{}).", name, dmg, detail), BAD);
         }
     }
 
@@ -5051,6 +5062,21 @@ fn resolve(atk: i32, def: i32, rng: &mut Rng, crit_chance: f32) -> (i32, bool) {
     (dmg, crit)
 }
 
+fn dmg_detail(elem: Element, crit: bool) -> String {
+    let mut parts: Vec<&'static str> = Vec::new();
+    if crit {
+        parts.push("coup critique");
+    }
+    if elem != Element::Physical {
+        parts.push(elem.label());
+    }
+    if parts.is_empty() {
+        String::new()
+    } else {
+        format!(" — {}", parts.join(", "))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5068,7 +5094,7 @@ mod tests {
             }
             assert!(game.map.in_bounds(game.hero.x, game.hero.y));
             sink.clear();
-            crate::render::draw(&game, 80 + super::super_panel(), 30, false, "1x", false, 4, &mut sink);
+            crate::render::draw(&game, 80 + super::super_panel(), 30, false, "1x", false, 4, 30.0, 30, 0, false, &mut sink);
         }
         assert!(game.best_floor >= 1);
     }

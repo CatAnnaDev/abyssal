@@ -11,7 +11,7 @@ const MCOL: i32 = 2;
 const FRAME: Color = (95, 95, 120);
 pub const CMD_BAR_H: i32 = 2;
 
-pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, sprite: bool, zoom: i32, fps: f32, target_fps: u32, snd_reboots: u32, out: &mut impl Write) {
+pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, sprite: bool, zoom: i32, fps: f32, target_fps: u32, snd_reboots: u32, show_help: bool, out: &mut impl Write) {
     let mut buf = String::with_capacity((cols * rows) as usize * 7);
     buf.push_str("\x1b[?2026h\x1b[H");
 
@@ -122,6 +122,9 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
     if game.show_hall {
         draw_hall(game, cols, rows, &mut buf);
     }
+    if show_help {
+        draw_help(cols, rows, &mut buf);
+    }
 
     buf.push_str("\x1b[0m\x1b[?2026l");
     let _ = out.write_all(buf.as_bytes());
@@ -220,9 +223,9 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
     }
     buf.push('\u{255d}');
     let (bottom, bcol) = match game.thoughts.last() {
-        Some(t) => (format!(" \u{201c}{}\u{201d}  (o:options) ", t), (150, 200, 225)),
+        Some(t) => (format!(" \u{201c}{}\u{201d}  (?:aide  o:options) ", t), (150, 200, 225)),
         None => (
-            " espace:pause  +/-:vitesse  m:mindset  a:son  g:sprite  z:zoom  k:bestiaire  h:hall  d:defi-du-jour  s/l/n  q:quitter ".to_string(),
+            " ?:aide  espace:pause  +/-:vitesse  m:mindset  a:son  g:sprite  z:zoom  k:bestiaire  h:hall  d:defi-du-jour  s/l/n  q:quitter ".to_string(),
             (130, 130, 150),
         ),
     };
@@ -539,25 +542,25 @@ fn status_line(game: &Game) -> String {
     let h = &game.hero;
     let mut s = String::new();
     if h.poison > 0 {
-        s.push_str(&format!("\u{2620}{} ", h.poison));
+        s.push_str(&format!("poison {} ", h.poison));
     }
     if h.burn > 0 {
-        s.push_str(&format!("\u{2668}{} ", h.burn));
+        s.push_str(&format!("feu {} ", h.burn));
     }
     if h.shield > 0 {
-        s.push_str(&format!("\u{26e8}{} ", h.shield));
+        s.push_str(&format!("bouclier {} ", h.shield));
     }
     if h.regen > 0 {
-        s.push_str(&format!("\u{2726}{} ", h.regen));
+        s.push_str(&format!("regen {} ", h.regen));
     }
     if h.rage > 0 {
-        s.push_str(&format!("\u{25b2}{} ", h.rage));
+        s.push_str(&format!("rage {} ", h.rage));
     }
     if h.bolt_cd > 0 {
-        s.push_str(&format!("\u{26a1}{} ", h.bolt_cd));
+        s.push_str(&format!("eclair {} ", h.bolt_cd));
     }
     if h.ability_cd > 0 {
-        s.push_str(&format!("\u{2694}{} ", h.ability_cd));
+        s.push_str(&format!("arme {} ", h.ability_cd));
     }
     if s.is_empty() {
         s.push_str("(en forme)");
@@ -1358,6 +1361,51 @@ fn draw_command_bar(game: &Game, cols: i32, rows: i32, buf: &mut String) {
     buf.push_str("\x1b[0m");
 }
 
+fn draw_help(cols: i32, rows: i32, buf: &mut String) {
+    let lines: &[(&str, Color)] = &[
+        ("CONTROLES", (255, 225, 130)),
+        ("espace      pause / reprise", (210, 220, 235)),
+        ("+ / -  ou fleches haut/bas   vitesse de simulation", (210, 220, 235)),
+        ("m           change l'etat d'esprit de l'heroine", (210, 220, 235)),
+        ("1 / 2 / 3   complet / combat / rush", (210, 220, 235)),
+        ("g           glyphes <-> sprites      z  zoom sprite", (210, 220, 235)),
+        ("a           coupe / active le son    o  options", (210, 220, 235)),
+        ("k           bestiaire                h  hall des morts", (210, 220, 235)),
+        ("d           defi du jour             n  nouvelle run", (210, 220, 235)),
+        ("s  sauver   l  charger               q  quitter", (210, 220, 235)),
+        ("ctrl+d      infos debug              ?  cette aide", (210, 220, 235)),
+        ("", (0, 0, 0)),
+        ("POURQUOI JE PERDS DES PV ?", (255, 200, 130)),
+        ("Le JOURNAL (a droite) detaille chaque coup recu :", (180, 200, 220)),
+        ("qui frappe, l'element (feu/glace/foudre/poison),", (180, 200, 220)),
+        ("les coups critiques, les zones en eruption.", (180, 200, 220)),
+        ("", (0, 0, 0)),
+        ("STATUTS (panneau heroine)", (255, 200, 130)),
+        ("poison / feu : degats par tour (chiffre = tours restants)", (170, 210, 150)),
+        ("bouclier : absorbe   regen : soigne   rage : +degats", (170, 210, 150)),
+        ("eclair / arme : recharge d'aptitude", (170, 210, 150)),
+        ("", (0, 0, 0)),
+        ("?  ou  echap  pour fermer", (150, 200, 150)),
+    ];
+    let bw = 62.min((cols - 4).max(24));
+    let bh = (lines.len() as i32 + 2).min((rows - 2).max(8));
+    let ox = (cols - bw) / 2;
+    let oy = ((rows - bh) / 2).max(0);
+    let blank: String = " ".repeat(bw as usize);
+    for y in oy..oy + bh {
+        put(buf, ox, y, (0, 0, 0), &blank);
+    }
+    draw_box(buf, ox, oy, bw, bh, "AIDE", (150, 150, 200));
+    for (i, (text, color)) in lines.iter().enumerate() {
+        let y = oy + 1 + i as i32;
+        if y >= oy + bh - 1 {
+            break;
+        }
+        put(buf, ox + 2, y, *color, &fit(text, bw - 4));
+    }
+    buf.push_str("\x1b[0m");
+}
+
 fn chat_user_color(name: &str) -> Color {
     const PAL: &[Color] = &[
         (255, 120, 120), (120, 200, 255), (150, 230, 150), (240, 200, 120),
@@ -1420,7 +1468,7 @@ fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
     }
     let inner = lines.iter().map(|(l, _)| l.chars().count()).max().unwrap_or(8).clamp(8, 30) as i32 + 1;
     let bh = lines.len() as i32 + 2;
-    let oy = (mh - bh).max(0);
+    let oy = if game.hero.y >= mh / 2 { 0 } else { (mh - bh).max(0) };
     let border: Color = (180, 130, 235);
     put(buf, MCOL, MROW + oy, border, "\u{250c}");
     for _ in 0..inner {

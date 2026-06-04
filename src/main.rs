@@ -623,6 +623,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
 
     let mut speed = setup.as_ref().map_or(1, |s| s.speed_idx.min(SPEEDS.len() - 1));
     let mut paused = false;
+    let mut show_help = false;
     let mut sprite_mode = setup.as_ref().map_or(false, |s| s.sprite);
     let sprite_zooms = [2i32, 3, 4, 6, 8, 12];
     let mut zoom_idx = 2usize;
@@ -639,6 +640,14 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         while event::poll(Duration::ZERO)? {
             match event::read()? {
                 Event::Key(k) if k.kind == KeyEventKind::Press => match k.code {
+                    KeyCode::Char('?') => {
+                        show_help = !show_help;
+                        let _ = stdout.execute(Clear(ClearType::All));
+                    }
+                    KeyCode::Esc if show_help => {
+                        show_help = false;
+                        let _ = stdout.execute(Clear(ClearType::All));
+                    }
                     KeyCode::Char('q') | KeyCode::Esc => {
                         game.save();
                         return Ok(());
@@ -970,7 +979,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                 let inst = 1.0 / since;
                 fps_smoothed = if fps_smoothed <= 0.0 { inst } else { fps_smoothed * 0.9 + inst * 0.1 };
             }
-            render::draw(&game, cols, rows, paused, SPEEDS[speed].0, sprite_mode, sprite_zooms[zoom_idx], fps_smoothed, cfg.target_fps, audio.reboots(), stdout);
+            render::draw(&game, cols, rows, paused, SPEEDS[speed].0, sprite_mode, sprite_zooms[zoom_idx], fps_smoothed, cfg.target_fps, audio.reboots(), show_help, stdout);
             last_draw = Instant::now();
         }
 
