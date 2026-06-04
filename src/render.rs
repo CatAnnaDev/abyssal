@@ -27,7 +27,7 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
     let sdx = game.fx.shake_offset();
     let flash = game.fx.flash_strength();
     let flash_color = game.fx.flash_color;
-    let lights: Vec<(f32, f32, Color)> = game.fx.projectiles.iter().map(|p| (p.x, p.y, p.color)).collect();
+    let lights = collect_lights(game);
     let vignette = if matches!(game.phase, Phase::Playing) {
         let frac = game.hp_fraction();
         if frac < 0.30 {
@@ -991,6 +991,75 @@ fn braille_bit(col: i32, row: i32) -> u8 {
     }
 }
 
+fn elight(c: Color, f: f32) -> Color {
+    let f = f.max(0.0);
+    ((c.0 as f32 * f).min(255.0) as u8, (c.1 as f32 * f).min(255.0) as u8, (c.2 as f32 * f).min(255.0) as u8)
+}
+
+fn element_light(e: Element) -> Color {
+    match e {
+        Element::Fire => (96, 44, 12),
+        Element::Ice => (28, 56, 82),
+        Element::Poison => (34, 76, 26),
+        Element::Lightning => (78, 72, 22),
+        Element::Physical => (72, 50, 22),
+    }
+}
+
+fn feature_light(kind: FeatureKind) -> Option<Color> {
+    match kind {
+        FeatureKind::Shrine => Some((58, 40, 84)),
+        FeatureKind::Fountain => Some((24, 56, 78)),
+        FeatureKind::Altar => Some((74, 24, 78)),
+        FeatureKind::Forge => Some((98, 46, 12)),
+        FeatureKind::Chest => Some((72, 56, 16)),
+        FeatureKind::Gamble => Some((72, 56, 26)),
+        FeatureKind::Lost => Some((72, 62, 30)),
+        FeatureKind::Grave => Some((38, 42, 54)),
+        _ => None,
+    }
+}
+
+fn collect_lights(game: &Game) -> Vec<(f32, f32, Color)> {
+    let t = game.anim_t as f32;
+    let mut lights: Vec<(f32, f32, Color)> = Vec::new();
+
+    let torch = 0.82 + 0.18 * ((t * 0.09).sin() * 0.6 + (t * 0.23 + 1.3).sin() * 0.4);
+    lights.push((game.hero.x as f32, game.hero.y as f32, elight(element_light(game.hero.weapon_element()), torch)));
+
+    for &(hx, hy, _) in &game.hazard {
+        let f = 0.7 + 0.4 * (t * 0.13 + (hx + hy * 3) as f32).sin();
+        lights.push((hx as f32, hy as f32, elight((104, 46, 12), f)));
+    }
+
+    for m in &game.monsters {
+        if !game.map.is_visible(m.x, m.y) {
+            continue;
+        }
+        let base = if m.boss { 1.1 } else if m.elite { 0.7 } else if m.cast_wind > 0 { 0.8 } else { 0.0 };
+        if base <= 0.0 {
+            continue;
+        }
+        let p = base * (0.72 + 0.28 * (t * 0.12 + m.x as f32 * 0.5).sin());
+        lights.push((m.x as f32, m.y as f32, elight(element_light(m.element), p * 0.6)));
+    }
+
+    for f in &game.features {
+        if !game.map.is_visible(f.x, f.y) {
+            continue;
+        }
+        if let Some(col) = feature_light(f.kind) {
+            let pl = 0.6 + 0.4 * (t * 0.08 + f.x as f32).sin();
+            lights.push((f.x as f32, f.y as f32, elight(col, pl)));
+        }
+    }
+
+    for p in &game.fx.projectiles {
+        lights.push((p.x, p.y, p.color));
+    }
+    lights
+}
+
 fn light_add(base: Color, lights: &[(f32, f32, Color)], x: i32, y: i32) -> Color {
     let mut r = base.0 as f32;
     let mut g = base.1 as f32;
@@ -1036,7 +1105,9 @@ fn cell_render(game: &Game, x: i32, y: i32, tint: (f32, f32, f32)) -> (char, Col
 
     let dx = (x - game.hero.x) as f32;
     let dy = (y - game.hero.y) as f32;
-    let light = (1.2 - (dx * dx + dy * dy).sqrt() * 0.085).clamp(0.34, 1.0);
+    let t = game.anim_t as f32;
+    let flick = 1.0 + 0.05 * (t * 0.09).sin() + 0.03 * (t * 0.22).sin();
+    let light = (1.18 * flick - (dx * dx + dy * dy).sqrt() * 0.085).clamp(0.34, 1.0);
 
     let ((wall_fg, wall_bg), (floor_fg, floor_bg)) = biome_palette(game.biome);
     let (mut terrain_fg, terrain_bg, mut terrain_ch) = match tile {
@@ -1093,10 +1164,11 @@ fn cell_render(game: &Game, x: i32, y: i32, tint: (f32, f32, f32)) -> (char, Col
         None
     };
     if let Some(d) = dcol {
+        let pulse = 0.42 + 0.22 * (t * 0.12).sin();
         result.2 = (
-            ((d.0 as u16 + result.2.0 as u16) / 2) as u8,
-            ((d.1 as u16 + result.2.1 as u16) / 2) as u8,
-            ((d.2 as u16 + result.2.2 as u16) / 2) as u8,
+            (result.2.0 as f32 + (d.0 as f32 - result.2.0 as f32) * pulse) as u8,
+            (result.2.1 as f32 + (d.1 as f32 - result.2.1 as f32) * pulse) as u8,
+            (result.2.2 as f32 + (d.2 as f32 - result.2.2 as f32) * pulse) as u8,
         );
     }
     if let Some(f) = game.flashes.iter().find(|f| f.0 == x && f.1 == y) {
