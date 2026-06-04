@@ -15,6 +15,7 @@ pub struct Particle {
     pub y: f32,
     pub vx: f32,
     pub vy: f32,
+    pub grav: f32,
     pub glyph: char,
     pub color: Color,
     pub ttl: i32,
@@ -40,6 +41,9 @@ pub struct Fx {
     pub combo_timer: i32,
     pub transition: i32,
     pub transition_floor: i32,
+    pub flash: i32,
+    pub flash_max: i32,
+    pub flash_color: Color,
 }
 
 impl Fx {
@@ -53,7 +57,7 @@ impl Fx {
         for p in self.particles.iter_mut() {
             p.x += p.vx;
             p.y += p.vy;
-            p.vy += 0.04;
+            p.vy += p.grav;
             p.ttl -= 1;
         }
         self.particles.retain(|p| p.ttl > 0);
@@ -65,8 +69,8 @@ impl Fx {
                 ((p.color.1 as u16 + 60).min(255)) as u8,
                 ((p.color.2 as u16 + 60).min(255)) as u8,
             );
-            trail.push(Particle { x: p.x, y: p.y, vx: 0.0, vy: 0.0, glyph: '\u{00b7}', color: p.color, ttl: 4 });
-            trail.push(Particle { x: p.x - p.vx * 0.5, y: p.y - p.vy * 0.5, glyph: '\u{2218}', color: glow, vx: 0.0, vy: 0.0, ttl: 3 });
+            trail.push(Particle { x: p.x, y: p.y, vx: 0.0, vy: 0.0, grav: 0.0, glyph: '\u{00b7}', color: p.color, ttl: 4 });
+            trail.push(Particle { x: p.x - p.vx * 0.5, y: p.y - p.vy * 0.5, glyph: '\u{2218}', color: glow, vx: 0.0, vy: 0.0, grav: 0.0, ttl: 3 });
         }
         self.particles.extend(trail);
 
@@ -82,6 +86,9 @@ impl Fx {
         }
         if self.transition > 0 {
             self.transition -= 1;
+        }
+        if self.flash > 0 {
+            self.flash -= 1;
         }
         if self.combo_timer > 0 {
             self.combo_timer -= 1;
@@ -123,10 +130,92 @@ impl Fx {
                 y: y as f32,
                 vx: a.cos() * speed,
                 vy: a.sin() * speed * 0.6,
+                grav: 0.04,
                 glyph,
                 color,
                 ttl: rng.between(4, 9),
             });
+        }
+    }
+
+    pub fn confetti(&mut self, rng: &mut Rng, w: i32, count: i32) {
+        const GLYPHS: [char; 6] = ['*', '\u{2665}', '\u{2666}', '\u{2663}', 'o', '+'];
+        const COLS: [Color; 6] = [
+            (255, 120, 120), (120, 200, 255), (150, 230, 150),
+            (255, 210, 120), (220, 150, 235), (120, 230, 220),
+        ];
+        for _ in 0..count {
+            let g = GLYPHS[rng.below(GLYPHS.len())];
+            let c = COLS[rng.below(COLS.len())];
+            self.particles.push(Particle {
+                x: rng.range(0.0, w as f32),
+                y: rng.range(-4.0, 0.0),
+                vx: rng.range(-0.18, 0.18),
+                vy: rng.range(0.2, 0.45),
+                grav: 0.012,
+                glyph: g,
+                color: c,
+                ttl: rng.between(42, 84),
+            });
+        }
+    }
+
+    pub fn ring(&mut self, x: i32, y: i32, color: Color, count: i32, glyph: char) {
+        let speed = 0.7;
+        for i in 0..count {
+            let a = (i as f32) / (count.max(1) as f32) * 6.2831;
+            self.particles.push(Particle {
+                x: x as f32,
+                y: y as f32,
+                vx: a.cos() * speed,
+                vy: a.sin() * speed * 0.55,
+                grav: 0.0,
+                glyph,
+                color,
+                ttl: 8,
+            });
+        }
+    }
+
+    pub fn beam(&mut self, x: i32, y: i32, color: Color, height: i32) {
+        for i in 0..height {
+            self.particles.push(Particle {
+                x: x as f32,
+                y: (y - i) as f32,
+                vx: 0.0,
+                vy: -0.3,
+                grav: -0.01,
+                glyph: if i % 2 == 0 { '\u{2503}' } else { '\u{2502}' },
+                color,
+                ttl: 7 + i,
+            });
+        }
+    }
+
+    pub fn rise(&mut self, x: i32, y: i32, glyph: char, color: Color) {
+        self.particles.push(Particle {
+            x: x as f32,
+            y: y as f32,
+            vx: 0.0,
+            vy: -0.32,
+            grav: -0.006,
+            glyph,
+            color,
+            ttl: 15,
+        });
+    }
+
+    pub fn screen_flash(&mut self, color: Color, frames: i32) {
+        self.flash = self.flash.max(frames);
+        self.flash_max = self.flash.max(self.flash_max).max(frames);
+        self.flash_color = color;
+    }
+
+    pub fn flash_strength(&self) -> f32 {
+        if self.flash > 0 && self.flash_max > 0 {
+            (self.flash as f32 / self.flash_max as f32) * 0.5
+        } else {
+            0.0
         }
     }
 

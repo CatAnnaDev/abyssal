@@ -23,6 +23,8 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
         game.biome.tint()
     };
     let sdx = game.fx.shake_offset();
+    let flash = game.fx.flash_strength();
+    let flash_color = game.fx.flash_color;
     let lights: Vec<(f32, f32, Color)> = game.fx.projectiles.iter().map(|p| (p.x, p.y, p.color)).collect();
     let vignette = if matches!(game.phase, Phase::Playing) {
         let frac = game.hp_fraction();
@@ -52,6 +54,9 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
                 }
                 if vignette > 0.0 {
                     bg = vignette_add(bg, x, y, mw, mh, vignette);
+                }
+                if flash > 0.0 {
+                    bg = flash_add(bg, flash_color, flash);
                 }
                 if last != Some((fg, bg)) {
                     let _ = write!(buf, "\x1b[38;2;{};{};{};48;2;{};{};{}m", fg.0, fg.1, fg.2, bg.0, bg.1, bg.2);
@@ -900,6 +905,15 @@ fn vignette_add(base: Color, x: i32, y: i32, mw: i32, mh: i32, strength: f32) ->
         (base.0 as f32 * (1.0 - a) + target.0 * a) as u8,
         (base.1 as f32 * (1.0 - a) + target.1 * a) as u8,
         (base.2 as f32 * (1.0 - a) + target.2 * a) as u8,
+    )
+}
+
+fn flash_add(base: Color, color: Color, strength: f32) -> Color {
+    let a = strength.clamp(0.0, 0.6);
+    (
+        (base.0 as f32 + (color.0 as f32 - base.0 as f32) * a).clamp(0.0, 255.0) as u8,
+        (base.1 as f32 + (color.1 as f32 - base.1 as f32) * a).clamp(0.0, 255.0) as u8,
+        (base.2 as f32 + (color.2 as f32 - base.2 as f32) * a).clamp(0.0, 255.0) as u8,
     )
 }
 
