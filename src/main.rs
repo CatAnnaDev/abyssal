@@ -569,7 +569,7 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
     use std::fmt::Write as _;
     use std::io::Write as _;
     let mut sel = 0i32;
-    let nrows = 12i32;
+    let nrows = 14i32;
     let apply = |cfg: &Config, audio: &mut audio::Audio| {
         let music = if cfg.ambient_enabled { cfg.ambient_volume } else { 0.0 };
         audio.set_levels(cfg.master_volume, music);
@@ -626,6 +626,8 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
             "Vote & marchand (s)",
             "Pathfinder",
             "FPS cible",
+            "Lumieres (brouillard)",
+            "Intensite lumieres",
         ];
         let preset = (cfg.music_preset.rem_euclid(audio::MUSIC_PRESETS.len() as i32)) as usize;
         let values = [
@@ -641,6 +643,8 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
             format!("{:.0} s", cfg.vote_window_secs),
             ai::Pathfinder::from_index(cfg.pathfinder).label().to_string(),
             format!("{} fps", cfg.target_fps),
+            if cfg.lights_through_fog { "Traversent".into() } else { "FOV seul".into() },
+            format!("{} {:>4.1}", bar(cfg.light_intensity), cfg.light_intensity),
         ];
         for r in 0..nrows as usize {
             let y = oy + 3 + r as i32;
@@ -690,7 +694,9 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
                                 let n = ai::Pathfinder::ALL.len() as i32;
                                 cfg.pathfinder = (cfg.pathfinder + dir).rem_euclid(n);
                             }
-                            _ => cfg.target_fps = (cfg.target_fps as i32 + dir * 5).clamp(10, 240) as u32,
+                            11 => cfg.target_fps = (cfg.target_fps as i32 + dir * 5).clamp(10, 240) as u32,
+                            12 => cfg.lights_through_fog = !cfg.lights_through_fog,
+                            _ => cfg.light_intensity = (cfg.light_intensity + 0.1 * dir as f32).clamp(0.0, 2.0),
                         }
                         apply(cfg, audio);
                     }
@@ -994,6 +1000,8 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         let tps = SPEEDS[speed].1;
         game.shop_hold_ticks = ((cfg.vote_window_secs * tps).round() as i32).max(1);
         game.shop_window_max = cfg.vote_window_secs;
+        game.light_intensity = cfg.light_intensity;
+        game.lights_through_fog = cfg.lights_through_fog;
         let mut struck = false;
         if !paused {
             if game.hitstop > 0 {
@@ -1069,6 +1077,7 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         audio.set_music_mode(game.music_mode());
         audio.tick(dt);
         game.anim_t = game.anim_t.wrapping_add(1);
+        game.tick_dialogue();
         if game.lunge.2 > 0 {
             game.lunge.2 -= 1;
         }

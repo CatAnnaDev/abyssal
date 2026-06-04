@@ -1,6 +1,7 @@
 use rodio::buffer::SamplesBuffer;
 use rodio::{OutputStream, OutputStreamHandle, Sink, Source};
 use std::f32::consts::TAU;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Sound {
@@ -21,6 +22,7 @@ pub enum Sound {
     Death,
     Trade,
     Heartbeat,
+    Fanfare,
 }
 
 impl Sound {
@@ -43,6 +45,7 @@ impl Sound {
         ("death", Sound::Death),
         ("trade", Sound::Trade),
         ("heartbeat", Sound::Heartbeat),
+        ("fanfare", Sound::Fanfare),
     ];
 }
 
@@ -181,12 +184,13 @@ fn render(sound: Sound) -> Vec<f32> {
             s.tone(&mut b, 1400.0, 0.05, 0.18, Wave::Noise, 0.5);
         }
         Sound::BossWarn => {
-            s.tone(&mut b, 73.0, 0.12, 0.34, Wave::Square, 0.5);
-            s.tone(&mut b, 78.0, 0.16, 0.34, Wave::Square, 0.5);
+            s.tone(&mut b, 98.0, 0.12, 0.30, Wave::Tri, 0.5);
+            s.tone(&mut b, 147.0, 0.18, 0.24, Wave::Square, 0.25);
         }
         Sound::BossHit => {
-            s.tone(&mut b, 110.0, 0.05, 0.34, Wave::Noise, 0.5);
-            s.tone(&mut b, 65.0, 0.12, 0.36, Wave::Square, 0.5);
+            s.tone(&mut b, 196.0, 0.04, 0.26, Wave::Noise, 0.5);
+            s.tone(&mut b, 110.0, 0.11, 0.32, Wave::Tri, 0.5);
+            s.tone(&mut b, 220.0, 0.05, 0.16, Wave::Square, 0.25);
         }
         Sound::Death => {
             for f in [330.0, 277.0, 233.0, 175.0] {
@@ -203,6 +207,15 @@ fn render(sound: Sound) -> Vec<f32> {
             s.tone(&mut b, 60.0, 0.1, 0.22, Wave::Sine, 0.5);
             s.silence(&mut b, 0.05);
             s.tone(&mut b, 46.0, 0.13, 0.16, Wave::Sine, 0.5);
+        }
+        Sound::Fanfare => {
+            for f in [523.0, 659.0, 784.0, 1047.0] {
+                s.tone(&mut b, f, 0.08, 0.28, Wave::Square, 0.5);
+            }
+            s.tone(&mut b, 1319.0, 0.14, 0.28, Wave::Tri, 0.5);
+            s.silence(&mut b, 0.03);
+            s.tone(&mut b, 1047.0, 0.1, 0.26, Wave::Square, 0.5);
+            s.tone(&mut b, 1568.0, 0.26, 0.24, Wave::Square, 0.25);
         }
     }
     b
@@ -342,16 +355,16 @@ const PRESET_STYLES: [Style; 5] = [
 pub const MUSIC_PRESETS: [&str; 6] = ["Auto (biome)", "Chill", "Energique", "Sombre", "Retro 8-bit", "Mystique"];
 
 const MAJOR_CHORDS: [[i32; 4]; 8] = [
-    [60, 64, 67, 71],
+    [60, 64, 67, 72],
     [55, 59, 62, 67],
-    [57, 60, 64, 67],
     [53, 57, 60, 65],
-    [50, 53, 57, 60],
-    [55, 59, 62, 65],
-    [52, 55, 59, 62],
-    [57, 60, 64, 67],
+    [60, 64, 67, 72],
+    [53, 57, 60, 65],
+    [55, 59, 62, 67],
+    [57, 61, 64, 69],
+    [55, 59, 62, 67],
 ];
-const MAJOR_BASS: [i32; 8] = [36, 43, 45, 41, 38, 43, 40, 45];
+const MAJOR_BASS: [i32; 8] = [36, 43, 41, 36, 41, 43, 45, 43];
 const MINOR_CHORDS: [[i32; 4]; 8] = [
     [57, 60, 64, 69],
     [53, 57, 60, 65],
@@ -360,9 +373,11 @@ const MINOR_CHORDS: [[i32; 4]; 8] = [
     [50, 53, 57, 62],
     [57, 60, 64, 69],
     [52, 56, 59, 64],
-    [57, 60, 64, 69],
+    [55, 59, 62, 67],
 ];
-const MINOR_BASS: [i32; 8] = [45, 41, 36, 43, 38, 45, 40, 45];
+const MINOR_BASS: [i32; 8] = [45, 41, 36, 43, 38, 45, 40, 43];
+
+const PROG: [usize; 16] = [0, 1, 2, 3, 0, 1, 4, 5, 6, 7, 2, 3, 4, 5, 1, 0];
 
 fn music_stem(stem: Stem, sid: i32, preset: i32) -> Vec<f32> {
     let st = if preset > 0 {
@@ -372,7 +387,10 @@ fn music_stem(stem: Stem, sid: i32, preset: i32) -> Vec<f32> {
     };
     let beat = SR as f32 * 60.0 / st.bpm;
     let eighth = beat / 2.0;
-    let bars = 8usize;
+    let sixteenth = beat / 4.0;
+    let beat_s = beat / SR as f32;
+    let eighth_s = eighth / SR as f32;
+    let bars = PROG.len();
     let total = (beat * 4.0 * bars as f32) as usize;
     let mut buf = vec![0.0f32; total];
     let mut seed = match stem {
@@ -382,54 +400,122 @@ fn music_stem(stem: Stem, sid: i32, preset: i32) -> Vec<f32> {
     };
     let (chords_src, bass_src) = if st.minor { (&MINOR_CHORDS, &MINOR_BASS) } else { (&MAJOR_CHORDS, &MAJOR_BASS) };
 
-    for bar in 0..bars {
-        let chord: [i32; 4] = chords_src[bar].map(|n| n + st.key);
-        let bassn = bass_src[bar] + st.key;
-        let bar_start = (bar as f32 * 4.0 * beat) as usize;
-        let bar_len = 4.0 * beat / SR as f32;
+    for bi in 0..bars {
+        let ci = PROG[bi];
+        let chord: [i32; 4] = chords_src[ci].map(|n| n + st.key);
+        let bassn = bass_src[ci] + st.key;
+        let next_bass = bass_src[PROG[(bi + 1) % bars]] + st.key;
+        let bar_start = (bi as f32 * 4.0 * beat) as usize;
+        let bar_len = 4.0 * beat_s;
+        let section = bi / 4;
+        let pos = bi % 4;
+        let fill = pos == 3;
         match stem {
             Stem::Base => {
-                for &m in chord.iter() {
-                    add_voice(&mut buf, bar_start, hz(m), bar_len * 0.98, 0.06, st.pad, 0.06, 0.2);
+                let voices = if section == 0 { 3 } else { 4 };
+                for &m in chord.iter().take(voices) {
+                    add_voice(&mut buf, bar_start, hz(m), bar_len * 0.98, 0.055, st.pad, 0.08, 0.25);
                 }
-                add_voice(&mut buf, bar_start, hz(bassn), beat * 2.0 / SR as f32, 0.2, Wave::Sine, 0.005, 0.06);
-                add_voice(&mut buf, bar_start + (beat * 2.0) as usize, hz(bassn), beat * 2.0 / SR as f32, 0.2, Wave::Sine, 0.005, 0.06);
-                for slot in 0..8 {
-                    if slot % 2 == 1 {
-                        add_hat(&mut buf, bar_start + (slot as f32 * eighth) as usize, 0.08, &mut seed);
+                add_voice(&mut buf, bar_start, hz(chord[3] + 12), bar_len * 0.9, 0.03, Wave::Sine, 0.12, 0.3);
+                if section >= 1 {
+                    add_voice(&mut buf, bar_start + (beat * 2.0) as usize, hz(chord[1] + 12), bar_len * 0.45, 0.025, Wave::Tri, 0.06, 0.25);
+                }
+                add_voice(&mut buf, bar_start, hz(bassn), beat_s * 1.4, 0.2, Wave::Sine, 0.005, 0.06);
+                add_voice(&mut buf, bar_start + (beat * 2.0) as usize, hz(bassn), beat_s * 1.0, 0.2, Wave::Sine, 0.005, 0.06);
+                if section >= 1 {
+                    let approach = bassn + (next_bass - bassn).clamp(-2, 2);
+                    add_voice(&mut buf, bar_start + (beat * 3.0) as usize, hz(approach), beat_s * 0.9, 0.16, Wave::Sine, 0.005, 0.05);
+                }
+                if section == 2 {
+                    let mel = [chord[2] + 12, chord[3] + 12, chord[1] + 12, chord[2] + 12];
+                    add_voice(&mut buf, bar_start + (beat * 1.0) as usize, hz(mel[pos]), beat_s * 1.2, 0.06, st.lead, 0.02, 0.2);
+                }
+                add_kick(&mut buf, bar_start, 0.5);
+                add_kick(&mut buf, bar_start + (beat * 2.0) as usize, 0.5);
+                if section >= 1 {
+                    add_snare(&mut buf, bar_start + beat as usize, 0.3, &mut seed);
+                    add_snare(&mut buf, bar_start + (beat * 3.0) as usize, 0.3, &mut seed);
+                    if st.drums >= 1 {
+                        add_kick(&mut buf, bar_start + (beat * 2.0 + eighth * 1.5) as usize, 0.28);
                     }
                 }
-                add_kick(&mut buf, bar_start, 0.55);
-                add_kick(&mut buf, bar_start + (beat * 2.0) as usize, 0.55);
-                if st.drums >= 1 {
-                    add_kick(&mut buf, bar_start + (beat * 2.0 + eighth * 1.5) as usize, 0.3);
+                for slot in 0..8 {
+                    if slot % 2 == 1 && section >= 1 {
+                        add_hat(&mut buf, bar_start + (slot as f32 * eighth) as usize, 0.07, &mut seed);
+                    }
                 }
-                add_snare(&mut buf, bar_start + beat as usize, 0.35, &mut seed);
-                add_snare(&mut buf, bar_start + (beat * 3.0) as usize, 0.35, &mut seed);
+                if fill && section >= 1 {
+                    for k in 0..3 {
+                        add_snare(&mut buf, bar_start + (beat * 3.0 + k as f32 * sixteenth) as usize, 0.14 + 0.05 * k as f32, &mut seed);
+                    }
+                }
             }
             Stem::Combat => {
-                let arp = [0usize, 2, 1, 3, 2, 3, 1, 2];
+                let arps: [[usize; 8]; 4] = [
+                    [0, 2, 1, 3, 2, 3, 1, 2],
+                    [0, 1, 2, 3, 3, 2, 1, 0],
+                    [3, 2, 3, 1, 2, 1, 2, 0],
+                    [0, 2, 3, 2, 1, 3, 2, 3],
+                ];
+                let arp = arps[section];
                 for slot in 0..8 {
                     let at = bar_start + (slot as f32 * eighth) as usize;
-                    let m = chord[arp[slot] % chord.len()] + 12;
-                    add_voice(&mut buf, at, hz(m), eighth * 0.85 / SR as f32, 0.1, st.lead, 0.003, 0.04);
-                    let hat_vol = if st.drums >= 2 { 0.13 } else if slot % 2 == 1 { 0.12 } else { 0.07 };
+                    let m = chord[arp[slot] % 4] + 12;
+                    add_voice(&mut buf, at, hz(m), eighth_s * 0.85, 0.095, st.lead, 0.003, 0.04);
+                    let hat_vol = if st.drums >= 2 { 0.12 } else if slot % 2 == 1 { 0.11 } else { 0.06 };
                     add_hat(&mut buf, at, hat_vol, &mut seed);
                 }
-                if (bar % 2) == 1 {
-                    add_voice(&mut buf, bar_start, hz(chord[3] + 12), beat / SR as f32, 0.09, st.lead, 0.01, 0.3);
+                if pos % 2 == 1 {
+                    add_voice(&mut buf, bar_start, hz(chord[3] + 12), beat_s, 0.085, st.lead, 0.01, 0.3);
                 }
-                add_kick(&mut buf, bar_start + (beat * 2.0 + eighth * 1.5) as usize, 0.4);
-                add_snare(&mut buf, bar_start + (beat * 3.0 + eighth) as usize, 0.18, &mut seed);
+                add_kick(&mut buf, bar_start, 0.4);
+                add_kick(&mut buf, bar_start + (beat * 2.0 + eighth * 1.5) as usize, 0.36);
+                add_snare(&mut buf, bar_start + beat as usize, 0.2, &mut seed);
+                add_snare(&mut buf, bar_start + (beat * 3.0) as usize, 0.2, &mut seed);
+                if fill {
+                    for k in 0..4 {
+                        add_snare(&mut buf, bar_start + (beat * 3.0 + k as f32 * sixteenth) as usize, 0.12 + 0.05 * k as f32, &mut seed);
+                    }
+                }
             }
             Stem::Boss => {
-                let root = bassn - 12;
-                add_voice(&mut buf, bar_start, hz(root), bar_len * 0.95, 0.16, Wave::Square, 0.02, 0.15);
-                add_voice(&mut buf, bar_start, hz(root + 6), bar_len * 0.5, 0.05, Wave::Square, 0.02, 0.2);
-                for b in 0..8 {
-                    add_kick(&mut buf, bar_start + (b as f32 * eighth) as usize, 0.42);
+                let root = bassn;
+                for slot in 0..8 {
+                    let at = bar_start + (slot as f32 * eighth) as usize;
+                    let note = if slot % 4 == 3 { root + 7 } else { root };
+                    let vol = if slot % 2 == 0 { 0.16 } else { 0.1 };
+                    add_voice(&mut buf, at, hz(note), eighth_s * 0.92, vol, Wave::Tri, 0.004, 0.03);
                 }
-                add_snare(&mut buf, bar_start + (beat * 2.0) as usize, 0.28, &mut seed);
+                for &bs in &[0.0f32, 2.0] {
+                    let at = bar_start + (bs * beat) as usize;
+                    add_voice(&mut buf, at, hz(root + 12), beat_s * 0.9, 0.07, Wave::Square, 0.01, 0.12);
+                    add_voice(&mut buf, at, hz(root + 19), beat_s * 0.9, 0.05, Wave::Square, 0.01, 0.12);
+                }
+                if section == 1 || section == 3 {
+                    let motif = [chord[2] + 12, chord[1] + 12, chord[3] + 12, chord[2] + 12, chord[1] + 12, chord[0] + 12, chord[1] + 12, chord[2] + 12];
+                    for slot in 0..8 {
+                        let at = bar_start + (slot as f32 * eighth) as usize;
+                        add_voice(&mut buf, at, hz(motif[slot]), eighth_s * 0.8, 0.075, st.lead, 0.004, 0.05);
+                    }
+                } else {
+                    for b in 0..4 {
+                        let at = bar_start + (b as f32 * beat) as usize;
+                        add_voice(&mut buf, at, hz(chord[b % 4] + 12), eighth_s * 0.7, 0.06, st.lead, 0.004, 0.06);
+                    }
+                }
+                add_kick(&mut buf, bar_start, 0.5);
+                add_kick(&mut buf, bar_start + (beat * 2.0) as usize, 0.5);
+                add_kick(&mut buf, bar_start + (beat * 2.0 + eighth) as usize, 0.28);
+                add_snare(&mut buf, bar_start + beat as usize, 0.32, &mut seed);
+                add_snare(&mut buf, bar_start + (beat * 3.0) as usize, 0.32, &mut seed);
+                for slot in 0..8 {
+                    add_hat(&mut buf, bar_start + (slot as f32 * eighth) as usize, if slot % 2 == 1 { 0.14 } else { 0.08 }, &mut seed);
+                }
+                if fill {
+                    for k in 0..4 {
+                        add_snare(&mut buf, bar_start + (beat * 3.0 + k as f32 * sixteenth) as usize, 0.16 + 0.05 * k as f32, &mut seed);
+                    }
+                }
             }
         }
     }
@@ -462,6 +548,7 @@ pub struct Audio {
     probe: Option<Sink>,
     probe_age: f32,
     reboots: u32,
+    var: AtomicU32,
 }
 
 impl Audio {
@@ -482,6 +569,7 @@ impl Audio {
             probe: None,
             probe_age: 0.0,
             reboots: 0,
+            var: AtomicU32::new(0x1234_5678),
         };
         audio.spawn();
         audio
@@ -492,21 +580,21 @@ impl Audio {
     }
 
     fn spawn(&mut self) {
+        let prev_targets: Vec<f32> = self.music.iter().map(|s| s.target).collect();
+        self.music.clear();
+        self.probe = None;
+        self.handle = None;
+        self._stream = None;
+
         let (stream, handle) = match OutputStream::try_default() {
             Ok(pair) => pair,
-            Err(_) => {
-                self._stream = None;
-                self.handle = None;
-                self.music = Vec::new();
-                self.probe = None;
-                return;
-            }
+            Err(_) => return,
         };
         let mut music = Vec::new();
         if self.ambient_on {
             for (i, stem) in [Stem::Base, Stem::Combat, Stem::Boss].into_iter().enumerate() {
                 if let Ok(sink) = Sink::try_new(&handle) {
-                    let target = self.music.get(i).map(|s| s.target).unwrap_or(if i == 0 { self.music_level } else { 0.0 });
+                    let target = prev_targets.get(i).copied().unwrap_or(if i == 0 { self.music_level } else { 0.0 });
                     sink.set_volume(target);
                     sink.set_speed(self.speed_cur);
                     sink.append(SamplesBuffer::new(1, SR, music_stem(stem, self.voice, self.preset)).repeat_infinite());
@@ -579,7 +667,9 @@ impl Audio {
             return;
         }
         if let Some(handle) = &self.handle {
-            let _ = handle.play_raw(SamplesBuffer::new(1, SR, render(sound)).amplify(self.volume));
+            let k = self.var.fetch_add(0x9E37_79B9, Ordering::Relaxed);
+            let detune = 0.97 + ((k >> 11) & 0xFFFF) as f32 / 65535.0 * 0.06;
+            let _ = handle.play_raw(SamplesBuffer::new(1, SR, render(sound)).speed(detune).amplify(self.volume));
         }
     }
 
@@ -642,7 +732,7 @@ impl Audio {
         if self.muted {
             return;
         }
-        let step = (self.music_level * 0.06).max(0.01);
+        let step = (self.music_level * 0.03).max(0.005);
         for st in self.music.iter_mut() {
             if (st.cur - st.target).abs() <= step {
                 st.cur = st.target;
@@ -660,13 +750,6 @@ impl Audio {
             self.intensity += istep;
         } else {
             self.intensity -= istep;
-        }
-        let speed = 1.0 + self.intensity * 0.10;
-        if (speed - self.speed_cur).abs() > 0.001 {
-            self.speed_cur = speed;
-            for st in self.music.iter() {
-                st.sink.set_speed(self.speed_cur);
-            }
         }
     }
 
@@ -748,7 +831,7 @@ mod preview {
             let scenes = [
                 ("calm", mix(&[&base])),
                 ("combat", mix(&[&base, &combat])),
-                ("boss", mix(&[&base, &combat, &boss])),
+                ("boss", mix(&[&boss])),
             ];
             for (scene, loop_buf) in &scenes {
                 let mut x2 = Vec::new();

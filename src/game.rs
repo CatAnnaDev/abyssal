@@ -419,6 +419,14 @@ fn default_shop_hold() -> i32 {
     SHOP_HOLD
 }
 
+fn default_light_intensity_g() -> f32 {
+    1.0
+}
+
+fn yes_g() -> bool {
+    true
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MerchantPick {
     Weapon,
@@ -644,6 +652,15 @@ pub struct LogLine {
     pub color: Color,
 }
 
+#[derive(Clone)]
+pub struct Dialogue {
+    pub speaker: String,
+    pub text: String,
+    pub color: Color,
+    pub ttl: i32,
+    pub prio: i32,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Game {
     pub map: Map,
@@ -721,6 +738,12 @@ pub struct Game {
     #[serde(skip)]
     pub thoughts: Vec<String>,
     #[serde(skip)]
+    pub dialogue: Option<Dialogue>,
+    #[serde(skip)]
+    abyss_timer: i32,
+    #[serde(skip)]
+    corr_tier: usize,
+    #[serde(skip)]
     ghost_pool: Vec<crate::lore::Ghost>,
     #[serde(skip)]
     nemesis_pool: Vec<crate::lore::Nemesis>,
@@ -787,6 +810,10 @@ pub struct Game {
     pub shop_timer: i32,
     #[serde(skip, default = "default_shop_hold")]
     pub shop_hold_ticks: i32,
+    #[serde(skip, default = "default_light_intensity_g")]
+    pub light_intensity: f32,
+    #[serde(skip, default = "yes_g")]
+    pub lights_through_fog: bool,
     #[serde(skip)]
     pub shop_window_max: f32,
     #[serde(skip)]
@@ -939,6 +966,9 @@ impl Game {
             corruption: 0,
             obituary: String::new(),
             thoughts: Vec::new(),
+            dialogue: None,
+            abyss_timer: 240,
+            corr_tier: 0,
             ghost_pool: Vec::new(),
             nemesis_pool: Vec::new(),
             grave_ghost: None,
@@ -974,6 +1004,8 @@ impl Game {
             forced_purchase: None,
             shop_timer: 0,
             shop_hold_ticks: SHOP_HOLD,
+            light_intensity: 1.0,
+            lights_through_fog: true,
             shop_window_max: 8.0,
             shop_preview: false,
             shop_vote_secs: 0.0,
@@ -1084,6 +1116,11 @@ impl Game {
         }
 
         self.corruption = (self.floor * 4 + self.ascension * 5 + self.boss_wave * 3).min(100);
+        let new_tier = crate::lore::corruption_tier(self.corruption);
+        if new_tier > self.corr_tier {
+            self.corr_tier = new_tier;
+            self.say("L'Abime", crate::lore::abyss_tier_up(new_tier), (200, 120, 230), 2);
+        }
         let corr = self.corruption;
         let biome_el = self.biome.element();
         let fauna = self.biome.fauna();
@@ -1162,6 +1199,8 @@ impl Game {
             m.nemesis = true;
             self.monsters.push(m);
             self.push_log(format!("{} vous a retrouve.", nem.name), (235, 120, 200));
+            let taunt = crate::lore::nemesis_taunt(&mut self.rng);
+            self.say(&nem.name, taunt, (235, 120, 200), 3);
         }
 
         for _ in 0..item_count {
@@ -1229,11 +1268,15 @@ impl Game {
                 let bn = b.name.clone();
                 self.monsters.push(b);
                 self.push_log(format!("\u{2638} BOSS FINAL : {} vous attend !", bn), (255, 80, 120));
+                let taunt = crate::lore::boss_taunt(&mut self.rng);
+                self.say(&bn, taunt, (255, 90, 120), 3);
             } else {
                 let b = Monster::boss(self.floor, spot.0, spot.1);
                 let bn = b.name.clone();
                 self.monsters.push(b);
                 self.push_log(format!("\u{2620} {} garde l'escalier...", bn), (255, 150, 90));
+                let taunt = crate::lore::boss_taunt(&mut self.rng);
+                self.say(&bn, taunt, (255, 150, 90), 3);
             }
         }
 
@@ -1350,6 +1393,7 @@ impl Game {
             self.push_log("LE BOSS RUSH COMMENCE ! Plus de repit desormais.".into(), (255, 90, 80));
         }
         self.push_log(self.biome.lore().to_string(), (150, 150, 165));
+        self.say(self.biome.label(), self.biome.lore().to_string(), (170, 175, 195), 2);
         if self.room_kind == RoomKind::Rest {
             self.hero.hp = self.hero.max_hp;
             self.hero.burn = 0;
@@ -1568,6 +1612,41 @@ impl Game {
         if self.log.len() > LOG_CAP {
             self.log.remove(0);
         }
+    }
+
+    pub fn say(&mut self, speaker: &str, text: impl Into<String>, color: Color, prio: i32) {
+        if let Some(d) = &self.dialogue {
+            if d.ttl > 0 && d.prio > prio {
+                return;
+            }
+        }
+        let text = text.into();
+        let ttl = 150 + text.chars().count() as i32 * 4;
+        self.dialogue = Some(Dialogue { speaker: speaker.to_string(), text, color, ttl, prio });
+    }
+
+    pub fn tick_dialogue(&mut self) {
+        if let Some(d) = &mut self.dialogue {
+            if d.ttl > 0 {
+                d.ttl -= 1;
+            }
+        }
+        if !matches!(self.phase, Phase::Playing) {
+            return;
+        }
+        self.abyss_timer -= 1;
+        if self.abyss_timer <= 0 {
+            let tier = crate::lore::corruption_tier(self.corruption);
+            self.abyss_timer = (760 - tier as i32 * 150).max(180);
+            if tier >= 1 || self.rng.chance(0.4) {
+                let line = crate::lore::abyss_whisper(self.corruption, &mut self.rng);
+                self.say("L'Abime", line, (190, 130, 235), 1);
+            }
+        }
+    }
+
+    fn corruption_reward_mult(&self) -> f32 {
+        1.0 + self.corruption as f32 / 200.0
     }
 
     pub fn monster_at(&self, x: i32, y: i32) -> Option<usize> {
@@ -3186,13 +3265,16 @@ impl Game {
             self.hero.kills += 1;
             self.total_kills += 1;
             let greed = if self.hero.has_relic(Relic::Greed) { 1.5 } else { 1.0 };
-            self.hero.gold += (m.gold_reward as f32 * self.mut_gold_mult() * greed) as i32;
+            self.hero.gold += (m.gold_reward as f32 * self.mut_gold_mult() * greed * self.corruption_reward_mult()) as i32;
             if self.hero.has_relic(Relic::Greed) && self.rng.chance(0.08) {
                 self.hero.potions += 1;
                 self.fx.label(mx, my, "+potion", (230, 120, 150));
             }
             self.fx.bump_combo();
             self.sfx.push(if is_boss { Sound::BossHit } else { Sound::Kill });
+            if is_boss {
+                self.sfx.push(Sound::Fanfare);
+            }
             self.discover(&name);
             let sparks = if is_boss { 30 } else { 9 };
             self.fx.burst(&mut self.rng, mx, my, color, sparks, '\u{2736}');
@@ -3232,7 +3314,7 @@ impl Game {
             if self.total_kills >= 100 {
                 self.unlock("centurion", "Centurion - 100 elimines");
             }
-            if self.hero.gain_xp(m.xp_reward) {
+            if self.hero.gain_xp((m.xp_reward as f32 * self.corruption_reward_mult()) as i32) {
                 self.sfx.push(Sound::LevelUp);
                 self.fx.ring(self.hero.x, self.hero.y, (255, 235, 150), 18, '\u{2022}');
                 self.fx.shockwave(self.hero.x, self.hero.y, (255, 225, 120), 12);
@@ -4157,6 +4239,7 @@ impl Game {
         let count = self.monsters.len();
         let chase_field = bfs_field(&self.map, self.hero.x, self.hero.y, &[]);
         let fw = self.map.width;
+        let mut escapees: Vec<usize> = Vec::new();
         for i in 0..count {
             if i >= self.monsters.len() {
                 break;
@@ -4362,6 +4445,9 @@ impl Game {
                     if d > manhattan {
                         self.monsters[i].x = nx;
                         self.monsters[i].y = ny;
+                        if !self.boss_rush && !self.monsters[i].nemesis && d >= 7 && self.rng.chance(0.05) {
+                            escapees.push(i);
+                        }
                         continue;
                     }
                 }
@@ -4402,6 +4488,37 @@ impl Game {
                 }
             }
         }
+        escapees.sort_unstable_by(|a, b| b.cmp(a));
+        for i in escapees {
+            self.flee_escape(i);
+        }
+    }
+
+    fn flee_escape(&mut self, i: usize) {
+        if i >= self.monsters.len() {
+            return;
+        }
+        let (name, glyph, mx, my) = {
+            let m = &self.monsters[i];
+            (m.name.clone(), m.glyph, m.x, m.y)
+        };
+        self.monsters.remove(i);
+        if self.boss_rush {
+            return;
+        }
+        if self.nemesis_pool.iter().any(|n| n.base == name) || self.nemesis_add.iter().any(|n| n.base == name) {
+            return;
+        }
+        let nem = crate::lore::Nemesis {
+            name: crate::lore::nemesis_name(&name, &mut self.rng),
+            base: name,
+            glyph,
+            rank: 1,
+            hero_kills: 0,
+        };
+        self.push_log(format!("{} s'echappe en jurant de revenir !", nem.name), (235, 120, 200));
+        self.fx.label(mx, my, "FUITE!", (235, 120, 200));
+        self.nemesis_add.push(nem);
     }
 
     fn set_danger(&mut self, i: usize, pend: i32) {

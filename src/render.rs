@@ -94,15 +94,16 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
     draw_frame(game, cols, rows, mw, paused, speed_label, &mut buf);
     draw_panel(game, cols, rows - CMD_BAR_H, mw, &mut buf);
 
-    if let Some(b) = game.monsters.iter().find(|m| m.boss) {
+    if let Some(b) = game.monsters.iter().find(|m| m.boss && m.aggro) {
         draw_boss_bar(mw, &b.name, b.hp, b.max_hp, b.color, &mut buf);
     }
-    if game.merchant.is_some() && (game.shop_timer > 0 || game.shop_preview) {
+    if game.merchant.is_some() && game.shop_timer > 0 {
         draw_shop(game, mw, &mut buf);
     }
     if !game.top_voters.is_empty() || !game.twitch_channel.is_empty() {
         draw_top_voters(game, mh - 1, &mut buf);
     }
+    draw_dialogue(game, mw, mh, &mut buf);
     draw_command_bar(game, cols, rows, &mut buf);
     if game.fx.combo >= 3 {
         let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;255;200;70mCOMBO x{}\x1b[0m", MROW, MCOL + 1, game.fx.combo);
@@ -223,7 +224,7 @@ fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_la
     }
     buf.push('\u{255d}');
     let (bottom, bcol) = match game.thoughts.last() {
-        Some(t) => (format!(" \u{201c}{}\u{201d}  (?:aide  o:options) ", t), (150, 200, 225)),
+        Some(t) => (format!(" \u{201c}{}\u{201d}  (?:aide) ", t), (150, 200, 225)),
         None => (
             " ?:aide  espace:pause  +/-:vitesse  m:mindset  a:son  g:sprite  z:zoom  k:bestiaire  h:hall  d:defi-du-jour  s/l/n  q:quitter ".to_string(),
             (130, 130, 150),
@@ -314,7 +315,10 @@ fn draw_panel(game: &Game, cols: i32, rows: i32, mw: i32, buf: &mut String) {
     bar(buf, ix, r, iw, h.xp, h.xp_next, (110, 160, 240), "XP");
     r += 1;
     let corr_col = if game.corruption >= 70 { (210, 80, 200) } else if game.corruption >= 40 { (200, 120, 180) } else { (110, 140, 120) };
-    bar(buf, ix, r, iw, game.corruption, 100, corr_col, "CORR");
+    let corr_tier = crate::lore::corruption_label(game.corruption);
+    let tw = corr_tier.chars().count() as i32 + 1;
+    bar(buf, ix, r, (iw - tw).max(8), game.corruption, 100, corr_col, "CORR");
+    put(buf, ix + iw - tw + 1, r, corr_col, corr_tier);
     r += 1;
     put(buf, ix, r, (170, 170, 185), &format!("ATQ {:<4} DEF {:<4} or {}", h.atk(), h.def(), h.gold));
     r += 1;
@@ -797,7 +801,9 @@ fn draw_sprite_map(game: &Game, mw: i32, mh: i32, sdx: i32, tint: (f32, f32, f32
             }
             let visible = game.map.is_visible(wx, wy);
             let explored = game.map.is_explored(wx, wy);
-            if !visible && !explored {
+            let (lr, lg, lb) = light_delta(&lights, wx, wy);
+            let has_light = lr + lg + lb > 0.5;
+            if !visible && !explored && !has_light {
                 continue;
             }
             let light = if visible {
@@ -807,8 +813,9 @@ fn draw_sprite_map(game: &Game, mw: i32, mh: i32, sdx: i32, tint: (f32, f32, f32
             } else {
                 0.42
             };
-            let tile = game.map.tile(wx, wy);
             let mut cell = [[bgfill; 8]; 8];
+            if visible || explored {
+            let tile = game.map.tile(wx, wy);
             for sy in 0..8usize {
                 for sx in 0..8usize {
                     let base = match tile {
@@ -851,15 +858,13 @@ fn draw_sprite_map(game: &Game, mw: i32, mh: i32, sdx: i32, tint: (f32, f32, f32
                     }
                 }
             }
-            if visible {
-                let (lr, lg, lb) = light_delta(&lights, wx, wy);
-                if lr + lg + lb > 0.5 {
-                    for row in cell.iter_mut() {
-                        for c in row.iter_mut() {
-                            c.0 = (c.0 as f32 + lr).min(255.0) as u8;
-                            c.1 = (c.1 as f32 + lg).min(255.0) as u8;
-                            c.2 = (c.2 as f32 + lb).min(255.0) as u8;
-                        }
+            }
+            if has_light {
+                for row in cell.iter_mut() {
+                    for c in row.iter_mut() {
+                        c.0 = (c.0 as f32 + lr).min(255.0) as u8;
+                        c.1 = (c.1 as f32 + lg).min(255.0) as u8;
+                        c.2 = (c.2 as f32 + lb).min(255.0) as u8;
                     }
                 }
             }
@@ -1037,41 +1042,64 @@ fn feature_light(kind: FeatureKind) -> Option<Color> {
 }
 
 fn collect_lights(game: &Game) -> Vec<(f32, f32, Color)> {
+    let intensity = game.light_intensity;
+    if intensity <= 0.0 {
+        return Vec::new();
+    }
+    let through = game.lights_through_fog;
+    let lit = |x: i32, y: i32| through || game.map.is_visible(x, y);
     let t = game.anim_t as f32;
     let mut lights: Vec<(f32, f32, Color)> = Vec::new();
 
     let torch = 0.82 + 0.18 * ((t * 0.09).sin() * 0.6 + (t * 0.23 + 1.3).sin() * 0.4);
-    lights.push((game.hero.x as f32, game.hero.y as f32, elight(element_light(game.hero.weapon_element()), torch)));
+    lights.push((game.hero.x as f32, game.hero.y as f32, elight(element_light(game.hero.weapon_element()), torch * intensity)));
+
+    if let Some(p) = &game.pet {
+        if lit(p.x, p.y) {
+            lights.push((p.x as f32, p.y as f32, elight((54, 40, 18), 0.7 * torch * intensity)));
+        }
+    }
+    for a in &game.allies {
+        if !lit(a.x, a.y) {
+            continue;
+        }
+        let col = if a.companion { (56, 42, 18) } else { (40, 50, 28) };
+        lights.push((a.x as f32, a.y as f32, elight(col, 0.62 * torch * intensity)));
+    }
 
     for &(hx, hy, _) in &game.hazard {
+        if !lit(hx, hy) {
+            continue;
+        }
         let f = 0.7 + 0.4 * (t * 0.13 + (hx + hy * 3) as f32).sin();
-        lights.push((hx as f32, hy as f32, elight((104, 46, 12), f)));
+        lights.push((hx as f32, hy as f32, elight((104, 46, 12), f * intensity)));
     }
 
     for m in &game.monsters {
-        if !game.map.is_visible(m.x, m.y) {
+        if !lit(m.x, m.y) {
             continue;
         }
-        let base = if m.boss { 1.1 } else if m.elite { 0.7 } else if m.cast_wind > 0 { 0.8 } else { 0.0 };
+        let base = if m.boss { 1.1 } else if m.nemesis { 0.95 } else if m.elite { 0.7 } else if m.cast_wind > 0 { 0.8 } else { 0.0 };
         if base <= 0.0 {
             continue;
         }
         let p = base * (0.72 + 0.28 * (t * 0.12 + m.x as f32 * 0.5).sin());
-        lights.push((m.x as f32, m.y as f32, elight(element_light(m.element), p * 0.6)));
+        let col = if m.nemesis { (82, 28, 72) } else { element_light(m.element) };
+        lights.push((m.x as f32, m.y as f32, elight(col, p * 0.6 * intensity)));
     }
 
     for f in &game.features {
-        if !game.map.is_visible(f.x, f.y) {
+        if !lit(f.x, f.y) {
             continue;
         }
         if let Some(col) = feature_light(f.kind) {
             let pl = 0.6 + 0.4 * (t * 0.08 + f.x as f32).sin();
-            lights.push((f.x as f32, f.y as f32, elight(col, pl)));
+            lights.push((f.x as f32, f.y as f32, elight(col, pl * intensity)));
         }
     }
 
     for p in &game.fx.projectiles {
-        lights.push((p.x, p.y, p.color));
+        lights.push((p.x, p.y, elight(p.color, intensity)));
     }
     lights
 }
@@ -1432,6 +1460,49 @@ fn bar_segments(buf: &mut String, y: i32, x0: i32, limit: i32, segs: &[(&str, Co
         let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;{};{};{}m{}", y, x, col.0, col.1, col.2, txt);
         x += n;
     }
+}
+
+fn draw_dialogue(game: &Game, mw: i32, mh: i32, buf: &mut String) {
+    let Some(d) = &game.dialogue else { return };
+    if d.ttl <= 0 || d.prio < 1 {
+        return;
+    }
+    let inner = (mw - 2).clamp(12, 120);
+    let wrapped = wrap_text(&d.text, (inner - 2) as usize);
+    let shown: Vec<&String> = wrapped.iter().take(2).collect();
+    if shown.is_empty() {
+        return;
+    }
+    let bh = shown.len() as i32 + 2;
+    let y0 = MROW + mh - bh;
+    let bg = (12, 12, 20);
+    let bc = d.color;
+    for i in 0..bh {
+        let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;{};{};{}m", y0 + i, MCOL, bg.0, bg.1, bg.2);
+        for _ in 0..(inner + 2) {
+            buf.push(' ');
+        }
+    }
+    let spk: String = d.speaker.chars().take(20).collect();
+    let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;{};{};{}m\x1b[38;2;{};{};{}m\u{256d}\u{2500} ", y0, MCOL, bg.0, bg.1, bg.2, bc.0, bc.1, bc.2);
+    let _ = write!(buf, "\x1b[38;2;255;240;180m{}", spk);
+    let _ = write!(buf, "\x1b[38;2;{};{};{}m ", bc.0, bc.1, bc.2);
+    let used = 4 + spk.chars().count();
+    for _ in used..(inner + 1) as usize {
+        buf.push('\u{2500}');
+    }
+    buf.push('\u{256e}');
+    for (k, line) in shown.iter().enumerate() {
+        let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;{};{};{}m\x1b[38;2;{};{};{}m\u{2502}", y0 + 1 + k as i32, MCOL, bg.0, bg.1, bg.2, bc.0, bc.1, bc.2);
+        let _ = write!(buf, "\x1b[38;2;{};{};{}m {:<width$}", d.color.0, d.color.1, d.color.2, line, width = (inner - 1) as usize);
+        let _ = write!(buf, "\x1b[38;2;{};{};{}m\u{2502}", bc.0, bc.1, bc.2);
+    }
+    let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;{};{};{}m\x1b[38;2;{};{};{}m\u{2570}", y0 + bh - 1, MCOL, bg.0, bg.1, bg.2, bc.0, bc.1, bc.2);
+    for _ in 0..inner {
+        buf.push('\u{2500}');
+    }
+    buf.push('\u{256f}');
+    buf.push_str("\x1b[0m");
 }
 
 fn draw_command_bar(game: &Game, cols: i32, rows: i32, buf: &mut String) {

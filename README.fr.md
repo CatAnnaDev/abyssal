@@ -108,7 +108,7 @@ La progression se charge automatiquement au lancement (`abyssal.save.json`).
 - **Ascension / NG+** et un profil persistant à vie avec des jalons qui débloquent des bonus de départ permanents.
 
 ### Audio
-- **Chiptune 8/16-bit procédural**, généré au runtime sans fichier audio : SFX synthétisés, plus une musique chill-pop **adaptative** qui réagit en direct — le **tempo monte progressivement quand les ennemis approchent** et un arpège entraînant se fond dedans, culminant en combat et contre les boss, le tout en jouant sur le tempo et le layering plutôt qu'en coupant les pistes.
+- **Chiptune 8/16-bit procédural**, généré au runtime sans fichier audio : SFX synthétisés, plus une musique chill-pop **adaptative** qui réagit en direct — une couche d'arpège de combat **se fond progressivement quand les ennemis approchent** et une couche boss plus lourde prend le relais contre les boss, le tout par fondu de couches synchronisées à l'échantillon (sans déformer le pitch/tempo, sans coupure sèche) pour des transitions propres.
 
 ### Twitch (optionnel)
 - Les viewers votent l'état d'esprit de l'héroïne et les achats au marchand, affichés dans un **panneau** en direct (canal, barres de votes, top du chat, fil des actions récentes).

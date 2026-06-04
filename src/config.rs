@@ -30,6 +30,10 @@ pub struct Config {
     pub obs_overlay: bool,
     #[serde(default = "default_target_fps")]
     pub target_fps: u32,
+    #[serde(default = "yes")]
+    pub lights_through_fog: bool,
+    #[serde(default = "default_light_intensity")]
+    pub light_intensity: f32,
 }
 
 fn yes() -> bool {
@@ -38,6 +42,10 @@ fn yes() -> bool {
 
 fn default_target_fps() -> u32 {
     30
+}
+
+fn default_light_intensity() -> f32 {
+    1.0
 }
 
 fn default_volume() -> f32 {
@@ -67,6 +75,8 @@ impl Default for Config {
             allow_bet_vote: true,
             obs_overlay: false,
             target_fps: 30,
+            lights_through_fog: true,
+            light_intensity: 1.0,
         }
     }
 }

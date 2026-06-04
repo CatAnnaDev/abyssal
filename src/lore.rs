@@ -192,3 +192,99 @@ pub const FEATS: &[(&str, &str, &str)] = &[
 pub fn feat_name(id: &str) -> &'static str {
     FEATS.iter().find(|f| f.0 == id).map(|f| f.1).unwrap_or("haut fait")
 }
+
+pub fn corruption_label(corr: i32) -> &'static str {
+    match corr {
+        c if c >= 100 => "Absolue",
+        c if c >= 75 => "Hurlante",
+        c if c >= 50 => "Murmurante",
+        c if c >= 25 => "Eveillee",
+        _ => "Latente",
+    }
+}
+
+pub fn corruption_tier(corr: i32) -> usize {
+    match corr {
+        c if c >= 100 => 4,
+        c if c >= 75 => 3,
+        c if c >= 50 => 2,
+        c if c >= 25 => 1,
+        _ => 0,
+    }
+}
+
+const ABYSS_LATENT: &[&str] = &[
+    "Encore une ame qui descend. Elles descendent toujours.",
+    "Je t'observe depuis le premier pas.",
+    "Le silence ici n'est pas vide. Il attend.",
+    "Tu sens cette odeur ? C'est celle de celles d'avant.",
+];
+const ABYSS_AWAKE: &[&str] = &[
+    "Plus bas. Toujours plus bas. Tu m'entends deja, n'est-ce pas ?",
+    "Tes pas reveillent des choses qui dormaient.",
+    "Chaque etage te prend un peu. Tu ne le remarques pas encore.",
+    "Les murs se souviennent de ton visage.",
+];
+const ABYSS_WHISPER: &[&str] = &[
+    "Ta presence me nourrit. Et moi, je te rends... genereuse.",
+    "Sens-tu mes veines s'ouvrir ? L'or coule pour celles qui osent.",
+    "Mes creatures enragent a ton approche. Elles te craignent.",
+    "Tu n'es plus tout a fait toi. C'est bien. C'est ce que je voulais.",
+];
+const ABYSS_SCREAM: &[&str] = &[
+    "TU M'APPARTIENS DESORMAIS.",
+    "Chaque coup que tu portes, c'est moi qui le porte.",
+    "Regarde tes mains. Sont-elles encore les tiennes ?",
+    "Le fond t'appelle. Et le fond ne ment jamais.",
+];
+const ABYSS_ABSOLUTE: &[&str] = &[
+    "Nous ne faisons plus qu'un, toi et l'abime.",
+    "Il n'y a plus de retour. Il n'y en a jamais eu.",
+    "Tu es mon coeur qui bat dans les profondeurs.",
+];
+
+pub fn abyss_whisper(corr: i32, rng: &mut Rng) -> &'static str {
+    let pool = match corruption_tier(corr) {
+        4 => ABYSS_ABSOLUTE,
+        3 => ABYSS_SCREAM,
+        2 => ABYSS_WHISPER,
+        1 => ABYSS_AWAKE,
+        _ => ABYSS_LATENT,
+    };
+    pool[rng.below(pool.len())]
+}
+
+const ABYSS_TIER_UP: [&str; 5] = [
+    "L'abime s'agite a ton arrivee.",
+    "L'abime s'eveille. Corruption Eveillee.",
+    "L'abime murmure ton nom, et ses tresors saignent plus fort.",
+    "L'abime hurle. Tout ici veut ta peau — et ta recompense enfle.",
+    "L'abime t'a engloutie. Corruption Absolue.",
+];
+
+pub fn abyss_tier_up(tier: usize) -> &'static str {
+    ABYSS_TIER_UP[tier.min(4)]
+}
+
+const BOSS_TAUNTS: &[&str] = &[
+    "Tu es allee trop loin, petite flamme.",
+    "Beaucoup sont venues. Toutes reposent ici.",
+    "Ce couloir sera ta tombe.",
+    "L'abime m'a confie ta fin.",
+    "Approche. Finissons-en.",
+];
+
+pub fn boss_taunt(rng: &mut Rng) -> &'static str {
+    BOSS_TAUNTS[rng.below(BOSS_TAUNTS.len())]
+}
+
+const NEMESIS_TAUNTS: &[&str] = &[
+    "Tu te souviens de moi ? Moi, je n'ai jamais oublie.",
+    "Tu aurais du m'achever quand tu le pouvais.",
+    "Cette fois, tu ne t'echapperas pas.",
+    "J'ai survecu pour cet instant precis.",
+];
+
+pub fn nemesis_taunt(rng: &mut Rng) -> &'static str {
+    NEMESIS_TAUNTS[rng.below(NEMESIS_TAUNTS.len())]
+}

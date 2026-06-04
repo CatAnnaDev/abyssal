@@ -118,7 +118,7 @@ Progress autoloads on launch (`abyssal.save.json`).
 - **Daily challenge** (`d`) — a dungeon seeded from the date, identical for everyone that day; the death screen prints a shareable `DEFI #<day> — floor X, score Y` line, your best of the day and your all-time daily record. A **local leaderboard** of best score/floor per day is kept in the profile and shown in the Hall of Souls (`h`).
 
 ### Audio
-- **Procedural 8/16-bit chiptune**, generated at runtime with no audio files: synthesized SFX, plus an **adaptive** chill-pop track that reacts live — the **tempo ramps up smoothly as enemies approach** and a driving arpeggio fades in, peaking in combat and against bosses, all by shifting tempo and layering rather than hard-cutting tracks.
+- **Procedural 8/16-bit chiptune**, generated at runtime with no audio files: synthesized SFX, plus an **adaptive** chill-pop track that reacts live — a driving combat arpeggio layer **fades in smoothly as enemies approach** and a heavier boss layer takes over for bosses, all by crossfading sample-locked layers (no pitch/tempo warping, no hard cuts) so transitions stay clean.
 
 ### Twitch (optional)
 - Viewers vote on the heroine's mindset and merchant purchases, shown in a live on-screen **panel** (channel, mindset-vote bars, top chatters, a feed of recent actions).
