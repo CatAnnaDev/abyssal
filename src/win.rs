@@ -33,9 +33,9 @@ fn fallback_bitmap(c: char) -> Option<[u8; 8]> {
 }
 
 const SPEEDS: [(&str, f32); 5] = [("lent", 4.0), ("normal", 7.0), ("rapide", 12.0), ("turbo", 20.0), ("ultra", 36.0)];
-const PANEL_W: i32 = 42;
-const MAP_W: i32 = 107;
-const MAP_H: i32 = 40;
+const PANEL_W: i32 = 50;
+const MAP_W: i32 = 170;
+const MAP_H: i32 = 62;
 
 fn seed() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(0x9E37_79B9_7F4A_7C15)
