@@ -7,6 +7,7 @@ use std::io::Write;
 const MROW: i32 = 2;
 const MCOL: i32 = 2;
 const FRAME: Color = (95, 95, 120);
+pub const CMD_BAR_H: i32 = 2;
 
 pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, sprite: bool, zoom: i32, out: &mut impl Write) {
     let mut buf = String::with_capacity((cols * rows) as usize * 7);
@@ -81,7 +82,7 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
     }
     buf.push_str("\x1b[0m");
     draw_frame(game, cols, rows, mw, paused, speed_label, &mut buf);
-    draw_panel(game, cols, rows, mw, &mut buf);
+    draw_panel(game, cols, rows - CMD_BAR_H, mw, &mut buf);
 
     if let Some(b) = game.monsters.iter().find(|m| m.boss) {
         draw_boss_bar(mw, &b.name, b.hp, b.max_hp, b.color, &mut buf);
@@ -90,8 +91,9 @@ pub fn draw(game: &Game, cols: i32, rows: i32, paused: bool, speed_label: &str, 
         draw_shop(game, mw, &mut buf);
     }
     if !game.top_voters.is_empty() || !game.twitch_channel.is_empty() {
-        draw_top_voters(game, mh, &mut buf);
+        draw_top_voters(game, mh - 1, &mut buf);
     }
+    draw_command_bar(game, cols, rows, &mut buf);
     if game.fx.combo >= 3 {
         let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;255;200;70mCOMBO x{}\x1b[0m", MROW, MCOL + 1, game.fx.combo);
     }
@@ -1203,22 +1205,50 @@ fn draw_debug(game: &Game, mw: i32, mh: i32, sdx: i32, sprite: bool, buf: &mut S
     }
 }
 
-const TWITCH_HINTS: &[&str] = &[
-    "!join \u{2192} rejoins le combat",
-    "!hype \u{2192} gonfle la jauge",
-    "!cheer <3 \u{2192} envoie un coeur",
-    "!1 !2 !3 \u{2192} etat d'esprit",
-    "!bet <etage> \u{2192} parie",
-    "!bless \u{2192} benir l'heroine",
-    "!curse \u{2192} maudire l'heroine",
-    "!name <nom> \u{2192} renomme-la",
-    "!arme !armure !potion \u{2192} achat",
-    "!faster !slower \u{2192} vitesse",
-];
+fn bar_segments(buf: &mut String, y: i32, x0: i32, limit: i32, segs: &[(&str, Color)]) {
+    let mut x = x0;
+    for (txt, col) in segs {
+        let n = txt.chars().count() as i32;
+        if x + n > limit {
+            break;
+        }
+        let _ = write!(buf, "\x1b[{};{}H\x1b[38;2;{};{};{}m{}", y, x, col.0, col.1, col.2, txt);
+        x += n;
+    }
+}
 
-fn command_ticker(anim_t: u32) -> String {
-    let i = (anim_t / 200) as usize % TWITCH_HINTS.len();
-    format!("\u{25b8} {}", TWITCH_HINTS[i])
+fn draw_command_bar(game: &Game, cols: i32, rows: i32, buf: &mut String) {
+    let cmd: Color = (150, 230, 180);
+    let dim: Color = (140, 140, 160);
+    let sep: Color = (95, 95, 120);
+    let live = if game.viewer_count() > 0 { (255, 120, 120) } else { (200, 170, 90) };
+    let bg = (24, 22, 34);
+    let width = (cols - 2).max(0);
+    let y0 = rows - CMD_BAR_H;
+    for i in 0..CMD_BAR_H {
+        let _ = write!(buf, "\x1b[{};{}H\x1b[48;2;{};{};{}m", y0 + i, MCOL, bg.0, bg.1, bg.2);
+        for _ in 0..width {
+            buf.push(' ');
+        }
+    }
+    let limit = MCOL + width;
+    let line_a: &[(&str, Color)] = &[
+        ("\u{266a} CHAT  ", live),
+        ("!join ", cmd), ("!hype ", cmd), ("!cheer ", cmd), ("!name", cmd), (" <nom>", dim),
+        ("   \u{00b7}   ", sep),
+        ("!1", cmd), (" complet  ", dim), ("!2", cmd), (" combat  ", dim), ("!3", cmd), (" rush", dim),
+    ];
+    let line_b: &[(&str, Color)] = &[
+        ("  vote  ", live),
+        ("!faster ", cmd), ("!slower", cmd),
+        ("   \u{00b7}   ", sep),
+        ("!bet", cmd), (" <etage>  ", dim), ("!bless ", cmd), ("!curse", cmd),
+        ("   \u{00b7}   ", sep),
+        ("!arme ", cmd), ("!armure ", cmd), ("!potion", cmd),
+    ];
+    bar_segments(buf, y0, MCOL + 1, limit, line_a);
+    bar_segments(buf, y0 + 1, MCOL + 1, limit, line_b);
+    buf.push_str("\x1b[0m");
 }
 
 fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
@@ -1236,7 +1266,6 @@ fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
     if game.hype > 0 || game.hype_flash > 0 {
         lines.push(format!("HYPE [{}{}]", "\u{2588}".repeat(hk), "\u{00b7}".repeat(10 - hk)));
     }
-    lines.push(command_ticker(game.anim_t));
     let st = game.style_tally;
     if st[0] + st[1] + st[2] > 0 {
         let bar = |n: u32| -> String {
@@ -1277,13 +1306,7 @@ fn draw_top_voters(game: &Game, mh: i32, buf: &mut String) {
     }
     buf.push('\u{2510}');
     for (i, l) in lines.iter().enumerate() {
-        let color = if i == 0 {
-            (200, 170, 90)
-        } else if l.starts_with('\u{25b8}') {
-            (150, 220, 180)
-        } else {
-            (210, 210, 225)
-        };
+        let color = if i == 0 { (200, 170, 90) } else { (210, 210, 225) };
         put(buf, MCOL, MROW + oy + 1 + i as i32, border, "\u{2502}");
         let mut content: String = l.chars().take(inner as usize).collect();
         while (content.chars().count() as i32) < inner {
