@@ -2,6 +2,10 @@
 
 *Read this in [English](README.md).*
 
+> **TL;DR** — *Abyssal* est un roguelike **entièrement autonome**, à **regarder** plutôt qu'à jouer, écrit en Rust et **sans aucun fichier d'asset** : chaque carte, sprite, son et note est généré au runtime. Une héroïne IA descend seule un abîme infini généré procéduralement : elle explore, combat, ramasse, monte de niveau, meurt et recommence. Tu ne joues pas, tu regardes.
+>
+> **Ce que ça intègre :** 11 biomes avec génération propre à chacun · 20 classes avec aptitudes actives, équipement, reliques & talents · combat élémentaire contre ~45 types de monstres et des boss à phases télégraphiées · effets cinématiques avec hit-stop · deux modes de rendu (glyphes colorés ou sprites pixel-art procéduraux) · héroïnes vivantes (noms, traits, pensées, épitaphes, némésis inter-runs & tombes de fantômes) · méta-progression (ascension/NG+, hauts faits, défi du jour + classement local) · chiptune généré au runtime avec musique adaptative · intégration **Twitch** anonyme optionnelle (votes état d'esprit & marchand, mobs nommés par les viewers, paris sur la mort, commandes chaos) et un overlay **OBS** auto-rafraîchi.
+
 Un roguelike **entièrement autonome** pour le terminal, à regarder plutôt qu'à jouer, écrit en Rust.
 
 Une héroïne IA descend seule dans un abîme infini généré procéduralement : elle explore, combat, ramasse, monte de niveau, apprend des talents, marchande, esquive les attaques télégraphiées des boss, meurt, et recommence — toute seule. Tu ne joues pas. Tu regardes.

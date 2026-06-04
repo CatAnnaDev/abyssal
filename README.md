@@ -2,6 +2,10 @@
 
 *Read this in [Français](README.fr.md).*
 
+> **TL;DR** — *Abyssal* is a fully autonomous, **watch-only** roguelike for the terminal, written in Rust with **no asset files** — every map, sprite, sound and note is generated at runtime. An AI heroine descends an endless procedurally generated abyss entirely on her own: she explores, fights, loots, levels up, dies and starts over. You don't play; you watch.
+>
+> **What's inside:** 11 biomes with per-biome generation · 20 classes with active abilities, gear, relics & talents · elemental combat vs ~45 monster kinds and telegraphed phase-based bosses · cinematic hit-stop FX · two render modes (colored glyphs or procedural pixel-art sprites) · living heroines (procedural names, traits, thoughts, obituaries, cross-run nemeses & ghost graves) · meta-progression (ascension/NG+, feats, daily challenge + local leaderboard) · runtime chiptune with adaptive music · optional anonymous **Twitch** integration (mindset & merchant votes, viewer-named mobs, death bets, chaos commands) and a self-refreshing **OBS** overlay.
+
 A fully autonomous, watch-only roguelike for the terminal, written in Rust.
 
 An AI heroine descends alone into an endless procedurally generated abyss: she explores, fights, loots, levels up, learns talents, trades with rare merchants, dodges telegraphed boss attacks, dies, and starts again — all on her own. You don't play. You watch.
