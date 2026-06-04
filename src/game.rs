@@ -363,6 +363,21 @@ impl Biome {
         self.def().ambient
     }
 
+    pub fn weather(self) -> (i32, f32, &'static [char]) {
+        match self {
+            Biome::Frostvault | Biome::Crystal => (5, 0.05, &['*', '\u{00b7}', '.']),
+            Biome::Sunken => (3, 0.03, &['\u{00b7}', '.', '\u{2248}']),
+            Biome::Emberdepths | Biome::Caldera => (5, 0.04, &['\u{2218}', '\u{00b7}', '*']),
+            Biome::Ashsea => (6, 0.09, &['\u{00b7}', '.', '\u{2591}']),
+            Biome::Forge => (4, 0.03, &['\u{2218}', '*', '\u{00b7}']),
+            Biome::Fungal | Biome::Mire => (4, 0.02, &['\u{00b0}', '\u{00b7}', '.']),
+            Biome::Catacombs | Biome::Necropolis => (3, 0.02, &['\u{00b7}', '.']),
+            Biome::Abyss | Biome::Starvault => (4, 0.0, &['\u{00b7}', '*', '\u{2727}']),
+            Biome::Hive => (3, 0.02, &['\u{00b7}', '.']),
+            Biome::Caverns => (2, 0.0, &['\u{00b7}']),
+        }
+    }
+
     pub fn weight_at(self, floor: i32) -> i32 {
         let d = self.def();
         (d.weight_peak - (floor - d.weight_center).abs()).max(d.weight_min)
@@ -1794,22 +1809,25 @@ impl Game {
     }
 
     fn spawn_ambient(&mut self) {
-        let (glyph, color, vy) = self.biome.ambient();
-        for _ in 0..3 {
-            let x = self.hero.x + self.rng.between(-10, 11);
-            let y = self.hero.y + self.rng.between(-6, 7);
+        let (_, color, vy) = self.biome.ambient();
+        let (count, wind, glyphs) = self.biome.weather();
+        let gust = wind * self.rng.range(0.6, 1.4);
+        for _ in 0..count {
+            let x = self.hero.x + self.rng.between(-11, 12);
+            let y = self.hero.y + self.rng.between(-7, 8);
             if !self.map.is_visible(x, y) {
                 continue;
             }
+            let glyph = glyphs[self.rng.below(glyphs.len())];
             self.fx.particles.push(Particle {
                 x: x as f32 + self.rng.range(0.0, 1.0),
                 y: y as f32 + self.rng.range(0.0, 1.0),
-                vx: self.rng.range(-0.05, 0.05),
-                vy,
+                vx: gust + self.rng.range(-0.05, 0.05),
+                vy: vy + self.rng.range(-0.03, 0.04),
                 grav: 0.0,
                 glyph,
                 color,
-                ttl: self.rng.between(10, 22),
+                ttl: self.rng.between(12, 26),
                 fine: true,
             });
         }
@@ -1842,7 +1860,7 @@ impl Game {
             self.hype -= 1;
         }
         self.fx.tick();
-        if matches!(self.phase, Phase::Playing) && self.rng.chance(0.3) {
+        if matches!(self.phase, Phase::Playing) && self.rng.chance(0.5) {
             self.spawn_ambient();
         }
         self.flashes.retain_mut(|f| {

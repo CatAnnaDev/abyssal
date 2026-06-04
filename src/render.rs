@@ -152,7 +152,13 @@ fn frame_color(game: &Game) -> Color {
     if matches!(game.phase, Phase::Playing) && frac < 0.30 {
         return lerp_color(FRAME, (165, 45, 45), ((0.30 - frac) / 0.30) * 0.7);
     }
-    FRAME
+    let intensity = game.music_intensity();
+    let speed = 0.07 + 0.10 * intensity;
+    let s = ((game.anim_t as f32 * speed).sin() * 0.5 + 0.5).clamp(0.0, 1.0);
+    let glow = lerp_color(FRAME, (170, 150, 210), 0.55);
+    let alert = lerp_color(FRAME, (200, 110, 110), 0.6);
+    let target = lerp_color(glow, alert, intensity);
+    lerp_color(FRAME, target, s * (0.25 + 0.35 * intensity))
 }
 
 fn draw_frame(game: &Game, cols: i32, rows: i32, mw: i32, paused: bool, speed_label: &str, buf: &mut String) {
