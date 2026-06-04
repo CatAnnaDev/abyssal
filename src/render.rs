@@ -1502,7 +1502,7 @@ fn draw_shop(game: &Game, mw: i32, buf: &mut String) {
         let blink = (game.anim_t / 8) % 2 == 0;
         let arrows = if blink { "\u{25b6}\u{25b6}\u{25b6}" } else { "   " };
         lines.push(format!("{} CHAT, VOTEZ MAINTENANT — {:>2}s restantes {}", arrows, game.shop_vote_secs.ceil() as i32, arrows));
-        let total = 60.0f32;
+        let total = game.shop_window_max.max(0.1);
         let filled = ((game.shop_vote_secs / total) * 36.0).round().clamp(0.0, 36.0) as usize;
         lines.push(format!("[{}{}]", "\u{2588}".repeat(filled), "\u{2591}".repeat(36 - filled)));
     } else {

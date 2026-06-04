@@ -491,7 +491,7 @@ fn config_menu(stdout: &mut io::Stdout, cols: i32, rows: i32, cfg: &mut Config, 
             "Votes style",
             "Votes marchand",
             "Votes vitesse",
-            "Fenetre de vote",
+            "Vote & marchand (s)",
             "Pathfinder",
             "FPS cible",
         ];
@@ -632,8 +632,6 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
     let mut last_draw = Instant::now() - Duration::from_secs(1);
     let mut fps_smoothed = 0.0f32;
     let mut heartbeat_acc = 0.0f32;
-    let mut shop_window = 0.0f32;
-    let mut prev_merchant = false;
     let mut was_dead = matches!(game.phase, game::Phase::Dead(_));
 
     loop {
@@ -742,19 +740,8 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
 
         let merchant_here = game.merchant.is_some();
         if cfg.twitch_active() {
-            if merchant_here && !prev_merchant {
-                shop_window = 60.0;
-            }
-            if !merchant_here {
-                shop_window = 0.0;
-            }
-            if shop_window > 0.0 {
-                shop_window -= dt;
-            }
-            game.shop_preview = merchant_here && shop_window > 0.0;
-            game.shop_vote_secs = if merchant_here { shop_window.max(0.0) } else { 0.0 };
+            game.shop_preview = merchant_here;
         }
-        prev_merchant = merchant_here;
 
         if let Some(rx) = &votes {
             while let Ok((user, raw, cmd)) = rx.try_recv() {
@@ -873,6 +860,8 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
         }
 
         let tps = SPEEDS[speed].1;
+        game.shop_hold_ticks = ((cfg.vote_window_secs * tps).round() as i32).max(1);
+        game.shop_window_max = cfg.vote_window_secs;
         let mut struck = false;
         if !paused {
             if game.hitstop > 0 {
@@ -906,6 +895,16 @@ fn run(stdout: &mut io::Stdout) -> io::Result<()> {
                     }
                 }
             }
+        }
+
+        if game.merchant.is_some() {
+            game.shop_vote_secs = if game.shop_timer > 0 {
+                game.shop_timer as f32 / tps.max(1.0)
+            } else {
+                cfg.vote_window_secs
+            };
+        } else {
+            game.shop_vote_secs = 0.0;
         }
 
         let mut played: Vec<audio::Sound> = Vec::new();

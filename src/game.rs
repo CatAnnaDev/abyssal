@@ -415,6 +415,10 @@ fn default_room() -> RoomKind {
     RoomKind::Standard
 }
 
+fn default_shop_hold() -> i32 {
+    SHOP_HOLD
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MerchantPick {
     Weapon,
@@ -781,6 +785,10 @@ pub struct Game {
     pub forced_purchase: Option<MerchantPick>,
     #[serde(skip)]
     pub shop_timer: i32,
+    #[serde(skip, default = "default_shop_hold")]
+    pub shop_hold_ticks: i32,
+    #[serde(skip)]
+    pub shop_window_max: f32,
     #[serde(skip)]
     pub shop_preview: bool,
     #[serde(skip)]
@@ -965,6 +973,8 @@ impl Game {
             merchant: None,
             forced_purchase: None,
             shop_timer: 0,
+            shop_hold_ticks: SHOP_HOLD,
+            shop_window_max: 8.0,
             shop_preview: false,
             shop_vote_secs: 0.0,
             bet_pool: 0,
@@ -3620,7 +3630,7 @@ impl Game {
         }
         if self.merchant.as_ref().is_some_and(|m| m.x == nx && m.y == ny) {
             if self.shop_timer == 0 {
-                self.shop_timer = SHOP_HOLD;
+                self.shop_timer = self.shop_hold_ticks.max(1);
                 self.sfx.push(Sound::Trade);
                 self.fx.label(self.hero.x, self.hero.y, "MARCHAND", (130, 235, 240));
                 self.push_log("Vous abordez le marchand...".into(), (120, 220, 230));
