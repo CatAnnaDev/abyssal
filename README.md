@@ -1,5 +1,11 @@
 # Abyssal
 
+
+
+https://github.com/user-attachments/assets/ada07872-8f48-4b85-862b-0ec714ffa53c
+
+
+
 *Read this in [Français](README.fr.md).*
 
 > **TL;DR** — *Abyssal* is a fully autonomous, **watch-only** roguelike for the terminal, written in Rust with **no asset files** — every map, sprite, sound and note is generated at runtime. An AI heroine descends an endless procedurally generated abyss entirely on her own: she explores, fights, loots, levels up, dies and starts over. You don't play; you watch.
